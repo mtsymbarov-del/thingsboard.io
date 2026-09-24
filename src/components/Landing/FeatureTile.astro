@@ -73,6 +73,17 @@ for (const link of links) {
 		flex-direction: column;
 		gap: $spacing-2;
 		padding: $spacing-5;
+
+		// Two across is the odd tier here too — `#cards` drops to two between 750 and
+		// 1023 while the grid keeps the page's 960 measure, so a tile runs 354 at 750
+		// and 474 by 1023 against the 312 the three-across grid gives it. Same walls
+		// as the ecosystem cards take in the same band, so the page's two card grids
+		// stay one thing.
+		@include media-up(md) {
+			@include media-down(lg) {
+				padding: $spacing-8;
+			}
+		}
 		border-radius: $radius-lg;
 		// No stroke, at rest or on hover — the same trade the ecosystem cards make
 		// on this band. White on #f5f6ff is a luminance ratio of 1.076, so the edge

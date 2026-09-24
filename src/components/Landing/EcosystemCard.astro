@@ -420,6 +420,30 @@ if (nameHighlight) {
 		padding-top: calc($badge / 2 + #{$spacing-3});
 	}
 
+	// WIDER WALLS WHILE THE GRID IS TWO ACROSS. 20 is the wall for a card at its
+	// design width — the ~307 the three-column grid hands it, which is the width
+	// the copy in here was fitted to. Two across is the odd tier: the grid still
+	// runs the page's 960 measure, so each card is 355 at 750 and 470 by 1023 —
+	// half again its design width, carrying a phone's inset. At 1023 the Products
+	// cards are 470 too, directly above these, and have taken 32 since `md`; two
+	// bands of identical cards with different walls is the kind of thing you read
+	// as the page being unfinished rather than see.
+	//
+	// Sides and foot only. The head is the badge's headroom and is already
+	// generous; growing it too would just push the copy down a card that is short
+	// of nothing. Capping the two-across grid at ~720 so the card kept its design
+	// width was the other way, and it breaks the edge this section shares with the
+	// Products band above — see the note on `.product-ecosystem-list`.
+	@include media-up(md) {
+		@include media-down(lg) {
+			.ecosystem-card:not(.ecosystem-card--product) {
+				padding-right: $spacing-8;
+				padding-bottom: $spacing-8;
+				padding-left: $spacing-8;
+			}
+		}
+	}
+
 	// App-style squircle straddling the top edge. `border-radius` in percent is
 	// the practical approximation — a true superellipse needs an SVG path or
 	// `corner-shape`, which isn't broadly supported yet.

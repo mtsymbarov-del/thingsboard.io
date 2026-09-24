@@ -771,7 +771,21 @@ const titles = Array.isArray(title) ? title : [title];
 					// Height comes from the video's 16:9, not a viewport percentage: a
 					// vh-driven box cannot match the footage's ratio, which is what forced
 					// the old centre-crop down to ~29% of the frame.
-					grid-template-columns: 1fr 2fr;
+					//
+					// A FLOOR ON THE COPY, not a plain `1fr 2fr`. The ratio alone made this
+					// breakpoint a cliff: the even split hands the copy 504px at 1023 and a
+					// third of the viewport hands it 337 at 1025, so the column lost a third
+					// of its width as the screen got wider and did not win it back until
+					// about 1500. Measured at 1280 it was still only 422 — narrower than the
+					// 504 it had on a smaller screen, and narrower than a phone's own column.
+					//
+					// 500, because that is what `1fr 1fr` hands it just below this line, so
+					// the two tiers meet flush instead of stepping. The floor binds up to
+					// roughly 1500; above it the viewport's third is the larger number and
+					// the ratio takes over on its own, so wide screens are untouched. The
+					// panel pays, out of width it has to spare — same trade the rows make,
+					// where the copy is a measure and the media takes what is left.
+					grid-template-columns: minmax(500px, 1fr) 2fr;
 				}
 			}
 

@@ -275,7 +275,11 @@ const HeadingTag = `h${headingLevel}` as 'h3' | 'h4';
 				box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.12);
 			}
 
-			@media screen and (max-width: 768px) {
+			// STACKS BELOW `lg`, NOT AT 768. Side by side the copy column is a fixed measure and the
+			// media takes whatever is left, so between 769 and 1023 the media was handed 312-430px —
+			// narrower than the same row gets stacked on a 360px phone. Two columns now begin at 1024,
+			// where the container first reaches the measure these rows were drawn against.
+			@include media-down(lg) {
 				flex-direction: column;
 				gap: 32px;
 

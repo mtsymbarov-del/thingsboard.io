@@ -236,17 +236,19 @@
 	}
 }
 
-// --- the phone ------------------------------------------------------------------------------
+// --- stacked --------------------------------------------------------------------------------
 
 // Everything above is sized for a row read side by side. Stacked, the same numbers are mostly
 // scroll: 80px of padding top and bottom plus a 56px gap is 216px of nothing per row, which on a
 // 812px screen is a quarter of the section before a word of it has been read. Five rows came to
 // 3885px — very nearly five screenfuls.
-@media screen and (max-width: 768px) {
-	.new-rows .main-div {
-		padding: 36px 20px;
-	}
-
+//
+// SPLIT IN TWO, because the row no longer stacks at 768. `FeatureBlockSection` now stacks it
+// below `lg`, so these three — the gap, the floor and the two measures — have to follow it there
+// or a tablet gets a stacked row still laid out as a side-by-side one: a 40ch flex-basis
+// resolving to HEIGHT, and a visual capped at the 560 desktop ceiling in a 780px column. What is
+// genuinely about a phone rather than about stacking stays at 768, below.
+@include media-down(lg) {
 	.new-rows .block {
 		// 32, not 20. Stacked, the gap is what sits between a row's link and the visual under it, and
 		// at 20 the link read as touching the drawing — a caption for it rather than the end of the
@@ -267,6 +269,24 @@
 		max-width: none;
 	}
 
+	// The 560 cap is a desktop ceiling — it exists so a visual is not upscaled past its design
+	// size in a wide column. Stacked, the column is the page, and leaving the cap in would only
+	// re-centre the visual inside the width just given to it.
+	.new-rows .preview > * {
+		max-width: none;
+	}
+}
+
+// --- the phone ------------------------------------------------------------------------------
+
+// What a phone needs on top of stacking: the row's own padding closed up, the visual out past
+// the gutter, and the copy's rhythm tightened. A tablet is stacked but is not short of room, so
+// none of this applies to it.
+@media screen and (max-width: 768px) {
+	.new-rows .main-div {
+		padding: 36px 20px;
+	}
+
 	// Out past the page's own gutter, to 8px of the screen edge.
 	//
 	// 16px, because the gutter is 20 — the number to change if that ever moves. These diagrams
@@ -282,13 +302,6 @@
 		// rather than 4. At 4 it read as a drawing that had overshot the page; 8 reads as a
 		// deliberately wider measure. The bleed is still outward only — see the note above.
 		margin-inline: -12px;
-	}
-
-	// The 560 cap is a desktop ceiling — it exists so a visual is not upscaled past its design
-	// size in a wide column. At 367 nothing is near it, and leaving it in would only re-centre
-	// the visual inside the width just given to it.
-	.new-rows .preview > * {
-		max-width: none;
 	}
 
 	// The copy's own rhythm, closed up to match.

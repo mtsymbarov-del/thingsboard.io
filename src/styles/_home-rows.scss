@@ -243,13 +243,26 @@
 // 812px screen is a quarter of the section before a word of it has been read. Five rows came to
 // 3885px — very nearly five screenfuls.
 //
-// SPLIT IN TWO, because the row no longer stacks at 768. `FeatureBlockSection` now stacks it
-// below `lg`, so these three — the gap, the floor and the two measures — have to follow it there
-// or a tablet gets a stacked row still laid out as a side-by-side one: a 40ch flex-basis
-// resolving to HEIGHT, and a visual capped at the 560 desktop ceiling in a 780px column. What is
-// genuinely about a phone rather than about stacking stays at 768, below.
+// THE ROW STACKS BELOW `lg` — ON THIS PAGE ONLY, which is why the stack lives here rather than
+// in the component. `FeatureBlockSection` still stacks at 768, because the Edge page shares it
+// and has not had this pass; fencing that off with a prop would put a flag in a shared component
+// to say which of its two callers is which. Matching on `.new-rows` says the same thing and adds
+// nothing to the component — and the sandbox renders a real `.new-rows`, so it follows for free.
+//
+// It wins on specificity, not order: Astro compiles a component's scoped rules to
+// `:where(.astro-hash) .block`, so the component's own `.block` scores (0,1,0) and `.new-rows
+// .block` beats it whatever the source order. Same for its two `:global(.preview…)` rules at
+// (0,2,0) against these at (0,3,0).
+//
+// Side by side the copy is a fixed 40ch measure and the media takes what is left — 312-430px
+// between 769 and 1023, narrower than the same visual gets stacked on a 360px phone. Two columns
+// now begin at 1024, where the container first reaches the measure these were drawn against.
+//
+// Everything here is about STACKING and applies at any width where the row is stacked. What is
+// genuinely about a phone stays at 768, below.
 @include media-down(lg) {
 	.new-rows .block {
+		flex-direction: column;
 		// 32, not 20. Stacked, the gap is what sits between a row's link and the visual under it, and
 		// at 20 the link read as touching the drawing — a caption for it rather than the end of the
 		// copy.
@@ -257,6 +270,20 @@
 		// Sized to keep a side-by-side row from collapsing beside a taller one. Stacked there is
 		// no beside, and the floor only holds short rows open.
 		min-height: 0;
+	}
+
+	// The two reversed rows stop reversing. Stacked, `order: -1` puts the drawing above the
+	// sentence that explains it, on every second row.
+	.new-rows .preview.media-first {
+		order: 0;
+	}
+
+	// `align-items: center` makes the cross axis shrink-to-fit once the row stacks, and a slotted
+	// component sized `width: 100%` then resolves that against a parent sizing to its own content.
+	// The two agree on zero and the visual disappears with no error.
+	.new-rows .preview.has-slot {
+		align-self: stretch;
+		max-width: none;
 	}
 
 	// The one that was really costing the height. `flex: 0 1 42ch` is a MEASURE — a reading width

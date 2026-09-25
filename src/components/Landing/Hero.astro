@@ -702,8 +702,10 @@ const titles = Array.isArray(title) ? title : [title];
 				bottom: 16px;
 				right: 16px;
 
+				// A notch down at both sizes (64 → 56 here, 72 → 64 from `md`): it is a
+				// credential, and at the old size it was the loudest thing on the panel.
 				.achieve {
-					width: 64px;
+					width: 56px;
 				}
 			}
 
@@ -761,10 +763,25 @@ const titles = Array.isArray(title) ? title : [title];
 					// `lg` this changes nothing — the panel still sets the row.
 					padding: calc(var(--home-header-h, #{$header-height}) + var(--hero-top-gap))
 						clamp(24px, calc(0.5rem + 2vw), 56px) 36px;
+
+					// The headline to the lede's measure, balanced. Left to the column it ran
+					// one line well past the lede — 434px over 307 at 994 — and at 768-820 it
+					// broke with "platform" alone on the second line. `balance` splits it
+					// evenly: "The all-in-one / IoT platform" at every width with two columns.
+					//
+					// In `em`, not `rem`, because the headline scales (34 → 48px) and the lede
+					// does not: 9em is the lede's 307 at 34px and opens to 432 at 48, so "The
+					// all-in-one" — 6.6em — always fits whole and never breaks on its hyphens.
+					// `:not(:first-child)` so a lone title, with no kicker above it, is left
+					// to the column like the kicker rule above leaves it.
+					.tb-title:not(:first-child):last-child {
+						max-width: 9em;
+						text-wrap: balance;
+					}
 				}
 
 				.achievement .achieve {
-					width: 72px;
+					width: 64px;
 				}
 
 				// THE PANEL REACHES UNDER THE COPY, TABLET ONLY. Two even columns left the
@@ -774,10 +791,15 @@ const titles = Array.isArray(title) ? title : [title];
 				// right-hand anchor, more of the frame, and no edge.
 				//
 				// The fade is placed by what the copy actually occupies, not by the column.
-				// The subtitle and the buttons end 90-180px short of the halfway line, so they
-				// stay on solid black; only the headline's last word runs into the ramp, where
-				// the footage is still under 40% — measured at 768, 820 and 1000, the
-				// headline ends 25-29px short of the line. Those two numbers are the knobs.
+				// The balanced headline and the buttons clear it; the lede's longest line is
+				// the one thing that reaches the ramp, and only at 768. Those two numbers are
+				// the knobs.
+				//
+				// EASED, NOT LINEAR. A straight alpha ramp has a visible start and end — the
+				// eye reads its two corners as bands — so the stops follow a smoothstep,
+				// 3t² − 2t³, which leaves both ends flat. It also starts slow, which is what
+				// lets the ramp run 240 rather than 200 without the lede's tail picking up
+				// more footage: 5% behind it at 768, where the linear 200 put 16%.
 				//
 				// Not above `lg`: there the copy has its 500px floor and the panel is wide
 				// enough to show the frame whole. The product pages hide the panel and paint
@@ -785,14 +807,30 @@ const titles = Array.isArray(title) ? title : [title];
 				// here reaches them.
 				@include media-down(lg) {
 					--hero-video-reach: 100px;
-					--hero-video-fade: 200px;
+					--hero-video-fade: 240px;
 
 					.video-cover {
+						--f: var(--hero-video-fade);
+						--hero-video-ramp: linear-gradient(
+							to right,
+							rgba(0, 0, 0, 0) 0,
+							rgba(0, 0, 0, 0.028) calc(var(--f) * 0.1),
+							rgba(0, 0, 0, 0.104) calc(var(--f) * 0.2),
+							rgba(0, 0, 0, 0.216) calc(var(--f) * 0.3),
+							rgba(0, 0, 0, 0.352) calc(var(--f) * 0.4),
+							rgba(0, 0, 0, 0.5) calc(var(--f) * 0.5),
+							rgba(0, 0, 0, 0.648) calc(var(--f) * 0.6),
+							rgba(0, 0, 0, 0.784) calc(var(--f) * 0.7),
+							rgba(0, 0, 0, 0.896) calc(var(--f) * 0.8),
+							rgba(0, 0, 0, 0.972) calc(var(--f) * 0.9),
+							#000 var(--f)
+						);
+
 						grid-column: 1 / -1;
 						justify-self: end;
 						width: calc(50% + var(--hero-video-reach));
-						-webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--hero-video-fade));
-						mask-image: linear-gradient(to right, transparent 0, #000 var(--hero-video-fade));
+						-webkit-mask-image: var(--hero-video-ramp);
+						mask-image: var(--hero-video-ramp);
 					}
 
 					// Over the panel now rather than beside it, so it gives up its own black —
@@ -801,17 +839,6 @@ const titles = Array.isArray(title) ? title : [title];
 						position: relative;
 						z-index: 1;
 						background-color: transparent;
-
-						// The headline to the lede's measure, balanced. Left to the column it ran
-						// one 434px line at 994 over a 307px lede, and at 768-820 it broke with
-						// "platform" alone on the second line. 19rem is the lede's 34ch at its
-						// 16px, so the two read as one block; `balance` then splits it evenly —
-						// "The all-in-one / IoT platform" across the band. `:last-child` for the
-						// same reason as the kicker rule above: a lone title is left alone.
-						.tb-title:not(:first-child):last-child {
-							max-width: 19rem;
-							text-wrap: balance;
-						}
 					}
 				}
 

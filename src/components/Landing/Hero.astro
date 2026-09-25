@@ -89,6 +89,12 @@ interface Props {
 	 */
 	layout?: 'center' | 'split';
 	/**
+	 * `split` only. `false` keeps the split's type and buttons and drops the footage: no
+	 * panel is rendered, and none of the footage composition (the columns, the fade, the
+	 * headline sizing that answers to the panel) applies. The product pages use it.
+	 */
+	panel?: boolean;
+	/**
 	 * Additional CSS class for hero section
 	 */
 	className?: string;
@@ -106,8 +112,13 @@ const {
 	videoBackground,
 	achievement,
 	layout = 'center',
+	panel = true,
 	className = '',
 } = Astro.props;
+
+// The centred layout always has its footage, behind the type; the split only with a panel.
+const hasPanel = layout === 'split' && panel;
+const hasCover = layout !== 'split' || panel;
 
 // Products that show achievement badge
 const productsWithAchievement = [Products.CE, Products.PE, Products.PAAS, Products.PAAS_EU];
@@ -124,20 +135,54 @@ const defaultAchievement: Achievement = {
 
 const achievementData = achievement || defaultAchievement;
 const titles = Array.isArray(title) ? title : [title];
+
+// The copy's measurements, for the two layouts that size something from them: `--hero-copy-h`
+// on the panel, which fills what the stacked copy leaves before the fold, and `--hero-copy-rest`
+// / `--hero-title-lines` on the section, which size the side-by-side headline to the fold
+// (everything in the copy but the headline, and the headline's height in font-sizes). Setting
+// them never changes what they measure: the panel's height does not reach the copy, and the rest
+// and the lines are the same at any headline size.
+//
+// Inline and synchronous, so the first paint already has them; then again on resize (the layout
+// and the short-screen trim both follow the viewport) and once the web fonts are in. Rendered only
+// with a panel: nothing else reads them. A string for `set:html`, so its braces are not markup.
+const MEASURE_COPY = `(() => {
+	const hero = document.currentScript.closest('#hero');
+	const copy = hero.querySelector('#hero-content');
+	const title = copy.querySelector('h1');
+	const panel = hero.querySelector('.video-cover');
+	const measure = () => {
+		const copyHeight = copy.offsetHeight;
+		const titleHeight = title.offsetHeight;
+		const titleSize = parseFloat(getComputedStyle(title.firstElementChild).fontSize);
+		panel.style.setProperty('--hero-copy-h', copyHeight + 'px');
+		hero.style.setProperty('--hero-copy-rest', copyHeight - titleHeight + 'px');
+		hero.style.setProperty('--hero-title-lines', String(titleHeight / titleSize));
+	};
+	measure();
+	let frame = 0;
+	addEventListener('resize', () => {
+		if (!frame) frame = requestAnimationFrame(() => { frame = 0; measure(); });
+	}, { passive: true });
+	if (document.fonts) document.fonts.ready.then(measure);
+})();`;
 ---
 
-<section id="hero" class:list={['light-text', layout === 'split' && 'split', className]}>
+<section id="hero" class:list={['light-text', layout === 'split' && 'split', hasPanel && 'split--panel', className]}>
 	<!-- arrow-hidden sentinel: IntersectionObserver-driven, replaces a forced-reflow scroll listener -->
 	<div class="hero-scroll-sentinel" aria-hidden="true"></div>
-	<div
-		class="video-cover"
-		style={`--hero-bg: url('${backgroundImage}')${
-			backgroundImageMobile ? `; --hero-bg-mobile: url('${backgroundImageMobile}')` : ''
-		}`}
-		data-video-mp4={videoBackground?.mp4}
-		data-video-webm={videoBackground?.webm}
-	>
-	</div>
+	{
+		hasCover && (
+			<div
+				class="video-cover"
+				style={`--hero-bg: url('${backgroundImage}')${
+					backgroundImageMobile ? `; --hero-bg-mobile: url('${backgroundImageMobile}')` : ''
+				}`}
+				data-video-mp4={videoBackground?.mp4}
+				data-video-webm={videoBackground?.webm}
+			/>
+		)
+	}
 
 	{
 		showAchievement && (
@@ -208,27 +253,33 @@ const titles = Array.isArray(title) ? title : [title];
 		<slot />
 	</div>
 
-	{
-		/* The copy's height, for the stacked layout's footage (`--hero-copy-h`, see the
-		   portrait-tablet rule). Inline and synchronous, so it is set before the first
-		   paint and the panel never lands at 16:9 and then shrinks; the observer keeps it
-		   true through web-font swaps and resizes. The copy's height does not depend on
-		   the panel's, so the two cannot feed back. */
-	}
-	<script is:inline>
-		(() => {
-			const hero = document.currentScript && document.currentScript.closest('#hero');
-			const copy = hero && hero.querySelector('#hero-content');
-			if (!copy) return;
-			const set = () => hero.style.setProperty('--hero-copy-h', copy.offsetHeight + 'px');
-			set();
-			if ('ResizeObserver' in window) new ResizeObserver(set).observe(copy);
-		})();
-	</script>
+	{hasPanel && <script is:inline set:html={MEASURE_COPY} />}
 </section>
 
 <style lang="scss">
+	@use 'sass:math';
+	@use 'sass:string';
 	@use '../../styles/variables' as *;
+
+	// The panel's edge where it meets the copy: black easing out to the panel's own wash over
+	// `$length`, painted OVER the footage rather than masking it. On the hero's black the two
+	// give the same pixels, and a mask over a playing video re-composites the whole panel
+	// off-screen on every frame, where an overlay is one more layer.
+	//
+	// Eased, not linear: a straight ramp has a visible start and end — the eye reads its two
+	// corners as bands — so the stops follow a smoothstep, 3t² − 2t³, flat at both ends. The
+	// alpha is `1 − (1 − wash) · eased`: solid black at the start, exactly the wash by the end,
+	// and the wash's own number still tunes both.
+	@function hero-edge-fade($length, $steps: 10) {
+		$stops: ();
+		@for $i from 0 through $steps {
+			$t: math.div($i, $steps);
+			$eased: $t * $t * (3 - 2 * $t);
+			$alpha: string.unquote('calc(1 - (1 - var(--hero-video-wash, 0.1)) * #{$eased})');
+			$stops: append($stops, string.unquote('rgba(0, 0, 0, #{$alpha})') ($length * $t), comma);
+		}
+		@return linear-gradient(to right, $stops);
+	}
 
 	#hero {
 		height: 100vh;
@@ -452,19 +503,16 @@ const titles = Array.isArray(title) ? title : [title];
 			}
 		}
 
-		// Split layout — content column on black beside an undimmed media panel.
-		// Opt-in via `layout="split"`, so the three product pages that share this
-		// component keep the centred hero they were designed around.
+		// Split layout — the copy on black, with no text shadows, and by default a panel of
+		// footage beside or under it. Opt-in via `layout="split"`; `panel={false}` keeps the
+		// split's type and buttons without the footage (the product pages). Everything about
+		// the footage composition is keyed to `.split--panel`, below, so a hero without a
+		// panel never has anything of it to undo.
 		//
-		// One composition at every width: the content column and the 16:9 panel
-		// stack below `lg` and sit side by side above it. The type, the buttons and
-		// the panel are all set here rather than inside the desktop media query.
-		// They used to live only in `media-up(lg)`, so under 1024px the hero fell
-		// back to the centred full-bleed treatment and lost the muted kicker, the
-		// bold headline and the tight leading — the type went to 22px/400 with a
-		// 20px gap, reading as two equal lines. Worse, this rule's own black
-		// painted straight over `.video-cover`, which the fallback parks at
-		// `z-index: -2`, so tablets and phones got a black box with no imagery.
+		// The type and the buttons are set here for every width rather than in a desktop
+		// query. They once lived only in `media-up(lg)`, and under 1024px the hero fell back
+		// to the centred full-bleed treatment: 22px/400 type, the kicker and headline reading
+		// as two equal lines, and this rule's black painted over a panel parked at z -2.
 		&.split {
 			height: auto;
 			min-height: 0;
@@ -481,28 +529,40 @@ const titles = Array.isArray(title) ? title : [title];
 			// tall and the next section began exactly at the fold — nothing of it
 			// visible.
 			//
-			// The budget is the viewport minus the chrome above the hero minus the strip
-			// we want to leave showing. `svh`, not `vh`: on mobile `vh` is the tallest
-			// the viewport ever gets, which is the one value that guarantees the promise
-			// is broken while the browser's own bars are on screen.
-			//
-			// `--promo-h` is in it because the AI banner sits above the header and is
-			// part of what pushes this down. If that banner goes, the budget widens on
-			// its own — nothing here needs changing.
+			// `--hero-fold` is the height the hero may take: the viewport less the promo
+			// banner above it and the 56px of the next section left showing. `svh`, not
+			// `vh`: on mobile `vh` is the tallest the viewport ever gets, which is the one
+			// value that guarantees the promise is broken while the browser's own bars are
+			// on screen. If the banner goes, `--promo-h` is 0 and everything widens on its
+			// own. `--hero-budget` is the same less the header, for the panel, which starts
+			// under the header.
+			--hero-reveal: 56px;
+			--hero-fold: calc(100svh - var(--promo-h, 0px) - var(--hero-reveal));
+			--hero-budget: calc(var(--hero-fold) - var(--home-header-h, #{$header-height}));
+
+			// The copy's side inset: the page's own (see `page-inset`), with a phone's 20px
+			// floor here and the header's 24 once side by side.
+			--hero-pad-x: #{page-inset(20px)};
+
+			// The headline's size, set once and read once (`.tb-title` below). This fluid
+			// default is the size the product pages were signed off at — 34 on every phone
+			// and tablet, 48 by ~1680 — and the panel layouts set their own.
+			--hero-h1: clamp(34px, calc(0.5rem + 2.4vw), 48px);
+
+			// The headline's measure, in its own ems: see `.tb-title` below. The stacked
+			// two-column layout sizes the headline from the same number.
+			--hero-title-measure: 7;
+
 			// The room between the fixed bar and the first thing in the hero. It is a
-			// token because three rules set this padding — stacked, side-by-side, and the
-			// short/narrow trim — and every one of them had to clear the header, so every
-			// one of them was a chance to clear it by exactly zero. That is what happened:
+			// token, and the one padding rule reads it, because the short/narrow trim has
+			// to change it too, and every rule that ever set this padding had to clear the
+			// header — each one a chance to clear it by exactly zero. That is what happened:
 			// `padding-top: var(--home-header-h)` puts the content box's top edge on the
 			// header's bottom edge, and the mark on the product pages sat against the menu
 			// with nothing between them. Measured settled — mid-animation the hero is
 			// still 45px low from its own entrance transform, which reads as a gap that is
 			// not there.
 			--hero-top-gap: 28px;
-
-			--hero-chrome: calc(var(--home-header-h, #{$header-height}) + var(--promo-h, 0px));
-			--hero-reveal: 56px;
-			--hero-budget: calc(100svh - var(--hero-chrome) - var(--hero-reveal));
 
 			// A panel in normal flow, not a backdrop behind the section.
 			.video-cover {
@@ -569,10 +629,12 @@ const titles = Array.isArray(title) ? title : [title];
 				text-align: left;
 				align-items: flex-start;
 				justify-content: center;
-				background-color: #000;
-				// Clears the fixed bar, then breathes above the panel beneath it.
-				padding: calc(var(--home-header-h, #{$header-height}) + var(--hero-top-gap))
-					clamp(20px, calc(0.5rem + 2vw), 56px) 36px;
+				// Clears the fixed bar, then breathes above the panel beneath it. The 36px
+				// bottom matters when the copy is the taller of the two side by side: it
+				// sets the row, and without it "Talk to an expert" sat flush on the hero's
+				// bottom edge with 6px of it under `overflow: hidden`. No background: the
+				// section's black is behind it, and the product pages paint their own.
+				padding: calc(var(--home-header-h, #{$header-height}) + var(--hero-top-gap)) var(--hero-pad-x) 36px;
 
 				// Type sits on solid black here, so the shadows the centred layout
 				// needs over video only muddy it.
@@ -593,15 +655,11 @@ const titles = Array.isArray(title) ? title : [title];
 					margin-bottom: 20px;
 				}
 
+				// 34 to 48: 48 is `type-display`, the page's H1 being the one thing entitled to
+				// the top of the ladder, and 34 the floor every phone sits on. Which size, when,
+				// is `--hero-h1`'s business (see its producers).
 				.tb-title {
-					// Floor raised from 28px: the vw term only starts driving past
-					// ~1080px, so every phone and tablet sat on the floor and the
-					// headline read small for a screen it has entirely to itself.
-					// The term and ceiling are unchanged, so desktop is untouched.
-					// Ceiling raised 46 -> 48, which is `type-display`: the page's H1 is the one thing
-					// entitled to the top of the ladder, and Products stepping down to 40 leaves it room.
-					// The 34 floor stays — it was raised deliberately, see above.
-					font-size: clamp(34px, calc(0.5rem + 2.4vw), 48px);
+					font-size: var(--hero-h1);
 					font-weight: $font-weight-bold;
 					margin-bottom: 0;
 					text-shadow: none;
@@ -615,7 +673,7 @@ const titles = Array.isArray(title) ? title : [title];
 				// than any line in it. `:not(:first-child)` so a lone title, with no kicker
 				// above it, is left to the column.
 				.tb-title:not(:first-child):last-child {
-					max-width: 7em;
+					max-width: calc(var(--hero-title-measure) * 1em);
 					text-wrap: balance;
 				}
 
@@ -732,8 +790,8 @@ const titles = Array.isArray(title) ? title : [title];
 				bottom: 16px;
 				right: 16px;
 
-				// A notch down at both sizes (64 → 56 here, 72 → 64 from `md`): it is a
-				// credential, and at the old size it was the loudest thing on the panel.
+				// 56 here, 64 side by side (below): a notch under the old 64/72, because it is
+				// a credential, and at the old size it was the loudest thing on the panel.
 				.achieve {
 					width: 56px;
 				}
@@ -745,274 +803,189 @@ const titles = Array.isArray(title) ? title : [title];
 			// A portrait tablet's spare room is under the copy, not beside it. Split, it
 			// ended the hero at 540 on a 1110px screen and gave the footage a box taller
 			// than wide, 56-59% of the frame. Stacked, the footage runs the full width
-			// under the copy. Phones are portrait and were already stacked; a phone on
-			// its side is landscape and splits, as it did.
+			// under the copy. A phone on its side is landscape but under 750, so stacked.
+			//
+			// Stacked, the copy is one centred column on a phone and two columns from 600,
+			// where there is the width for them.
 			$hero-split: 'screen and (min-width: #{$breakpoint-md}) and (orientation: landscape)';
-			$hero-stack: 'screen and (max-width: #{$breakpoint-md - 1px}), screen and (orientation: portrait)';
-			$hero-stack-wide: 'screen and (min-width: #{$breakpoint-md}) and (orientation: portrait)';
-			// Stacked and at least 600 wide: every stacked width that can carry two columns of
-			// copy. Phones under 600 keep the single centred one.
-			$hero-stack-two: 'screen and (min-width: 600px) and (max-width: #{$breakpoint-md - 1px}), #{$hero-stack-wide}';
-			$hero-stack-mid: 'screen and (min-width: 600px) and (max-width: #{$breakpoint-md - 1px})';
+			$hero-stack-one: 'screen and (max-width: 599px)';
+			$hero-stack-two: 'screen and (min-width: 600px) and (max-width: #{$breakpoint-md - 1px}), screen and (min-width: #{$breakpoint-md}) and (orientation: portrait)';
+			$hero-short: '(max-height: 620px)';
 
-			// CENTRED WHILE STACKED. With the panel under it the copy is the whole width
-			// and nothing sits beside it to hold a left edge against, so it takes the
-			// axis the panel below it already has. Left-aligned it read as a column with
-			// the other half missing. From 600px there is the width to fill that half,
-			// and the copy goes into two columns instead (below); this is the phone's.
-			//
-			// The note's link is a fit-content flex box set in `index.astro` (slotted, so
-			// Hero's scope never reaches it — hence `:global`), which needs its own auto
-			// margins to follow the text to the middle.
-			@media #{$hero-stack} {
-				#hero-content {
-					text-align: center;
-					align-items: center;
-
-					.tb-sub-title {
-						margin-inline: auto;
-					}
-
-					.hero-buttons {
-						justify-content: center;
-					}
-
-					:global(.hero-note a) {
-						margin-inline: auto;
-					}
-				}
-			}
-
-			// PORTRAIT TABLETS: the full-size headline. From 600 (next block), footage that
-			// fills what the copy leaves before the fold. The copy's height is the one number that room
-			// depends on and CSS cannot read it, so the inline script at the end of the
-			// markup measures it into `--hero-copy-h`. Down to a 30vw floor, a band and
-			// never a sliver, and up to the frame's own 16:9 (the base `aspect-ratio`),
-			// so the footage is never upscaled past its shape. Without the script the
-			// variable is unset and the panel is simply 16:9.
-			//
-			// Phones keep the stacked layout as it was: there the copy alone is most of
-			// the screen, and the footage sits under the fold either way.
-			@media #{$hero-stack-wide} {
-				#hero-content .tb-title {
-					// `type-display`'s size: a portrait tablet is never short of room for it.
-					font-size: 48px;
-				}
-			}
-
-			@media #{$hero-stack-two} {
-				--hero-copy-gap: clamp(24px, 4vw, 32px);
-				--hero-video-floor: 30vw;
-
-				// The footage fills what the copy leaves before the fold (see above), here as on
-				// a tablet: two columns make the copy short enough for that to be a real panel.
-				.video-cover {
-					max-height: max(
-						var(--hero-video-floor),
-						calc(100svh - var(--promo-h, 0px) - var(--hero-reveal) - var(--hero-copy-h, 0px))
-					);
-				}
-
-				// TWO COLUMNS OF COPY, from 600px wherever the hero is stacked: the headline in
-				// the first, the lede and the actions in the second, both set left. Centred one
-				// above the other on a portrait tablet, the 48px headline
-				// and the lede ran the copy ~460px deep before the footage began, and a 768x954
-				// screen was left a 267px band of it. Side by side the copy is only as tall as
-				// its taller column, and the footage takes what that frees.
-				//
-				// Halves, so the second column starts on the centre line at any width: 336px
-				// each at 750, the headline's 7em exactly, and 264 at 600 with the smaller
-				// headline below. Top-aligned, so the lede starts
-				// level with the kicker. The source order is kept — title, lede, buttons, note —
-				// so what a screen reader reads is what the eye reads.
-				//
-				// Only for a kicker and a headline (`:has`): the two-line headline is what fills
-				// the first column. A lone title, as the product pages pass, keeps the centred
-				// stack above.
-				#hero-content:has(.tb-title + .tb-title) {
-					display: grid;
-					grid-template-columns: 1fr 1fr;
-					grid-template-rows: auto auto 1fr;
-					grid-template-areas:
-						'title lede'
-						'title actions'
-						'title note';
-					column-gap: var(--hero-copy-gap);
-					align-items: start;
-					justify-items: start;
-					text-align: left;
-
-					h1 {
-						grid-area: title;
-						margin-bottom: 0;
-					}
-
-					.tb-sub-title {
-						grid-area: lede;
-						margin-inline: 0;
-					}
-
-					.hero-buttons {
-						grid-area: actions;
-						justify-content: flex-start;
-					}
-
-					// Slotted from `index.astro`, so Hero's scope never reaches it.
-					:global(.hero-note) {
-						grid-area: note;
-					}
-
-					:global(.hero-note a) {
-						margin-inline: 0;
-					}
-				}
-			}
-
-			// THE WIDER PHONE: 600-749 stacked, an iPad mini upright, an unfolded foldable, a
-			// phone on its side. The same two columns with a smaller headline, sized to fill
-			// its column at 7em — about 38px at 600, 48 by 744 — never under the phone's 34.
-			@media #{$hero-stack-mid} {
-				#hero-content .tb-title {
-					font-size: clamp(
-						34px,
-						calc((100vw - 2 * clamp(20px, calc(0.5rem + 2vw), 56px) - var(--hero-copy-gap)) / 14),
-						48px
-					);
-				}
-
-				// A phone on its side is this wide and 360-430 tall: there the headline is the
-				// phone's own 34, not what the width would allow.
-				@media (max-height: 620px) {
-					#hero-content .tb-title {
-						font-size: 34px;
-					}
-				}
-			}
-
-			// SIDE BY SIDE.
-			//
-			// THE COPY IS A MEASURE AND THE FOOTAGE TAKES THE REST. The column is `auto`:
-			// exactly what the copy asks for (the headline's 7em, the lede's 34ch, the
-			// buttons) plus its padding, which is 390-450px whatever the viewport. It
-			// used to be a share of the viewport, `1fr 1fr` below `lg` and `minmax(500px,
-			// 1fr) 2fr` above, so the column tracked the screen rather than the text: at
-			// 2560 it was 848px of black around 432px of copy, and on a tablet it took
-			// half the width for a lede 307px wide.
-			//
-			// THE FOOTAGE IS AS TALL AS THE FOLD ALLOWS. Its height is 16:9 of its width,
-			// capped only by `--hero-budget`, the viewport less the chrome above and the
-			// 56px of the next section left showing. There was a 720px ceiling as well,
-			// which on a 2560 screen cut the frame to 75% for a hero that still stopped
-			// 476px short of the fold. The budget already keeps the next section in view,
-			// so it is the only ceiling now.
+			// Every split, panel or not, once side by side: the header's 24px inset floor, and
+			// the badge's larger size.
 			@media #{$hero-split} {
-				grid-template-columns: auto 1fr;
-
-				// THE HEADLINE BY HEIGHT, NOT WIDTH. It is 48px, `type-display`, unless the
-				// screen is too short for the copy column and the peek together; only then
-				// does it give, and only as much as it has to, down to 34. It used to follow
-				// the viewport's width (34 → 48 across 1024-1680), so it was 34-45px on every
-				// tablet and laptop whether or not there was room.
-				//
-				// The copy column is 3.6 headline-heights (kicker and two lines, at 1.2)
-				// plus `--hero-copy-rest`: 92 of top padding, 20 under the headline, the
-				// lede's five lines and 32 under them, the 44px buttons, the 72px note and
-				// 36 of bottom padding — 416, measured. The short-viewport rule below trims
-				// 58 of that spacing and says so.
-				--hero-copy-rest: 416px;
-				--hero-h1: clamp(
-					34px,
-					calc((100svh - var(--promo-h, 0px) - var(--hero-reveal) - var(--hero-copy-rest)) / 3.6),
-					48px
-				);
-
-				--hero-pad-x: clamp(24px, calc(0.5rem + 2vw), 56px);
-
-				// THE FOOTAGE REACHES UNDER THE COPY'S MARGIN and fades in from its black,
-				// at every split width rather than tablets alone, so there is one edge
-				// treatment. `reach` is the column's padding plus 16, which puts the ramp's
-				// transparent end just past the copy's widest line: the headline's first
-				// line at 48px, the lede's at 34.
-				//
-				// EASED, NOT LINEAR. A straight alpha ramp has a visible start and end — the
-				// eye reads its two corners as bands — so the stops follow a smoothstep,
-				// 3t² − 2t³, which leaves both ends flat.
-				--hero-video-reach: calc(var(--hero-pad-x) + 16px);
-				--hero-video-fade: 240px;
-
-				.video-cover {
-					--f: var(--hero-video-fade);
-					--hero-video-ramp: linear-gradient(
-						to right,
-						rgba(0, 0, 0, 0) 0,
-						rgba(0, 0, 0, 0.028) calc(var(--f) * 0.1),
-						rgba(0, 0, 0, 0.104) calc(var(--f) * 0.2),
-						rgba(0, 0, 0, 0.216) calc(var(--f) * 0.3),
-						rgba(0, 0, 0, 0.352) calc(var(--f) * 0.4),
-						rgba(0, 0, 0, 0.5) calc(var(--f) * 0.5),
-						rgba(0, 0, 0, 0.648) calc(var(--f) * 0.6),
-						rgba(0, 0, 0, 0.784) calc(var(--f) * 0.7),
-						rgba(0, 0, 0, 0.896) calc(var(--f) * 0.8),
-						rgba(0, 0, 0, 0.972) calc(var(--f) * 0.9),
-						#000 var(--f)
-					);
-
-					grid-column: 2;
-					grid-row: 1;
-					// `stretch` still sizes the row from the 16:9 hypothetical height, so the
-					// frame stays uncropped whenever the copy column is the shorter of the two.
-					// When it is taller, the panel grows with the row and `cover` trims the
-					// sides evenly — `object-position: center` below is what keeps that even.
-					align-self: stretch;
-					// Clears the menu so nothing plays behind it.
-					margin-top: var(--home-header-h, #{$header-height});
-					// The box runs `reach` into the copy's column, under its padding: its own
-					// track plus the reach, pulled left by the same amount. The width has to
-					// stay DEFINITE. Left `auto`, `aspect-ratio` derives it from the height
-					// instead — from the budget cap at 1920x700 (a 960px box with black to
-					// its right) or from a copy-tall row at 1024 (a 937px box overflowing the
-					// hero). Definite, the height follows the width and a cap crops the frame
-					// top and bottom rather than narrowing it.
-					width: calc(100% + var(--hero-video-reach));
-					margin-left: calc(-1 * var(--hero-video-reach));
-					max-height: var(--hero-budget);
-					-webkit-mask-image: var(--hero-video-ramp);
-					mask-image: var(--hero-video-ramp);
-
-					:global(video) {
-						object-position: center;
-					}
-				}
-
-				#hero-content {
-					grid-column: 1;
-					grid-row: 1;
-					// Over the panel's faded edge rather than beside a hard one, so it gives up
-					// its own black; the section's shows wherever the footage has faded out.
-					position: relative;
-					z-index: 1;
-					background-color: transparent;
-					// The 36px bottom is kept, not zeroed: when the copy is the taller of the
-					// two it sets the row, and without it "Talk to an expert" sat flush on the
-					// hero's bottom edge with 6px of it under `overflow: hidden`.
-					padding: calc(var(--home-header-h, #{$header-height}) + var(--hero-top-gap)) var(--hero-pad-x) 36px;
-
-					.tb-title {
-						font-size: var(--hero-h1);
-					}
-				}
+				--hero-pad-x: #{page-inset(24px)};
 
 				.achievement .achieve {
 					width: 64px;
 				}
 			}
 
-			// The panel answers to that budget (below and in the md block). The COPY
+			// ── THE PANEL ───────────────────────────────────────────────────────────
+			&.split--panel {
+				// CENTRED ON A PHONE. With the panel under it the copy is the whole width and
+				// nothing sits beside it to hold a left edge against, so it takes the axis
+				// the panel below it already has. Left-aligned it read as a column with the
+				// other half missing. From 600 the copy fills that half itself (next rule).
+				//
+				// The note's link is a fit-content flex box set in `index.astro` (slotted, so
+				// Hero's scope never reaches it — hence `:global`), which needs its own auto
+				// margins to follow the text to the middle.
+				@media #{$hero-stack-one} {
+					#hero-content {
+						text-align: center;
+						align-items: center;
+
+						.tb-sub-title {
+							margin-inline: auto;
+						}
+
+						.hero-buttons {
+							justify-content: center;
+						}
+
+						:global(.hero-note a) {
+							margin-inline: auto;
+						}
+					}
+				}
+
+				// TWO COLUMNS OF COPY, stacked from 600: the headline in the first; the lede,
+				// the buttons and whatever follows them in the second; both set left. Centred
+				// one above the other on a portrait tablet, the 48px headline and the lede ran
+				// the copy ~585px deep before the footage began, and a 768x954 screen was left
+				// a 267px band of it. Side by side the copy is only as tall as its taller
+				// column (~400), and the footage takes what that frees.
+				//
+				// Halves, so the second column starts on the centre line at any width, and
+				// top-aligned, so the lede starts level with the kicker. The source order is
+				// kept — title, lede, buttons, note — so what a screen reader reads is what
+				// the eye reads.
+				@media #{$hero-stack-two} {
+					--hero-copy-gap: clamp(#{$spacing-6}, 4vw, #{$spacing-8});
+					// The headline fills its column at its own measure — `cqi` is the copy's
+					// width less its padding — so ~38px at 600, 48 by ~744, never under 34. On a
+					// phone on its side (620 tall or less) it is the phone's 34 outright.
+					--hero-h1: clamp(34px, calc((100cqi - var(--hero-copy-gap)) / 2 / var(--hero-title-measure)), 48px);
+
+					@media #{$hero-short} {
+						--hero-h1: 34px;
+					}
+
+					// The footage fills what the copy leaves before the fold (`--hero-copy-h` is
+					// measured, see the script): down to a 30vw band, never a sliver, and up to
+					// the frame's own 16:9, the base `aspect-ratio`, so it is never upscaled
+					// past its shape. Without the script the panel is simply 16:9.
+					.video-cover {
+						max-height: max(30vw, calc(var(--hero-fold) - var(--hero-copy-h, 0px)));
+					}
+
+					#hero-content {
+						container-type: inline-size;
+						display: grid;
+						grid-template-columns: 1fr 1fr;
+						grid-template-rows: auto auto 1fr;
+						column-gap: var(--hero-copy-gap);
+						align-items: start;
+						justify-items: start;
+
+						h1 {
+							grid-column: 1;
+							grid-row: 1 / -1;
+							margin-bottom: 0;
+						}
+
+						// `:global`: the note is slotted from the page and carries no scope.
+						> :global(:not(h1)) {
+							grid-column: 2;
+						}
+					}
+				}
+
+				// SIDE BY SIDE.
+				//
+				// THE COPY IS A MEASURE AND THE FOOTAGE TAKES THE REST. The column is `auto`:
+				// exactly what the copy asks for (the headline's measure, the lede's 34ch, the
+				// buttons) plus its padding, 390-450px whatever the viewport. It used to be a
+				// share of the viewport, so the column tracked the screen rather than the
+				// text: at 2560 it was 848px of black around 432px of copy.
+				//
+				// THE FOOTAGE IS AS TALL AS THE FOLD ALLOWS: 16:9 of its width, capped only
+				// by `--hero-budget`, which already keeps the next section in view.
+				@media #{$hero-split} {
+					grid-template-columns: auto 1fr;
+
+					// THE HEADLINE BY HEIGHT, NOT WIDTH. 48, unless the screen is too short for
+					// the copy and the peek together; only then does it give, and only as much as
+					// it has to, down to 34. The copy is the headline's lines (`--hero-title-lines`
+					// headline-heights) plus everything else in it (`--hero-copy-rest`), both
+					// measured by the script — so an edit to the lede, a margin the short-screen
+					// trim takes back, or a web font landing all move it to the right size. The
+					// fallbacks are today's copy: 3.6 lines (kicker and two, at 1.2) and 416px.
+					--hero-h1: clamp(
+						34px,
+						calc((var(--hero-fold) - var(--hero-copy-rest, 416px)) / var(--hero-title-lines, 3.6)),
+						48px
+					);
+
+					.video-cover {
+						// Under the copy's margin: the column's padding plus 16, which puts the
+						// fade's black end just past the copy's widest line (the headline's first
+						// at 48px, the lede's at 34). One edge treatment at every side-by-side width.
+						--reach: calc(var(--hero-pad-x) + 16px);
+
+						grid-column: 2;
+						grid-row: 1;
+						// `stretch` still sizes the row from the 16:9 hypothetical height, so the
+						// frame stays uncropped whenever the copy column is the shorter of the two.
+						// When it is taller, the panel grows with the row and `cover` trims the
+						// sides evenly — `object-position: center` below is what keeps that even.
+						align-self: stretch;
+						// Clears the menu so nothing plays behind it.
+						margin-top: var(--home-header-h, #{$header-height});
+						// Its own track plus the reach, pulled left by the same amount. The width
+						// has to stay DEFINITE: left `auto`, `aspect-ratio` derives it from the
+						// height instead — from the budget cap at 1920x700 (a 960px box with black
+						// to its right) or from a copy-tall row at 1024 (a 937px box overflowing the
+						// hero). Definite, a cap crops the frame top and bottom rather than
+						// narrowing it.
+						width: calc(100% + var(--reach));
+						margin-left: calc(-1 * var(--reach));
+						max-height: var(--hero-budget);
+
+						// The wash becomes the edge (see `hero-edge-fade`). The grain above it is
+						// off; if it comes back it will not fade with the edge.
+						&::after {
+							background-color: transparent;
+							background-image: hero-edge-fade(240px);
+						}
+
+						:global(video) {
+							object-position: center;
+						}
+					}
+
+					#hero-content {
+						grid-column: 1;
+						grid-row: 1;
+						// Centred on the row by its own height rather than stretched to it, so the
+						// script's `offsetHeight` is the copy and not the row.
+						align-self: center;
+						// Over the panel's faded edge rather than beside a hard one.
+						position: relative;
+						z-index: 1;
+					}
+				}
+			}
+
+			// The panel answers to the fold (`--hero-budget`, `--hero-fold`). The COPY
 			// cannot: it is the floor, and cutting it to fit would trade a visible
 			// section for an unreadable headline. What it can do on a short viewport is
 			// stop spending height on air. Measured at 812x375, the copy stood 512 tall
 			// out of a 375 viewport — 100 of it padding and 76 of it margins between
-			// four blocks — so this reclaims the spacing without touching a type size.
+			// four blocks — so this reclaims the spacing. The side-by-side headline is
+			// sized from the measured copy, so it follows whatever this takes back.
 			//
 			// 620px is where a laptop viewport stops having room to spare, not a device:
 			// a 1024x600 netbook, a short browser window and a phone on its side all
@@ -1021,12 +994,7 @@ const titles = Array.isArray(title) ? title : [title];
 			// grows when the measure shrinks — at 375px the headline and the subtitle
 			// wrap far enough that the column runs 540px, and with the panel under it the
 			// next section was left with a 9px sliver. Same spending, same fix.
-			@media (max-height: 620px), (max-width: #{$breakpoint-sm}) {
-				// What the margins below give back (12 + 12 + 8 + 10 + 16), so the headline
-				// formula in the split block does not shrink the type for spacing that is
-				// no longer there.
-				--hero-copy-rest: 358px;
-
+			@media #{$hero-short}, (max-width: #{$breakpoint-sm}) {
 				// Nested inside #hero-content, not beside it: the margins these override
 				// are set on `#hero-content h1` and friends, and a rule on the bare
 				// element loses to that no matter which media query it sits in.
@@ -1042,10 +1010,6 @@ const titles = Array.isArray(title) ? title : [title];
 
 					.tb-sub-title {
 						margin-bottom: 20px;
-					}
-
-					.hero-note {
-						margin-top: 14px;
 					}
 				}
 			}

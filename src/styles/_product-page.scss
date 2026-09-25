@@ -355,24 +355,11 @@
 	// panel of the develop cover footage — and it is now the type alone, centred, on the page's
 	// ground. It stays `layout="split"` on purpose: every rule in this file that tunes the hero (the
 	// ground, the button accent, the header treatment, the reveal) is keyed to `#hero.split`, and
-	// the split's own type and button geometry are what the page was signed off with. What changes
-	// is only the grid and the alignment, here, where just these two pages see it — the homepage's
-	// split hero is the same component and is untouched.
-	//
-	// Hero opens the split into two and then three columns at `md` and `lg`; `body` outranks those
-	// rules at every width, so the grid stays one track throughout.
-	body #hero.split {
-		grid-template-columns: 1fr;
-	}
-
-	// The media cell goes, not just its video: without footage it would still hold the cover image
-	// and take the second track. `display: none` also keeps the image from being fetched.
-	body #hero.split .video-cover {
-		display: none;
-	}
-
+	// the split's own type and button geometry are what the page was signed off with. The footage
+	// is dropped at the source, with `panel={false}`: no panel is rendered and none of its layout
+	// (the columns, the fade, the headline sizing) applies, so nothing here has to undo it. What
+	// remains is only the alignment.
 	body #hero.split #hero-content {
-		grid-column: 1;
 		align-items: center;
 		text-align: center;
 
@@ -386,13 +373,6 @@
 
 		.hero-buttons {
 			justify-content: center;
-		}
-
-		// The size these heroes were signed off at, pinned. Hero now sets the homepage's
-		// headline by the viewport's HEIGHT in landscape and at 48 on portrait tablets —
-		// both about fitting type beside or above footage these pages do not show.
-		.tb-title {
-			font-size: clamp(34px, calc(0.5rem + 2.4vw), 48px);
 		}
 	}
 
@@ -441,7 +421,7 @@
 		// NO `margin-top` HERE. This rule briefly carried one, to hold the badge off the menu on
 		// the two pages this partial serves. `Hero.astro` now solves the same thing properly and
 		// for everyone: `--hero-top-gap` (28px, 16 under the trim) is added to `--home-header-h`
-		// in every one of the three padding rules, so no layout can clear the header by zero.
+		// in its one padding rule, so no layout can clear the header by zero.
 		// Both together measured 115px at 1440 where the token alone intends 44, which is what a
 		// page-local patch on top of a fixed root gets you. The token owns the clearance; this
 		// rule owns the badge.

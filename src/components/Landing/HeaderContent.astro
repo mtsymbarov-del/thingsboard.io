@@ -293,11 +293,11 @@ const needsScrollState = variant === 'transparent' || variant === 'transparent-h
 	}
 
 	header.header {
-		// The bar's edge inset, matching the clamp the hero column uses so the two
-		// line up. Named rather than restated: the logo side, the buttons side and
+		// The bar's edge inset: the page's (`page-inset`), which the hero's copy stands on
+		// too, so the two line up. Named rather than restated: the logo side, the buttons side and
 		// the open-drawer rule all need it, and the drawer rule in particular has
 		// to restore it after the stacked treatment zeroes the padding.
-		--tb-bar-inset: clamp(24px, calc(0.5rem + 2vw), 56px);
+		--tb-bar-inset: #{page-inset()};
 		position: fixed;
 		// Sits below the promo banner; tracks the live offset so it slides to
 		// top:0 as the banner collapses on scroll (--promo-cur → 0).

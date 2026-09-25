@@ -224,8 +224,9 @@ const key = `${visual.id}/${name}`;
 			/* Phone: the row as a phone gets it, not a drawing on a checkerboard.
 
 		    An IFRAME at `phone` CSS pixels, loading this same page with `?frame=<key>`. That matters
-		    because the row stacks on `@media (max-width: 768px)` — a VIEWPORT query — so a 375px box
-		    on a desktop viewport gets the desktop layout at a quarter of the room, which is not a
+		    because the row stacks below `lg` and closes up for a phone at 768 — VIEWPORT queries, in
+		    `_home-rows.scss` — so a 375px box on a desktop viewport gets the desktop layout at a
+		    quarter of the room, which is not a
 		    picture of anything. Inside a frame the viewport really is 375, so the row stacks, the
 		    copy reflows, and the media breaks out past the gutter exactly as it does on a phone.
 

@@ -265,8 +265,9 @@ component had one to take. A `deskWidth` direction has no row, so its badge goes
 header at 24px instead; no section shows it twice.
 
 **The phone view is an iframe** at a 375px viewport, loading this same page with `?frame=<key>`.
-It has to be: the row stacks on `@media (max-width: 768px)`, a VIEWPORT query, so a 375px box on a
-desktop viewport gets the desktop layout in a quarter of the room — a picture of nothing. Inside a
+It has to be: the row stacks below `lg` and closes up for a phone at 768 (`_home-rows.scss`), both
+VIEWPORT queries, so a 375px box on a desktop viewport gets the desktop layout in a quarter of the
+room — a picture of nothing. Inside a
 frame the viewport really is 375, so the row stacks, the copy reflows, and the media breaks out past
 the gutter to 367px, which is what the homepage actually hands it. The old probes were 335 — the
 copy column's width, not the visual's — so every phone judgement was made 32px too narrow.

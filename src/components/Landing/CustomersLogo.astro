@@ -25,9 +25,9 @@ const filterMap: Record<string, string> = {
 	paas: 'invert(87%) sepia(3%) saturate(664%) hue-rotate(176deg) brightness(237%) contrast(82%)',
 	edge: 'invert(79%) sepia(25%) saturate(246%) hue-rotate(130deg) brightness(185%) contrast(82%)',
 };
-// On the dark strip the per-product tints land on light grey, not white.
-// `brightness(0)` flattens each mark to black, `invert(1)` takes it to pure white.
-const imgFilter = onDark ? 'brightness(0) invert(1)' : (filterMap[productTag] ?? '');
+// The light rows tint each mark per product. The dark strip flattens every mark to plain white
+// instead, which is one CSS rule (see `--dark`), not a style on each of them.
+const imgFilter = onDark ? '' : (filterMap[productTag] ?? '');
 
 const LOCAL_PREFIX = '/src/assets/images/';
 const svgUrls = import.meta.glob<string>('/src/assets/images/**/*.svg', {
@@ -81,7 +81,8 @@ const rowVars = [
 			{
 				/* Rendered twice so the loop can run seamlessly: the track slides by exactly one
 				   set and starts over. The copy is only displayed while the loop runs, and it is
-				   `inert` and `aria-hidden`, so a screen reader or a keyboard meets each logo once. */
+				   `inert` and `aria-hidden`, so a screen reader or a keyboard meets each logo once.
+				   Where one set is narrower than the strip, the script adds more copies. */
 				[false, true].map((isCopy) => (
 					<div class="customers-logo__set" aria-hidden={isCopy ? 'true' : undefined} inert={isCopy ? true : undefined}>
 						{sizedLogos.map((logo) => (
@@ -119,21 +120,24 @@ const rowVars = [
 	//
 	// The spacing is even ALL the way across, the two ends included: the first and last
 	// marks keep a full gap of room inside the row's padding, so at no width does a mark
-	// sit on the hero's own edge. Above the ceiling the marks stop growing and the spare
-	// room goes into those gaps, evenly. Below the floor they stop shrinking and the row
-	// no longer fits, and then it loops (see THE LOOP). All of it comes from the logo set
-	// itself, so adding or removing a logo needs no retuning here.
+	// sit on the hero's own edge. At the ceiling the marks stop growing and the spare room
+	// goes into those gaps, evenly — though with today's seven the 960 cap binds first (the
+	// widest mark tops out at 108), so the ceiling is a guard for a shorter set. Below the
+	// floor they stop shrinking and the row no longer fits, and then it loops (see THE
+	// LOOP). All of it comes from the logo set itself, so adding or removing a logo needs
+	// no retuning here.
 	.customers-logo {
-		--mark-min-w: 64px;
-		--mark-max-w: 150px;
-		--logo-gap-min: 24px;
-		--logo-gap-fit: 40px;
-		--ribbon-pad: clamp(20px, calc(0.5rem + 2vw), 56px);
+		// Leaning small: the strip closes the hero rather than opening the page, so the
+		// marks support it.
+		--mark-min-w: 56px;
+		--mark-max-w: 120px;
+		--logo-gap-min: #{$spacing-6};
+		--logo-gap-fit: #{$spacing-10};
+		// The page's inset (`page-inset`), with the phone's 20px floor the hero's copy has.
+		--ribbon-pad: #{page-inset(20px)};
 
 		position: relative;
-		max-width: 1800px;
-		margin: 0 auto;
-		padding-block: clamp(24px, 2.5vw, 36px);
+		padding-block: clamp(#{$spacing-6}, 2.5vw, 36px);
 
 		&__content {
 			// The query container for `cqi` below: the row's own width, less its padding.
@@ -189,8 +193,8 @@ const rowVars = [
 			align-items: center;
 			// Even spacing between the marks AND at the two ends: the padding is a gap's
 			// worth, so the end slots start level with the inner ones and `space-evenly`
-			// then grows every slot alike. When the row does not fit, the free space is
-			// negative and the safe fallback packs the marks from the start instead.
+			// then grows every slot alike. A row that does not fit has no free space to
+			// share (the track is `max-content`), so its marks simply sit a gap apart.
 			justify-content: space-evenly;
 			gap: var(--logo-gap-min);
 			padding-inline: var(--logo-gap-min);
@@ -266,33 +270,22 @@ const rowVars = [
 			}
 		}
 
-		@media (prefers-reduced-motion: reduce) {
-			&__track {
-				animation: none !important;
-			}
-		}
-
 		// Full-bleed dark band under the homepage hero; the row itself is capped at the
 		// page's 960 measure and centred on it, its marks inset by their end gaps.
+		//
+		// Measured: on the 960 measure (from ~1000px) the row settles with 40px between
+		// marks and 40 at each end, the outer marks 69px from the edge at 1024, where the
+		// hero's copy stands at 28. At the floor the narrowest is 56 and the row loops below
+		// a ~750px viewport. The strip is ~99 tall on desktop, 70 below it.
 		&--dark {
-			max-width: none;
 			background-color: #000;
 
-			// Smaller than the light rows, leaning small: the strip closes the hero rather
-			// than opening the page, so the marks support it. Measured: on the 960 measure
-			// (from ~1000px) the row settles with 40px between marks and 40 at each end,
-			// the widest mark 108 — the fit binds before the 120 ceiling does — and the
-			// outer marks 69px from the edge at 1024, where the hero's copy stands at 28.
-			// At the floor the narrowest is 56 and the row loops below a ~750px viewport.
-			// The strip is ~99 tall on desktop, 70 below it.
-			--mark-min-w: 56px;
-			--mark-max-w: 120px;
-
-			// Marks stay plain white — `brightness(0) invert(1)` above flattens each
-			// one — so the only variable is how far it sits back from the strip.
-			// Opacity alone carries that, which keeps every mark the same hue at
-			// rest and on hover.
+			// Plain white: `brightness(0)` flattens each mark to black and `invert(1)` takes
+			// it to white — the per-product tints land on light grey here. So the only
+			// variable is how far a mark sits back from the strip, and opacity alone carries
+			// that, which keeps every mark the same hue at rest and on hover.
 			img {
+				filter: brightness(0) invert(1);
 				opacity: 0.5;
 				transition: opacity 0.18s ease;
 			}
@@ -319,36 +312,43 @@ const rowVars = [
 
 	for (const strip of document.querySelectorAll<HTMLElement>('[data-logo-strip]')) {
 		const viewport = strip.querySelector<HTMLElement>('.customers-logo__content');
+		const track = strip.querySelector<HTMLElement>('.customers-logo__track');
 		const [set, copy] = strip.querySelectorAll<HTMLElement>('.customers-logo__set');
-		if (!viewport || !set || !copy) continue;
+		if (!viewport || !track || !set || !copy) continue;
 
 		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-		// The set's width at its minimum spacing, not as laid out: while it fits, it is
-		// spread across the row. A gap between each pair and one at each end, as the resting
-		// row keeps them, so a row that fits never has a mark on the edge.
-		const fits = () => {
-			const items = [...set.children] as HTMLElement[];
-			const gap = parseFloat(getComputedStyle(set).columnGap) || 0;
-			const need = items.reduce((sum, item) => sum + item.getBoundingClientRect().width, 0) + gap * (items.length + 1);
-			const room = viewport.clientWidth - 2 * parseFloat(getComputedStyle(viewport).paddingLeft);
-			return need <= room + 1;
-		};
+		const items = [...set.children] as HTMLElement[];
+		// The gap is a constant (`--logo-gap-min`), so it is read once.
+		const gap = parseFloat(getComputedStyle(set).columnGap) || 0;
+		let room = 0;
 
 		const update = () => {
-			const loop = !reduce.matches && !fits();
+			// The set at its minimum spacing, not as laid out (while it fits it is spread):
+			// a gap between each pair and one at each end, as the resting row keeps them, so
+			// a row that fits never has a mark on the edge.
+			const need = items.reduce((sum, item) => sum + item.getBoundingClientRect().width, 0) + gap * (items.length + 1);
+			const loop = !reduce.matches && need > room + 1;
+			if (loop) {
+				// One set plus the gap before the next — the set loses its end padding while
+				// it loops — so after exactly this the next copy stands where the set started
+				// and the restart is invisible.
+				const distance = need - gap;
+				strip.style.setProperty('--marquee-distance', `${distance}px`);
+				strip.style.setProperty('--marquee-duration', `${(distance / SPEED).toFixed(2)}s`);
+				// Enough copies that the strip is never short of marks as the track slides:
+				// one set more than it takes to span it. Two on a phone; three where the strip
+				// is wider than a set (700-749px), or its right end ran out before each restart.
+				const sets = Math.ceil(viewport.clientWidth / distance) + 1;
+				while (track.children.length < sets) track.append(copy.cloneNode(true));
+			}
 			if (loop !== strip.hasAttribute('data-marquee')) viewport.scrollLeft = 0;
 			strip.toggleAttribute('data-marquee', loop);
-			if (!loop) return;
-			// One set plus the gap before the copy: after exactly this the copy stands where
-			// the set started, so the restart is invisible. From the boxes, not `offsetLeft`,
-			// which rounds to whole pixels and would leave the seam up to one pixel off.
-			const distance = copy.getBoundingClientRect().left - set.getBoundingClientRect().left;
-			strip.style.setProperty('--marquee-distance', `${distance}px`);
-			strip.style.setProperty('--marquee-duration', `${(distance / SPEED).toFixed(2)}s`);
 		};
 
-		new ResizeObserver(update).observe(viewport);
+		new ResizeObserver(([entry]) => {
+			room = entry.contentRect.width;
+			update();
+		}).observe(viewport);
 		reduce.addEventListener('change', update);
 
 		// A finger on the strip holds it still, so a moving logo can be read or tapped.

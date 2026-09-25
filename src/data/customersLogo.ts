@@ -2,6 +2,7 @@ export interface CustomerLogo {
 	src: string;
 	ariaLabel: string;
 	href: string;
+	/** The mark's own box, which must be its ink: the strip sizes each logo from this ratio. */
 	width: number;
 	height: number;
 }
@@ -40,7 +41,7 @@ export const defaultCustomersLogos: CustomerLogo[] = [
 		ariaLabel: 'Schwarz logo',
 		href: 'https://gruppe.schwarz/en',
 		width: 179,
-		height: 40,
+		height: 34,
 	},
 	{
 		src: '/src/assets/images/landings/customer-logo/bosch.svg',

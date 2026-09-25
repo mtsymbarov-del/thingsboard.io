@@ -44,13 +44,37 @@ const resolvedLogos = await Promise.all(
 		return logo;
 	})
 );
+
+// OPTICAL SIZING, from each logo's own box and nothing else. The marks run from 2.6:1
+// (Intel) to 6:1 (T-Mobile), so one shared height gave the wide ones more than twice
+// the area, and so the weight, of the compact ones. Each mark instead takes a factor `k`
+// on a shared reference height: the square root of its aspect ratio against 4:1, which
+// gives every mark the same area as a 4:1 mark of that height. It needs only the width
+// and height every entry already carries, so a new logo is balanced on arrival.
+//
+// `units` is the mark's width in reference heights. Their sum is the whole row's width
+// per pixel of reference height, which is what lets the CSS fit the row to its container
+// without knowing which logos are in it; the narrowest and widest set the size limits.
+const REF_RATIO = 4;
+const sizedLogos = resolvedLogos.map((logo) => {
+	const ratio = logo.width / logo.height;
+	const k = Math.sqrt(REF_RATIO / ratio);
+	return { ...logo, k, units: k * ratio };
+});
+const rowUnits = sizedLogos.reduce((sum, logo) => sum + logo.units, 0);
+const rowVars = [
+	`--logo-count: ${sizedLogos.length}`,
+	`--logo-units: ${rowUnits.toFixed(3)}`,
+	`--logo-units-min: ${Math.min(...sizedLogos.map((logo) => logo.units)).toFixed(3)}`,
+	`--logo-units-max: ${Math.max(...sizedLogos.map((logo) => logo.units)).toFixed(3)}`,
+].join('; ');
 ---
 
-<section id="tb-customers" class:list={['customers-logo', onDark && 'customers-logo--dark']}>
+<section id="tb-customers" class:list={['customers-logo', onDark && 'customers-logo--dark']} style={rowVars}>
 	<div class="customers-logo__content">
 		{
-			resolvedLogos.map((logo) => (
-				<a href={logo.href} class="customers-logo__item">
+			sizedLogos.map((logo) => (
+				<a href={logo.href} class="customers-logo__item" style={`--k: ${logo.k.toFixed(4)}`}>
 					<img
 						src={logo.src}
 						alt={logo.ariaLabel}
@@ -67,138 +91,134 @@ const resolvedLogos = await Promise.all(
 <style lang="scss">
 	@use '../../styles/variables' as *;
 
+	// ONE ROW, SIZED BY ONE NUMBER.
+	//
+	// Every mark is `--k` (see the frontmatter) times a shared reference height, `--h0`,
+	// so the row scales as one and stays balanced at every size. `--h0` is the height that
+	// fits the row to its container with `--logo-gap-fit` between marks, held between two
+	// limits stated as the WIDTHS a reader sees:
+	//
+	//   floor    the narrowest mark is never under `--mark-min-w`, so nothing renders as
+	//            a smudge;
+	//   ceiling  the widest mark is never over `--mark-max-w`, so a big screen does not
+	//            blow the strip up into a billboard.
+	//
+	// Above the ceiling the marks stop growing and `space-between` spreads the spare room
+	// into the gaps. Below the floor they stop shrinking and the row scrolls sideways
+	// instead (see `__content`). All of it comes from the logo set itself, so adding or
+	// removing a logo needs no retuning here.
 	.customers-logo {
+		--mark-min-w: 64px;
+		--mark-max-w: 150px;
+		--logo-gap-min: 24px;
+		--logo-gap-fit: 40px;
+		--ribbon-pad: clamp(20px, calc(0.5rem + 2vw), 56px);
+
 		max-width: 1800px;
 		margin: 0 auto;
-		padding: $spacing-12 0;
-		text-align: justify;
-		text-align-last: justify;
-
-		img {
-			// Every logo scales with the viewport rather than sitting at a fixed
-			// height, so the row shrinks as one instead of wrapping the last logo
-			// onto a line of its own. Sizing by height keeps each mark's own
-			// proportions — equal-width flex slots would render the wide logos
-			// smaller than the narrow ones.
-			height: clamp(20px, 2.2vw, 36px);
-			width: auto;
-		}
+		padding-block: clamp(24px, 2.5vw, 36px);
 
 		&__content {
+			// The query container for `cqi` below: the row's own width, less its padding.
+			container-type: inline-size;
 			display: flex;
-			flex-direction: row;
 			flex-wrap: nowrap;
-			justify-content: space-around;
-			gap: clamp(12px, 2.2vw, 48px);
-			width: 100%;
 			align-items: center;
-			padding: 0 clamp(16px, 4vw, 60px);
+			// Spreads the marks across the measure when they fit; when they do not, the
+			// free space is negative, and `space-between` falls back to packing them from
+			// the start, which is what a scroller wants.
+			justify-content: space-between;
+			gap: var(--logo-gap-min);
+			max-width: calc(960px + var(--ribbon-pad) * 2);
+			margin: 0 auto;
+			padding-inline: var(--ribbon-pad);
+
+			// SCROLLS ONLY WHEN IT HAS TO, and only then does it look like it. The row is
+			// never wrapped: two rows hold the floor only from ~390px, so a 360 or 375
+			// phone would get three, and a wrapped row is taller than the strip it is in.
+			// Sideways it stays one line and one height.
+			//
+			// The fades sit over the padding alone, so while the row fits they cover
+			// nothing. Once it overflows, the marks pass under them at both ends, and the
+			// mark cut by the right edge fades out rather than being sliced. A slice is
+			// what made an earlier scroller here read as broken instead of scrollable.
+			overflow-x: auto;
+			overscroll-behavior-x: contain;
+			scroll-snap-type: x proximity;
+			scroll-padding-inline: var(--ribbon-pad);
+			-webkit-mask-image: linear-gradient(
+				to right,
+				transparent,
+				#000 var(--ribbon-pad),
+				#000 calc(100% - var(--ribbon-pad)),
+				transparent
+			);
+			mask-image: linear-gradient(
+				to right,
+				transparent,
+				#000 var(--ribbon-pad),
+				#000 calc(100% - var(--ribbon-pad)),
+				transparent
+			);
+
+			// A touch screen has its own affordance, the swipe; a mouse keeps the bar,
+			// which is its only way across.
+			@media (pointer: coarse) {
+				scrollbar-width: none;
+
+				&::-webkit-scrollbar {
+					display: none;
+				}
+			}
 		}
 
 		&__item {
 			display: block;
 			flex: 0 0 auto;
+			scroll-snap-align: start;
+
+			// `cqi`, not `vw`: the fit is to the row's own width, so it holds under any
+			// padding and at any cap.
+			--h0: clamp(
+				var(--mark-min-w) / var(--logo-units-min),
+				(100cqi - (var(--logo-count) - 1) * var(--logo-gap-fit)) / var(--logo-units),
+				var(--mark-max-w) / var(--logo-units-max)
+			);
 		}
 
-		// Full-bleed dark band; the row itself stays capped and centred so the
-		// logos keep line with the rest of the page.
+		img {
+			display: block;
+			height: calc(var(--h0) * var(--k, 1));
+			width: auto;
+		}
+
+		// Full-bleed dark band under the homepage hero; the row itself stays on the page's
+		// 960 measure, the same edge as the rows and the Products band below it.
 		&--dark {
 			position: relative;
 			max-width: none;
 			background-color: #000;
 
+			// Smaller than the light rows, leaning small: the strip closes the hero rather
+			// than opening the page, so the marks support it. Measured: at the ceiling
+			// (from ~1000px) the widest mark is 120 and the row fills the 960 measure
+			// with ~41px gaps; at the floor the narrowest is 56 and the row scrolls
+			// below a ~700px viewport. The strip is 102 tall on desktop, 70 below it.
+			--mark-min-w: 56px;
+			--mark-max-w: 120px;
+
 			// Marks stay plain white — `brightness(0) invert(1)` above flattens each
 			// one — so the only variable is how far it sits back from the strip.
 			// Opacity alone carries that, which keeps every mark the same hue at
 			// rest and on hover.
-			.customers-logo__item {
-				// Hover lifts the mark out of its transparency rather than changing
-				// its colour, so the row reads as one material at two strengths.
-				img {
-					transition: opacity 0.18s ease;
-				}
-
-				&:hover img,
-				&:focus-visible img {
-					opacity: 1;
-				}
-			}
-
-			.customers-logo__content {
-				// Centred on the ribbon rather than run out to the hero's own
-				// margins. At full bleed the row spanned as wide as the hero itself
-				// and read as a second band competing with it; capped and centred it
-				// sits as one contained group. space-between still spreads the marks
-				// evenly, now within the cap rather than across the viewport.
-				//
-				// The cap was 1100, which put the first mark on 207 — a third measure
-				// earning nothing. It is on the rows' 1160 now: a full-bleed strip
-				// sitting directly under the hero belongs with the wide measure rather
-				// than the text one. `space-between` pins the outer marks to the
-				// content box, so the cap has to carry the padding on top of the
-				// measure, the way `.main-div` does with its own 20px.
-				--ribbon-pad: clamp(24px, calc(0.5rem + 2vw), 56px);
-				max-width: calc(1160px + var(--ribbon-pad) * 2);
-				margin: 0 auto;
-				padding-inline: var(--ribbon-pad);
-				justify-content: space-between;
-			}
-
 			img {
-				// Smaller than the light rows: this one sits directly under the hero,
-				// so the marks stay supporting rather than structural. Capping the row
-				// alone wouldn't have held them — the height is what scales with the
-				// viewport, so the vw factor and ceiling come down too. Height drives
-				// it (width: auto above), which keeps every aspect ratio intact.
-				height: clamp(18px, 1.6vw, 28px);
 				opacity: 0.5;
+				transition: opacity 0.18s ease;
 			}
 
-			// Stack rather than scroll. The shared rule below turns this row into an
-			// x-scroller under lg, which put four of the seven marks behind a swipe
-			// most people never make and clipped the row mid-logo at the viewport
-			// edge — it read as broken rather than scrollable. Wrapping shows all
-			// seven at once; the marks get smaller instead of hidden.
-			@include media-down(lg) {
-				.customers-logo__content {
-					overflow-x: visible;
-					flex-wrap: wrap;
-					// space-between strands the last row's marks against the edges once
-					// the count stops dividing evenly.
-					justify-content: center;
-					// Column gap stays wider than the row gap so each line still reads
-					// as one band rather than a grid.
-					gap: 14px 24px;
-					padding-inline: 20px;
-				}
-
-				// Qualified through __item on purpose: the shared `img { height: 28px }`
-				// below is `.customers-logo img`, which ties this on specificity and
-				// would win on source order. The extra class settles it without
-				// touching the light rows on other pages.
-				.customers-logo__item img {
-					// As small as these wordmarks stay legible — TEKTELIC's subtitle
-					// line is what sets the floor for the whole set.
-					height: 18px;
-				}
-			}
-		}
-
-		// Narrow viewports can't hold seven marks at a legible size, so the row
-		// scrolls rather than shrinking them into mush.
-		@include media-down(lg) {
-			&__content {
-				overflow-x: auto;
-				justify-content: flex-start;
-				scroll-snap-type: x proximity;
-			}
-
-			&__item {
-				scroll-snap-align: center;
-			}
-
-			img {
-				height: 28px;
+			.customers-logo__item:hover img,
+			.customers-logo__item:focus-visible img {
+				opacity: 1;
 			}
 		}
 	}

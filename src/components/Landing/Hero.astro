@@ -750,12 +750,16 @@ const titles = Array.isArray(title) ? title : [title];
 			$hero-split: 'screen and (min-width: #{$breakpoint-md}) and (orientation: landscape)';
 			$hero-stack: 'screen and (max-width: #{$breakpoint-md - 1px}), screen and (orientation: portrait)';
 			$hero-stack-wide: 'screen and (min-width: #{$breakpoint-md}) and (orientation: portrait)';
+			// Stacked and at least 600 wide: every stacked width that can carry two columns of
+			// copy. Phones under 600 keep the single centred one.
+			$hero-stack-two: 'screen and (min-width: 600px) and (max-width: #{$breakpoint-md - 1px}), #{$hero-stack-wide}';
+			$hero-stack-mid: 'screen and (min-width: 600px) and (max-width: #{$breakpoint-md - 1px})';
 
 			// CENTRED WHILE STACKED. With the panel under it the copy is the whole width
 			// and nothing sits beside it to hold a left edge against, so it takes the
 			// axis the panel below it already has. Left-aligned it read as a column with
-			// the other half missing. A portrait tablet has the width to fill that half
-			// and sets the copy in two columns instead (next rule); this is the phone's.
+			// the other half missing. From 600px there is the width to fill that half,
+			// and the copy goes into two columns instead (below); this is the phone's.
 			//
 			// The note's link is a fit-content flex box set in `index.astro` (slotted, so
 			// Hero's scope never reaches it — hence `:global`), which needs its own auto
@@ -779,8 +783,8 @@ const titles = Array.isArray(title) ? title : [title];
 				}
 			}
 
-			// PORTRAIT TABLETS: the full-size headline, and footage that fills what the
-			// copy leaves before the fold. The copy's height is the one number that room
+			// PORTRAIT TABLETS: the full-size headline. From 600 (next block), footage that
+			// fills what the copy leaves before the fold. The copy's height is the one number that room
 			// depends on and CSS cannot read it, so the inline script at the end of the
 			// markup measures it into `--hero-copy-h`. Down to a 30vw floor, a band and
 			// never a sliver, and up to the frame's own 16:9 (the base `aspect-ratio`),
@@ -790,21 +794,35 @@ const titles = Array.isArray(title) ? title : [title];
 			// Phones keep the stacked layout as it was: there the copy alone is most of
 			// the screen, and the footage sits under the fold either way.
 			@media #{$hero-stack-wide} {
-				--hero-video-floor: 30vw;
-
 				#hero-content .tb-title {
 					// `type-display`'s size: a portrait tablet is never short of room for it.
 					font-size: 48px;
 				}
+			}
 
-				// TWO COLUMNS OF COPY: the headline in the first, the lede and the actions in
-				// the second, both set left. Centred one above the other, the 48px headline
+			@media #{$hero-stack-two} {
+				--hero-copy-gap: clamp(24px, 4vw, 32px);
+				--hero-video-floor: 30vw;
+
+				// The footage fills what the copy leaves before the fold (see above), here as on
+				// a tablet: two columns make the copy short enough for that to be a real panel.
+				.video-cover {
+					max-height: max(
+						var(--hero-video-floor),
+						calc(100svh - var(--promo-h, 0px) - var(--hero-reveal) - var(--hero-copy-h, 0px))
+					);
+				}
+
+				// TWO COLUMNS OF COPY, from 600px wherever the hero is stacked: the headline in
+				// the first, the lede and the actions in the second, both set left. Centred one
+				// above the other on a portrait tablet, the 48px headline
 				// and the lede ran the copy ~460px deep before the footage began, and a 768x954
 				// screen was left a 267px band of it. Side by side the copy is only as tall as
 				// its taller column, and the footage takes what that frees.
 				//
 				// Halves, so the second column starts on the centre line at any width: 336px
-				// each at 750, the headline's 7em exactly. Top-aligned, so the lede starts
+				// each at 750, the headline's 7em exactly, and 264 at 600 with the smaller
+				// headline below. Top-aligned, so the lede starts
 				// level with the kicker. The source order is kept — title, lede, buttons, note —
 				// so what a screen reader reads is what the eye reads.
 				//
@@ -819,7 +837,7 @@ const titles = Array.isArray(title) ? title : [title];
 						'title lede'
 						'title actions'
 						'title note';
-					column-gap: 32px;
+					column-gap: var(--hero-copy-gap);
 					align-items: start;
 					justify-items: start;
 					text-align: left;
@@ -848,12 +866,26 @@ const titles = Array.isArray(title) ? title : [title];
 						margin-inline: 0;
 					}
 				}
+			}
 
-				.video-cover {
-					max-height: max(
-						var(--hero-video-floor),
-						calc(100svh - var(--promo-h, 0px) - var(--hero-reveal) - var(--hero-copy-h, 0px))
+			// THE WIDER PHONE: 600-749 stacked, an iPad mini upright, an unfolded foldable, a
+			// phone on its side. The same two columns with a smaller headline, sized to fill
+			// its column at 7em — about 38px at 600, 48 by 744 — never under the phone's 34.
+			@media #{$hero-stack-mid} {
+				#hero-content .tb-title {
+					font-size: clamp(
+						34px,
+						calc((100vw - 2 * clamp(20px, calc(0.5rem + 2vw), 56px) - var(--hero-copy-gap)) / 14),
+						48px
 					);
+				}
+
+				// A phone on its side is this wide and 360-430 tall: there the headline is the
+				// phone's own 34, not what the width would allow.
+				@media (max-height: 620px) {
+					#hero-content .tb-title {
+						font-size: 34px;
+					}
 				}
 			}
 

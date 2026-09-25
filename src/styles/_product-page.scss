@@ -387,6 +387,13 @@
 		.hero-buttons {
 			justify-content: center;
 		}
+
+		// The size these heroes were signed off at, pinned. Hero now sets the homepage's
+		// headline by the viewport's HEIGHT in landscape and at 48 on portrait tablets —
+		// both about fitting type beside or above footage these pages do not show.
+		.tb-title {
+			font-size: clamp(34px, calc(0.5rem + 2.4vw), 48px);
+		}
 	}
 
 	// NO HEIGHT FLOOR. The `min(88vh, 680px)` that was here existed for the video panel: it stopped a

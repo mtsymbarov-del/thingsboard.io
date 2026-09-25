@@ -709,6 +709,34 @@ const titles = Array.isArray(title) ? title : [title];
 				}
 			}
 
+			// CENTRED WHILE STACKED. With the panel under it the copy is the whole width
+			// and nothing sits beside it to hold a left edge against, so it takes the
+			// axis the panel below it already has. Left-aligned it read as a column with
+			// the other half missing. From `md` the panel moves beside it and the copy
+			// returns to the left, where it faces the footage.
+			//
+			// The note's link is a fit-content flex box set in `index.astro` (slotted, so
+			// Hero's scope never reaches it — hence `:global`), which needs its own auto
+			// margins to follow the text to the middle.
+			@include media-down(md) {
+				#hero-content {
+					text-align: center;
+					align-items: center;
+
+					.tb-sub-title {
+						margin-inline: auto;
+					}
+
+					.hero-buttons {
+						justify-content: center;
+					}
+
+					:global(.hero-note a) {
+						margin-inline: auto;
+					}
+				}
+			}
+
 			// SIDE BY SIDE FROM `md`, not `lg`. Between 750 and 1024 the hero used to
 			// break into a stacked column — the copy, then a full-width panel under it
 			// — which is a phone composition on a tablet: the fold lands mid-headline

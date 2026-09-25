@@ -289,11 +289,19 @@
 	// The one that was really costing the height. `flex: 0 1 42ch` is a MEASURE — a reading width
 	// — and it is only that while the row is a row. Once it stacks, flex-basis is the main axis
 	// again, so 42ch resolved to 379px of HEIGHT and the copy sat in a box 76px taller than its
-	// own text, on every row. A measure has no meaning in a single-column layout; the screen is
-	// the measure.
+	// own text, on every row.
+	//
+	// The measure comes back as a WIDTH instead: 544, centred, the AI section's own stacked copy
+	// (`--ai-fit-window` in `AiSection`). Left to the screen, a tablet ran these paragraphs 765px
+	// at 820 — about 95 characters a line — directly above and below a section holding its copy
+	// to 544, so the text column jumped 111px in and out going down the page. Now every stacked
+	// section's copy stands on one edge. The visual under it keeps the full width: that width is
+	// its type size. Below ~584 the cap does not bind, so a phone is untouched.
 	.new-rows .feature-des {
 		flex: 0 1 auto;
-		max-width: none;
+		align-self: center;
+		width: 100%;
+		max-width: 544px;
 	}
 
 	// The 560 cap is a desktop ceiling — it exists so a visual is not upscaled past its design

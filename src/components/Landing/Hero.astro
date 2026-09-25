@@ -767,6 +767,54 @@ const titles = Array.isArray(title) ? title : [title];
 					width: 72px;
 				}
 
+				// THE PANEL REACHES UNDER THE COPY, TABLET ONLY. Two even columns left the
+				// footage a hard edge at the halfway line and a panel narrower than 16:9, so
+				// `cover` cut away a third of the frame. The panel now starts `reach` short of
+				// that line and fades in from the column's black over `fade`: the same
+				// right-hand anchor, more of the frame, and no edge.
+				//
+				// The fade is placed by what the copy actually occupies, not by the column.
+				// The subtitle and the buttons end 90-180px short of the halfway line, so they
+				// stay on solid black; only the headline's last word runs into the ramp, where
+				// the footage is still under 40% — measured at 768, 820 and 1000, the
+				// headline ends 25-29px short of the line. Those two numbers are the knobs.
+				//
+				// Not above `lg`: there the copy has its 500px floor and the panel is wide
+				// enough to show the frame whole. The product pages hide the panel and paint
+				// their own ground on `#hero-content` with `body` in front, so neither rule
+				// here reaches them.
+				@include media-down(lg) {
+					--hero-video-reach: 100px;
+					--hero-video-fade: 200px;
+
+					.video-cover {
+						grid-column: 1 / -1;
+						justify-self: end;
+						width: calc(50% + var(--hero-video-reach));
+						-webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--hero-video-fade));
+						mask-image: linear-gradient(to right, transparent 0, #000 var(--hero-video-fade));
+					}
+
+					// Over the panel now rather than beside it, so it gives up its own black —
+					// the section's shows through wherever the footage has faded out.
+					#hero-content {
+						position: relative;
+						z-index: 1;
+						background-color: transparent;
+
+						// The headline to the lede's measure, balanced. Left to the column it ran
+						// one 434px line at 994 over a 307px lede, and at 768-820 it broke with
+						// "platform" alone on the second line. 19rem is the lede's 34ch at its
+						// 16px, so the two read as one block; `balance` then splits it evenly —
+						// "The all-in-one / IoT platform" across the band. `:last-child` for the
+						// same reason as the kicker rule above: a lone title is left alone.
+						.tb-title:not(:first-child):last-child {
+							max-width: 19rem;
+							text-wrap: balance;
+						}
+					}
+				}
+
 				@include media-up(lg) {
 					// Height comes from the video's 16:9, not a viewport percentage: a
 					// vh-driven box cannot match the footage's ratio, which is what forced

@@ -754,7 +754,8 @@ const titles = Array.isArray(title) ? title : [title];
 			// CENTRED WHILE STACKED. With the panel under it the copy is the whole width
 			// and nothing sits beside it to hold a left edge against, so it takes the
 			// axis the panel below it already has. Left-aligned it read as a column with
-			// the other half missing.
+			// the other half missing. A portrait tablet has the width to fill that half
+			// and sets the copy in two columns instead (next rule); this is the phone's.
 			//
 			// The note's link is a fit-content flex box set in `index.astro` (slotted, so
 			// Hero's scope never reaches it — hence `:global`), which needs its own auto
@@ -794,6 +795,58 @@ const titles = Array.isArray(title) ? title : [title];
 				#hero-content .tb-title {
 					// `type-display`'s size: a portrait tablet is never short of room for it.
 					font-size: 48px;
+				}
+
+				// TWO COLUMNS OF COPY: the headline in the first, the lede and the actions in
+				// the second, both set left. Centred one above the other, the 48px headline
+				// and the lede ran the copy ~460px deep before the footage began, and a 768x954
+				// screen was left a 267px band of it. Side by side the copy is only as tall as
+				// its taller column, and the footage takes what that frees.
+				//
+				// Halves, so the second column starts on the centre line at any width: 336px
+				// each at 750, the headline's 7em exactly. Top-aligned, so the lede starts
+				// level with the kicker. The source order is kept — title, lede, buttons, note —
+				// so what a screen reader reads is what the eye reads.
+				//
+				// Only for a kicker and a headline (`:has`): the two-line headline is what fills
+				// the first column. A lone title, as the product pages pass, keeps the centred
+				// stack above.
+				#hero-content:has(.tb-title + .tb-title) {
+					display: grid;
+					grid-template-columns: 1fr 1fr;
+					grid-template-rows: auto auto 1fr;
+					grid-template-areas:
+						'title lede'
+						'title actions'
+						'title note';
+					column-gap: 32px;
+					align-items: start;
+					justify-items: start;
+					text-align: left;
+
+					h1 {
+						grid-area: title;
+						margin-bottom: 0;
+					}
+
+					.tb-sub-title {
+						grid-area: lede;
+						margin-inline: 0;
+					}
+
+					.hero-buttons {
+						grid-area: actions;
+						justify-content: flex-start;
+					}
+
+					// Slotted from `index.astro`, so Hero's scope never reaches it.
+					:global(.hero-note) {
+						grid-area: note;
+					}
+
+					:global(.hero-note a) {
+						margin-inline: 0;
+					}
 				}
 
 				.video-cover {

@@ -1,0 +1,829 @@
+---
+import { Icon } from 'astro-icon/components';
+import SectionHeader from './SectionHeader.astro';
+import AiAssistant from './AiAssistant.astro';
+import AgentTerminal from './AgentTerminal.astro';
+import SegmentedToggle from './SegmentedToggle.astro';
+import AiHandoff from './AiHandoff.astro';
+import {
+	AI_COPY,
+	AI_COLUMNS,
+	AI_COLUMNS_VALUE,
+	AI_AGENT_SESSION,
+	AI_AGENT_SESSION_WORDMARK,
+	AI_AGENT_LABEL,
+	AI_ASSISTANT_TITLE,
+	AI_CTA,
+	AI_BADGE_CYCLE,
+} from '@data/ai-visual';
+import type { AiChatScenario } from '@data/ai-visual';
+
+/**
+ * CANDIDATE (2026-09-26): the switcher with a WIDER, WHOLE window — 600 of the row's 960, beside a
+ * column of copy — and the terminal printing the CLI's full launch banner.
+ *
+ * A component beside `AiSection`, per `Landing/CLAUDE.md`. It keeps that section's switch, its wash
+ * and its hand-off: the switch is `SegmentedToggle`, the hand-off is `AiHandoff`'s script, which finds
+ * this section by the class names the shipping one carries (`ai--toggle`, `ai__bands`, `ai__band`, the
+ * inline `--accent`). Those names are the contract here; `wide__*` is the styling, and nothing of the
+ * shipping section's stylesheet reaches this one.
+ *
+ * ── WHAT IS DIFFERENT ─────────────────────────────────────────────────────────────────────────
+ * - THE CHAT IS 600 OF THE 960 MEASURE, a shade under two thirds (asked down from 640, 2026-09-26),
+ *   and THE TERMINAL 560 (asked narrower again the same day), the copy taking what the gutter leaves:
+ *   304 beside the chat, 344 beside the terminal. The rows keep the shipping section's sides — the
+ *   chat on the left, the terminal on the right — so switching still reads as going to the other one.
+ * - BOTH WINDOWS STAND WHOLE. The chat is not cut at the top and dissolved; it shows its bar, as a
+ *   plain label with the product's own ring and close (`title` on `AiAssistant`, which drops the
+ *   `New chat` picker and the edit control). Both take the page's 8px corner and one lift.
+ * - THE TERMINAL COMES DOWN TO 14px to use the width — a longer line, so the transcript wraps less —
+ *   and opens on the CLI's whole banner: the ThingsBoard wordmark across the row, its status lines
+ *   under it, then the session. `AI_AGENT_SESSION_WORDMARK` is the shipping transcript with only the
+ *   banner changed. The chat is authored at 480 and scaled 1.25, so its body type lands at 16.25px,
+ *   level with the shipping window's.
+ * - SMALLER HEADINGS, NO KICKERS: the copy column is narrower than the rows', so the title steps down
+ *   to the card size. The kickers came back for a while and went again the same day; the switch
+ *   names the route and the tile the tool. The copy ends on a call to action — a neutral outline
+ *   button with its label in the switch's colour and a glyph before it, a small grey caption under it.
+ *
+ * Stacked, the window stands over its copy, both centred and held to the window's width. ON A PHONE
+ * both windows go back to the shipping section's: the chat is the CUT window — no bar, the top
+ * dissolving into the band — and the terminal shows the SMALL MARK, the shipping banner, because the
+ * wordmark's 59 columns do not fit a phone's log. Each is a second instance in the same box, one
+ * shown per width: a banner is transcript data, not a style, and a window that is `display: none`
+ * never starts playing, so the hidden one costs its markup and nothing else. Both boxes are 298 on a
+ * phone, so the switch moves nothing.
+ */
+
+interface Props {
+	/** Play both windows. Off renders them as stills — used by the sandbox. */
+	animate?: boolean;
+	/** Which copy the routes carry: `shipping` is `AI_COLUMNS`, `value` the candidate `AI_COLUMNS_VALUE`. */
+	copy?: 'shipping' | 'value';
+	/** Which conversation the chat plays (`AI_ASSISTANT_SCENARIOS`). */
+	chat?: AiChatScenario;
+	/**
+	 * What colours the band. `route` — the showing route's hue, blending on a switch: green for the
+	 * chat, violet for the terminal. `cycle` — THE SECTION'S MARK: the wash follows the badge through
+	 * the other sections' hues, on the same clock, paused and resumed with it, so the tile and the band
+	 * change colour as one (the shipping section's `wash="cycle"` experiment, ported 2026-09-26). The
+	 * route no longer colours the band then, and the button's label goes to the ink with it; the
+	 * switch's label and the tiles still carry the route's hue.
+	 */
+	wash?: 'route' | 'cycle';
+}
+
+const { animate = true, copy = 'shipping', chat = 'shipping', wash = 'route' } = Astro.props;
+const COLS = copy === 'value' ? AI_COLUMNS_VALUE : AI_COLUMNS;
+const washCycle = wash === 'cycle';
+
+/**
+ * The section's id, and the panel ids from it, so the sandbox can stack several of these without two
+ * panels answering to one switch. Never `ai`: that anchor belongs to the shipping section.
+ */
+const uid = `${copy}${chat === 'shipping' ? '' : `-${chat}`}${washCycle ? '-cycle' : ''}`;
+const sectionId = uid === 'shipping' ? 'ai-wide' : `ai-wide-${uid}`;
+const PANELS = { assistant: `${sectionId}-prompt`, cli: `${sectionId}-cli` };
+
+/** What a panel carries for the switch: the tabs pattern, the second one hidden until chosen. */
+const panel = (id: string, shown: boolean) => ({
+	id,
+	role: 'tabpanel' as const,
+	'aria-labelledby': `${id}-tab`,
+	hidden: !shown,
+});
+
+/** The mark's colour cycle, as `AiSection` hands it over — see `AI_BADGE_CYCLE`. */
+const badgeHues = AI_BADGE_CYCLE.map((hue, i) => `--ai-hue-${i + 1}: ${hue}`).join('; ');
+
+/**
+ * Stop 0 of the cycle — the mark's own colour, where it rests. The badge reads it as its own
+ * `--badge-color`; the wash has no badge to read it from, so `wash="cycle"` hands it over here.
+ */
+const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.color}` : badgeHues;
+---
+
+<section
+	id={sectionId}
+	class:list={['wide', 'ai--toggle', washCycle && 'wide--wash-cycle']}
+	style={sectionStyle}
+	data-animate={animate ? 'on' : null}
+>
+	<div class="main-div">
+		<SectionHeader title={AI_COPY.title} titleSize="section" titleMeasure="headline" badge={AI_COPY.badge}>
+			<div class="wide__switch">
+				<SegmentedToggle
+					label="Two ways to build with AI"
+					options={[
+						{
+							label: COLS.assistant.switchLabel ?? COLS.assistant.eyebrow,
+							shortLabel: COLS.assistant.switchShort ?? 'Prompt',
+							icon: 'tabler:message-chatbot',
+							panel: PANELS.assistant,
+							color: COLS.assistant.accentText,
+						},
+						{
+							label: COLS.cli.switchLabel ?? COLS.cli.eyebrow,
+							shortLabel: COLS.cli.switchShort ?? 'Terminal',
+							icon: 'tabler:terminal-2',
+							panel: PANELS.cli,
+							color: COLS.cli.accentText,
+						},
+					]}
+				/>
+			</div>
+		</SectionHeader>
+	</div>
+
+	{
+		/* One wash for both routes, on the wrapper, blending between their hues on a switch — the
+		   shipping section's mechanism. The two bands share the wrapper's one grid cell, so during a
+		   hand-off the outgoing one is still in place while the incoming one arrives over it. */
+	}
+	<div
+		class="ai__bands wide__bands"
+		style={`--ai-wash: color-mix(in oklab, ${COLS.assistant.accent}, ${COLS.assistant.accent})`}
+	>
+		<div
+			class="ai__band wide__band"
+			style={`--accent: ${COLS.assistant.accent}; --accent-text: ${COLS.assistant.accentText}`}
+			{...panel(PANELS.assistant, true)}
+		>
+			<div class="main-div">
+				<div class="wide__row">
+					<div class="wide__window wide__window--chat">
+						{
+							/* Two chats, one shown per width: the whole window with its bar, and on a phone the
+							   shipping section's cut window — no bar, the log dissolving at the top. See the note above. */
+						}
+						<div class="wide__chat wide__chat--whole">
+							<AiAssistant animate={animate} scenario={chat} title={AI_ASSISTANT_TITLE} />
+							{
+								/* The Assistant's mark, centred on the window's bar and rising above it: the switch's glyph
+								   for this route in the route's teal on a white tile, the CLI tile's twin. Desktop only,
+								   since this instance is. */
+							}
+							<span class="wide__mark wide__chat-mark" aria-hidden="true">
+								<Icon name="tabler:message-chatbot" />
+							</span>
+						</div>
+						<div class="wide__chat wide__chat--cut">
+							<AiAssistant animate={animate} scenario={chat} />
+						</div>
+					</div>
+
+					<div class="wide__copy">
+						<h3 class="wide__title">{COLS.assistant.title}</h3>
+						<p class="wide__text">{COLS.assistant.body}</p>
+						<div class="wide__cta">
+							<a class="wide__cta-button" href={AI_CTA.assistant.primary.href}>
+								<Icon name={AI_CTA.assistant.primary.icon} class="wide__cta-icon" aria-hidden="true" />
+								{AI_CTA.assistant.primary.text}
+							</a>
+							<p class="wide__cta-line">{AI_CTA.assistant.line}</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div
+			class="ai__band wide__band"
+			style={`--accent: ${COLS.cli.accent}; --accent-text: ${COLS.cli.accentText}`}
+			{...panel(PANELS.cli, false)}
+		>
+			<div class="main-div">
+				<div class="wide__row wide__row--flip">
+					<div class="wide__window wide__window--cli">
+						{
+							/* Two terminals, one shown per width: the wordmark session where the line holds it, the
+							   shipping session with the small mark beside its status on a phone. See the note above. */
+						}
+						<div class="wide__cli wide__cli--wordmark">
+							<AgentTerminal session={AI_AGENT_SESSION_WORDMARK} path="smart-retail" ariaLabel={AI_AGENT_LABEL} />
+							{
+								/* The CLI's mark in the window's corner, as the rows carry their product's: the switch's
+								   glyph for this route on the route's hue. Desktop only, since this instance is. */
+							}
+							<span class="wide__mark wide__cli-mark" aria-hidden="true">
+								<Icon name="tabler:terminal-2" />
+							</span>
+						</div>
+						<div class="wide__cli wide__cli--mark">
+							<AgentTerminal session={AI_AGENT_SESSION} path="smart-retail" ariaLabel={AI_AGENT_LABEL} />
+						</div>
+					</div>
+
+					<div class="wide__copy">
+						<h3 class="wide__title">{COLS.cli.title}</h3>
+						<p class="wide__text">{COLS.cli.body}</p>
+						<div class="wide__cta">
+							<a class="wide__cta-button" href={AI_CTA.cli.primary.href}>{AI_CTA.cli.primary.text}</a>
+							<p class="wide__cta-line">{AI_CTA.cli.line}</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<AiHandoff />
+</section>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	// ── The numbers ───────────────────────────────────────────────────
+	// The chat is 600 of the 960 measure and the terminal 560; with the rows' 56 gutter the copy gets
+	// 304 and 344. The height is the TERMINAL's: at 14px on a 1.3 leading a line is 18.2, the bar 38.2
+	// (its label's line box pinned below), the composer 34.6 (7 + 18.2 + 8.4 + 1), so 418.6 leaves the
+	// log 345.8 = eighteen lines and the one-line foot. The chat takes the same box, authored at 480
+	// and scaled 1.25. Re-derive if the leading, the type size or either bar changes.
+	$window: 600px;
+	$window-cli: 560px;
+	$window-h: 418.6px;
+	$gap: 56px;
+	$chat-scale: 1.25; // 600 / 480 — body type 13 x 1.25 = 16.25px
+
+	.wide {
+		// The one curve and duration the thumb, the wash and the hand-off share. `AiHandoff` reads
+		// these back from the section rather than hard-coding them.
+		--ai-handoff-duration: 300ms;
+		--ai-handoff-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+		// Top only, as the shipping section: the band ends on colour and the next row carries its own 80.
+		padding: $spacing-16 0 0;
+	}
+
+	// The header's 48px bottom margin has to go, or it collapses through `.main-div` into the bands'
+	// margin and wins.
+	.wide :global(.section-header) {
+		margin-bottom: 0;
+	}
+
+	.wide :global(.seg) {
+		--seg-duration: var(--ai-handoff-duration);
+		--seg-ease: var(--ai-handoff-ease);
+	}
+
+	.wide__switch {
+		display: flex;
+		justify-content: center;
+		margin-top: $spacing-8;
+	}
+
+	// ONE SET OF ICONS AT A TIME (2026-09-26): the switch's glyphs show only where the windows carry no
+	// tile. The tiles are on the desktop instances, which show from 600 up, so from 600 the switch is
+	// labels only and below it the phone's short labels keep their glyphs. Keyed to the instances'
+	// own breakpoint, not the row's, so a stacked tablet never shows both.
+	@media (min-width: 600px) {
+		.wide :global(.seg__icon) {
+			display: none;
+		}
+	}
+
+	// ── The band and its wash ─────────────────────────────────────────
+	// Registered as a <color> so it can be TRANSITIONED; see `AiSection` for the whole argument. Declared
+	// here as well as there, because a page rendering only this section still needs it registered.
+	@property --ai-wash {
+		syntax: '<color>';
+		inherits: false;
+		initial-value: transparent;
+	}
+
+	// `minmax(0, 1fr)`, NOT `1fr`: a bare `1fr` is `minmax(auto, 1fr)`, whose floor is the content's
+	// min-content width — and a window declared in pixels contributes them to it. With `1fr` the band
+	// grew past a phone's viewport and the window stood 792 wide in 375, clipped. The gotcha the
+	// Landing notes record for `auto` tracks, measured here on 2026-09-26.
+	.wide__bands {
+		display: grid;
+		grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+		margin-top: $spacing-8;
+		background-image: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--ai-wash) 20%, transparent) 100%);
+		// The bands travel 32px sideways during the hand-off, and a transform counts as scrollable
+		// overflow.
+		overflow-x: clip;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.wide__bands {
+			transition: --ai-wash var(--ai-handoff-duration) var(--ai-handoff-ease);
+		}
+	}
+
+	// 24 over the window, since nothing is docked to the band's top edge any more, and the 64 below
+	// that the shipping bands end on.
+	.wide__band {
+		grid-area: 1 / 1;
+		padding: $spacing-6 0 $spacing-16;
+	}
+
+	// Restored over anything that sets a display: the switch flips `hidden`, and the UA's rule for it
+	// has no specificity to speak of.
+	.wide__band[hidden] {
+		display: none;
+	}
+
+	// The band on its way out must not catch a click meant for the one arriving over it.
+	.wide__band.is-leaving {
+		pointer-events: none;
+	}
+
+	// `section .main-div` ships a ~5px vertical margin from `landing.scss`; zeroed so the band's
+	// rhythm is only what is stated here.
+	.wide__band .main-div {
+		margin-top: 0;
+		margin-bottom: 0;
+	}
+
+	// ── The row ───────────────────────────────────────────────────────
+	// The window at its fixed width, the copy taking the rest; the copy centred on the window's
+	// height. The terminal's row swaps sides with `row-reverse`, so the DOM keeps window before copy.
+	.wide__row {
+		display: flex;
+		align-items: center;
+		gap: $gap;
+	}
+
+	.wide__row--flip {
+		flex-direction: row-reverse;
+	}
+
+	.wide__window {
+		position: relative;
+		flex: 0 0 $window;
+		width: $window;
+		min-width: 0;
+		max-width: 100%;
+		height: $window-h;
+	}
+
+	.wide__window--cli {
+		flex-basis: $window-cli;
+		width: $window-cli;
+	}
+
+	.wide__copy {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	// ── The copy ──────────────────────────────────────────────────────
+	// No kicker (2026-09-26; it was the route, then the tool's name, then grey, then asked out): the
+	// switch names the route and the tile names the tool. The title a step under the rows' — the card
+	// size — for a column narrower than theirs; the body in ink.
+	.wide__title {
+		@include type-card;
+
+		margin: 0 0 12px;
+		color: var(--color-text);
+		text-wrap: balance;
+	}
+
+	.wide__text {
+		@include type-body;
+
+		margin: 0;
+		color: var(--color-text, #17181c);
+	}
+
+	// The route's call to action, IN the copy (2026-09-26): the home-compositions branch's band — its
+	// copy — set under the body rather than as a band of its own, and reshaped the same day, twice: the
+	// button, with the description as a CAPTION under it, plain and small in the secondary grey (the
+	// band's bold lead is gone; a row with the text beside the button was tried and read as a second
+	// paragraph). 24 over the button, a paragraph break with more weight. The band's second link to
+	// the other route is not here: the switch is that.
+	.wide__cta {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: $spacing-2;
+		margin-top: $spacing-6;
+	}
+
+	.wide__cta-line {
+		@include type-small;
+
+		margin: 0;
+		color: var(--color-text-secondary, #{$color-text-secondary});
+	}
+
+	// THE HOMEPAGE'S BUTTON, SECONDARY (2026-09-26): the product cards' button (`EcosystemCard`'s
+	// `__cta`) in an outline form — 44 tall, the page's 6px corner, a neutral hairline of the ink at
+	// 18%, the ink at 5% on hover — with the LABEL IN THE SWITCH'S COLOUR for the route: the same text
+	// hue the chosen segment's label takes, so the button answers the switch above it. Secondary
+	// because the windows and their tiles are the section's loudest things, and the page keeps the
+	// filled indigo for its conversion points. Not `NButton`: that one takes `--color-primary`, which
+	// the homepage points at the brand page-wide and the sandbox does not, so here it rendered the old
+	// blue at the normal weight.
+	.wide__cta-button {
+		@include type-button;
+
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		height: 44px;
+		padding: 0 $spacing-4;
+		gap: $spacing-2;
+		border: 1px solid rgba(23, 24, 28, 0.18);
+		border-radius: $radius-md;
+		background-color: transparent;
+		color: var(--accent-text, var(--accent));
+		text-decoration: none;
+
+		&:hover {
+			background-color: rgba(23, 24, 28, 0.05);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--color-text, #17181c);
+			outline-offset: 3px;
+		}
+	}
+
+	// The sign-up button's glyph, before its label: the cloud. The CLI button has none — its glyph is
+	// the tile on its window already.
+	.wide__cta-icon {
+		width: 20px;
+		height: 20px;
+	}
+
+	// ── The chat ──────────────────────────────────────────────────────
+	// Two instances in the box, the whole window's shown and the cut one's not; the phone block below
+	// swaps them.
+	.wide__chat {
+		position: relative;
+		height: 100%;
+	}
+
+	.wide__chat--cut {
+		display: none;
+	}
+
+	// Authored at 480 and scaled up from its bottom edge to fill the box — positioned, because a
+	// transform does not shrink the layout box (see `AiSection`). Its corner and lift are restated in
+	// authored pixels over the scale, so they land at the page's 8 and the terminal's shadow on the page.
+	.wide__chat :global(.assistant) {
+		--ui-scale: #{$chat-scale};
+
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		width: calc(100% / #{$chat-scale});
+		height: calc(#{$window-h} / #{$chat-scale});
+		margin: 0 auto;
+		border-radius: calc(#{$radius-lg} / #{$chat-scale});
+		box-shadow: 0 calc(8px / #{$chat-scale}) calc(18px / #{$chat-scale}) rgba(23, 24, 28, 0.16);
+	}
+
+	// ── The terminal ──────────────────────────────────────────────────
+	// Two instances in the box, the wordmark's shown and the small mark's not; the phone block below
+	// swaps them. Positioned, for the product mark in the wordmark instance's corner.
+	.wide__cli {
+		position: relative;
+		height: 100%;
+	}
+
+	// ── The product marks ─────────────────────────────────────────────
+	// One tile per route on its window, the switch's glyph in the route's hue — on the hue for the
+	// terminal, on white for the chat, see each below — with volume: the
+	// ecosystem tile's 72 at its 24% rounding, a sheen off the top-left and a hairline of light along
+	// the top edge, and two shadows — a tight dark one for contact and a long one in the route's own
+	// hue, the glow a saturated tile throws on the ground around it. Each sits a fifth of its height
+	// past its window's edge, which is what makes it read as resting on the window rather than
+	// printed in it. Only on the desktop instances: the phone's cut chat and small-mark terminal
+	// carry no tile.
+	.wide__mark {
+		position: absolute;
+		display: grid;
+		place-items: center;
+		width: 72px;
+		height: 72px;
+		border-radius: 24%;
+		background-color: var(--accent);
+		// The sheen and the hairline of light both softened (2026-09-26): at 0.28 and 0.35 the top edge
+		// read as a bevel; at 0.16 and 0.14 it reads as light on a matte surface.
+		background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 62%);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.14),
+			0 2px 4px rgba(23, 24, 28, 0.14),
+			0 14px 28px -8px rgba(23, 24, 28, 0.35),
+			0 20px 44px -12px color-mix(in srgb, var(--accent) 65%, transparent);
+		color: #fff;
+
+		:global(svg) {
+			width: 40px;
+			height: 40px;
+		}
+	}
+
+	// The CLI's, in the terminal's bottom-right corner (2026-09-26: first drawn over the log, then
+	// hanging off the corner as a sketch had it, then asked back inside, then asked down over the
+	// edge): inset from the side, a fifth over the base, like an app's floating button over the
+	// composer's empty right end. Stacked, the overhang reaches into the 32px gap over the copy and
+	// stops well short of it.
+	.wide__cli-mark {
+		right: 16px;
+		bottom: -14px;
+	}
+
+	// The Assistant's, centred on the chat's bar and rising a fifth above the window's top edge, where
+	// the bar has nothing but its label at one end and the ring and close at the other. WHITE, with
+	// the glyph in the route's teal (2026-09-26): the chat is a white window, and a green tile on it
+	// read as a badge stuck on rather than part of it; the tile's green now sits in the glow under it.
+	.wide__chat-mark {
+		top: -14px;
+		left: 50%;
+		transform: translateX(-50%);
+		background-color: $color-white;
+		color: var(--accent);
+		// Softer than the CLI tile's (2026-09-26): a white tile on a white window needs only a hint of
+		// contact and a faint teal glow, or it reads as floating in front of the chat.
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.6),
+			0 1px 2px rgba(23, 24, 28, 0.08),
+			0 10px 24px -10px rgba(23, 24, 28, 0.18),
+			0 16px 36px -14px color-mix(in srgb, var(--accent) 35%, transparent);
+	}
+
+	.wide__cli--mark {
+		display: none;
+	}
+
+	// 14px on the shipping window's 1.3 leading; the bar's label at 12 holds the ratio to its log,
+	// with its line box pinned so the bar keeps its 38.2.
+	.wide__window--cli :global(.agent) {
+		--agent-lead: 1.3;
+
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		border-radius: $radius-lg;
+		box-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.06) inset,
+			0 8px 18px rgba(0, 0, 0, 0.3);
+		font-size: 14px;
+	}
+
+	.wide__window--cli :global(.agent__scroll) {
+		flex: 1 1 auto;
+		min-height: 0;
+	}
+
+	.wide__window--cli :global(.agent__path) {
+		font-size: 12px;
+		line-height: 18.2px;
+	}
+
+	// The status banner's art is blank, so its lines start at the margin: the component's four-cell
+	// gap is for lines printed BESIDE a mark, and in the wordmark session nothing is. The small mark's
+	// instance keeps the gap — its lines are beside the mark.
+	.wide__cli--wordmark :global(.agent__banner-line) {
+		padding-left: 0;
+	}
+
+	// A subtle gradient on the mark (2026-09-26): the route's violet at the left running to a lighter
+	// tint of it at the right, clipped to the glyphs. LEFT TO RIGHT, not top to bottom: each row of the
+	// art is its own box, so a vertical run would restart on every row and band, where a horizontal
+	// one is the same on every row and reads as one run across the whole mark.
+	.wide__window--cli :global(.agent__art) {
+		background-image: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #fff));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+
+	// The composer wraps before the tile: the tile covers the window's last 88px (72 plus its 16 inset)
+	// at the composer's height, so the line ends 96 from the edge — 8 clear of the tile, tightened
+	// from 16 when the window came down to 560, so the narrower line gives up as little as it can.
+	// The log above is not padded; its lines end well short of the corner.
+	.wide__cli--wordmark :global(.agent__input) {
+		padding-right: 96px;
+	}
+
+	// ── The section's mark ────────────────────────────────────────────
+	// The same cycle as `AiSection`, on this section's own class.
+	.wide :global(.section-header__badge) {
+		animation: wide-badge-hues var(--ai-cycle, 9s) linear infinite;
+		animation-play-state: paused;
+	}
+
+	.wide :global(.section-header__badge.is-cycling) {
+		animation-play-state: running;
+	}
+
+	@keyframes wide-badge-hues {
+		0%,
+		100% {
+			background-color: var(--badge-color);
+		}
+		16.67% {
+			background-color: var(--ai-hue-1);
+		}
+		33.33% {
+			background-color: var(--ai-hue-2);
+		}
+		50% {
+			background-color: var(--ai-hue-3);
+		}
+		66.67% {
+			background-color: var(--ai-hue-4);
+		}
+		83.33% {
+			background-color: var(--ai-hue-5);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.wide :global(.section-header__badge) {
+			animation: none;
+		}
+	}
+
+	// ── The wash follows the mark (`wash="cycle"`) ─────────────────────
+	// The SAME sequence as the tile, stop for stop — stop 0 is the mark's own colour, handed over as
+	// `--ai-hue-0` — driven into `--ai-wash`, the one gradient the hand-off layout paints. Same clock,
+	// same linear timing, so the band passes through each colour at the moment the tile does; in
+	// lockstep by construction, since both are applied at first paint, both held paused, and the
+	// observer that resumes the tile flips `is-cycling` on the section in the same callback.
+	//
+	// An animation outranks the inline `--ai-wash` the hand-off sets on a switch, so the route no
+	// longer colours the band here; its transition simply has nothing to do.
+	//
+	// SLOWER, 18s against the mark's usual 9 — 3s a colour. At 1.5s a leg a tile is a small thing
+	// changing briskly; a full-bleed band doing the same is the whole screen flickering. The tile
+	// slows with it (`--ai-cycle` feeds both), or the two would part.
+	.wide--wash-cycle {
+		--ai-cycle: 18s;
+	}
+
+	.wide--wash-cycle .wide__bands {
+		animation: wide-wash-hues var(--ai-cycle) linear infinite;
+		animation-play-state: paused;
+	}
+
+	.wide--wash-cycle.is-cycling .wide__bands {
+		animation-play-state: running;
+	}
+
+	@keyframes wide-wash-hues {
+		0%,
+		100% {
+			--ai-wash: var(--ai-hue-0);
+		}
+		16.67% {
+			--ai-wash: var(--ai-hue-1);
+		}
+		33.33% {
+			--ai-wash: var(--ai-hue-2);
+		}
+		50% {
+			--ai-wash: var(--ai-hue-3);
+		}
+		66.67% {
+			--ai-wash: var(--ai-hue-4);
+		}
+		83.33% {
+			--ai-wash: var(--ai-hue-5);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.wide--wash-cycle .wide__bands {
+			animation: none;
+		}
+	}
+
+	// With the band cycling, the route's hue has no ground to answer to, so the button's label and its
+	// glyph go to the ink; the hairline was neutral already. (0,2,0) over the button's own (0,1,0).
+	.wide--wash-cycle .wide__cta-button {
+		color: var(--color-text, #17181c);
+	}
+
+	// ── Stacked ───────────────────────────────────────────────────────
+	// The window over its copy, both centred and the copy held to the window's width, so each route
+	// reads as one column — the shipping section's stacked composition.
+	@include media-down(lg) {
+		.wide__row,
+		.wide__row--flip {
+			flex-direction: column;
+			align-items: center;
+			gap: $spacing-8;
+		}
+
+		.wide__window {
+			flex: 0 0 auto;
+			width: min(#{$window}, 100%);
+		}
+
+		.wide__window--cli {
+			width: min(#{$window-cli}, 100%);
+		}
+
+		.wide__copy {
+			width: 100%;
+			max-width: $window;
+		}
+	}
+
+	// ── Phone ─────────────────────────────────────────────────────────
+	// Both windows at the shipping section's phone scale — the chat at 1, the terminal at 11.5px with
+	// its chrome at 0.65 — in a box of 298: at 11.5px on a 1.4 leading a line is 16.1, the bar 26.3 and
+	// the composer 29.75, so 298 leaves the log 241.5 = fourteen lines and the foot.
+	@media (max-width: 599px) {
+		.wide__window {
+			height: 298px;
+		}
+
+		// The chat is the shipping section's phone crop, in this box's 298: the window is drawn 340 tall at
+		// scale 1 and stands 16 up from the box's base (its shadow's reach), so 58 is cut from the top —
+		// the 34px bar, and 24 of the log's 20px transparent hold, where the seam is invisible. The box
+		// runs 20 into the gutter each side so the mask that fades the cut does not delete the side
+		// shadows; the window takes the 40 back.
+		.wide__chat--whole {
+			display: none;
+		}
+
+		.wide__chat--cut {
+			display: block;
+			margin-inline: -20px;
+			overflow: hidden;
+			-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
+			mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
+		}
+
+		.wide__chat--cut :global(.assistant) {
+			--ui-scale: 1;
+
+			bottom: 16px;
+			width: calc(100% - 40px);
+			height: 340px;
+			border-radius: $radius-lg;
+			// The component's own lift, which the 16 was measured against.
+			box-shadow: 0 4px 12px rgba(23, 24, 28, 0.1);
+		}
+
+		.wide__window--cli :global(.agent) {
+			--agent-lead: 1.4;
+			--agent-chrome: 0.65;
+
+			font-size: 11.5px;
+		}
+
+		.wide__window--cli :global(.agent__path) {
+			font-size: 11.5px;
+			line-height: 13.3px;
+		}
+
+		// The wordmark is 59 cells and the log holds ~52 at 11.5px, so the phone gets the shipping
+		// banner instead: the small mark with its status beside it, the same window the shipping
+		// section shows here.
+		.wide__cli--wordmark {
+			display: none;
+		}
+
+		.wide__cli--mark {
+			display: block;
+		}
+	}
+
+	@media (max-width: 374px) {
+		.wide__window--cli :global(.agent) {
+			font-size: 9.5px;
+		}
+
+		.wide__window--cli :global(.agent__path) {
+			font-size: 8.5px;
+		}
+	}
+
+	@include media-down(md) {
+		.wide {
+			padding: 60px 0 0;
+		}
+	}
+</style>
+
+<script>
+	// The section mark cycles colour while it is on screen — `AiSection`'s observer, for this section's
+	// own class, since that one looks for `section.ai` and would not find these.
+	const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const cycling = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				entry.target.classList.toggle('is-cycling', entry.isIntersecting);
+				// And on the section, in the same callback, for a wash that follows the mark
+				// (`wash="cycle"`) — the same frame, so the two clocks never part.
+				entry.target.closest('section.wide')?.classList.toggle('is-cycling', entry.isIntersecting);
+			}
+		},
+		{ threshold: 0.5 }
+	);
+
+	document.querySelectorAll<HTMLElement>('section.wide').forEach((section) => {
+		const badge = section.querySelector('.section-header__badge');
+		if (badge && section.dataset.animate === 'on' && !reduced) cycling.observe(badge);
+	});
+</script>

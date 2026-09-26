@@ -59,6 +59,30 @@ export const AI_COPY = {
 	badge: { icon: 'tabler:sparkles-filled', color: 'var(--color-brand)' },
 };
 
+/**
+ * The call to action at the end of each route's copy (`AiWide`, 2026-09-26): one button and a short
+ * line beside it, the route's own way in. The copy began as the home-compositions branch's `AI_CTA`
+ * — a band of its own under the section, with a lead, a longer line and a second link to the other
+ * route — and was cut down the same day: the section holds it, the switch is the other route, and
+ * the line is one sentence small enough to sit beside the button.
+ *
+ * "TRY FOR FREE" IS THE SIGN-UP'S LABEL, with the cloud glyph saying where — "Start for free" until
+ * 2026-09-26, the Cloud card's button in Products and on the Cloud page. What it promises — a free
+ * account — is true of every plan choice. The AI docs go no further than PE and Cloud (4.3.1.2+); the
+ * nearest they come to the free plan is Solution Creator's troubleshooting, which has it hitting a
+ * free plan's device limit. So the line says what you do, and no copy here says the AI itself is free.
+ */
+export const AI_CTA = {
+	assistant: {
+		line: 'Sign up for ThingsBoard Cloud and describe your first solution — nothing to install.',
+		primary: { text: 'Try for free', href: 'https://thingsboard.cloud/signup', icon: 'tabler:cloud' },
+	},
+	cli: {
+		line: 'Install the CLI, open a project folder, and hand your agent the first change.',
+		primary: { text: 'Set up the CLI', href: '/docs/pe/user-guide/cli/' },
+	},
+};
+
 export interface AiColumn {
 	/** The kicker over the column title — the route this column describes. */
 	eyebrow: string;
@@ -354,6 +378,12 @@ export const AI_ASSISTANT_LABEL_DEW_POINT =
 	'The ThingsBoard AI Assistant: asked to add a dew point calculated field to the thermostat profile, then asked in a follow-up to warn above 18 °C, creating an alarm rule from the field it just made.';
 
 /**
+ * The chat window's title, for a treatment that shows its bar as a plain label — `AiWide` — instead of
+ * the product's `New chat` picker.
+ */
+export const AI_ASSISTANT_TITLE = 'AI Assistant';
+
+/**
  * The chat scenarios by name, for `AiSection`'s `chat` prop. `shipping` is the homepage's; `dewPoint`
  * is the one it replaced on 2026-09-24.
  */
@@ -518,6 +548,39 @@ export const AI_AGENT_SESSION: AgentStep[] = [
 	/** The loop ends on the console holding out a reply — shown as a suggestion, never sent. */
 	{ role: 'user', suggested: true, pending: true, text: 'Easy!' },
 ];
+
+/**
+ * THE WORDMARK, for a window wide enough to print it (2026-09-26, `AiWide`): "ThingsBoard" in figlet's
+ * standard cut, six rows and 59 columns, across the whole line the way a CLI prints its logo. Assembled
+ * from the standard font's glyphs with figlet's own smushing rules, since no figlet is installed here;
+ * plain ASCII for the same fallback-face reason as the small mark.
+ *
+ * Too wide for a phone's log (~52 cells); `AiWide` shows the shipping banner's small mark there instead.
+ */
+export const AI_AGENT_WORDMARK = [
+	' _____ _     _                 ____                      _ ',
+	'|_   _| |__ (_)_ __   __ _ ___| __ )  ___   __ _ _ __ __| |',
+	"  | | | '_ \\| | '_ \\ / _` / __|  _ \\ / _ \\ / _` | '__/ _` |",
+	'  | | | | | | | | | | (_| \\__ \\ |_) | (_) | (_| | | | (_| |',
+	'  |_| |_| |_|_|_| |_|\\__, |___/____/ \\___/ \\__,_|_|  \\__,_|',
+	'                     |___/                                 ',
+];
+
+/**
+ * The shipping session opening on the wordmark: the mark alone across the row, then the status lines
+ * as a banner of their own so they print UNDER it rather than beside it (the banner model puts a line
+ * beside each row of art, so a second banner with blank art is how "below" is said), then the same
+ * turns. The one-line gap after each banner is the component's own.
+ */
+export const AI_AGENT_SESSION_WORDMARK: AgentStep[] = (() => {
+	const [banner, ...turns] = AI_AGENT_SESSION;
+	if (banner.role !== 'banner') return AI_AGENT_SESSION;
+	return [
+		{ role: 'banner', art: AI_AGENT_WORDMARK, lines: AI_AGENT_WORDMARK.map(() => []) },
+		{ role: 'banner', art: ['', '', ''], lines: banner.lines.slice(1) },
+		...turns,
+	];
+})();
 
 /** What the terminal is doing, for the `role="img"` label — it is a picture, not a live console. */
 export const AI_AGENT_LABEL =

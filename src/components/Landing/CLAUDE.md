@@ -31,6 +31,8 @@ _areas.ts                    the areas: the island's links and each area's top-b
 _AreaBar.astro               the sticky top bar every internal page gets from the layout
 components/index.astro       the Components overview, one tile per section
 sections/twin.astro          one visual's directions — <VisualPage visual="twin"> … </VisualPage>
+sections/hero.astro          the hero: switches applied to frames of the real homepage (below)
+_hero-lab.ts, _hero-lab.scss the hero's switches, footage and screens, and the candidates' CSS
 ```
 
 Add a visual: an entry in `_key-visuals.ts` and a page in `sections/`. It appears on the hub and
@@ -325,6 +327,16 @@ Two things are NOT a Variant. A visual that is a full-bleed section rather than 
 it 525px, where it is already in its stacked form, and judging that is judging a different picture.
 And a technical EXHIBIT — a breakpoint pinned down, a component's parts laid out — stays a plain
 `.stage` with no commands on it, because the way to be rid of one is to delete it.
+
+**The hero is not a Variant either.** It answers to the whole viewport — width, height and
+orientation pick its composition, and it sizes itself to the fold — so neither a row nor a probe can
+show it. `sections/hero.astro` frames the REAL homepage at fixed screen sizes (or one frame the size
+of the window) and applies each switch into the frames from outside, which same origin allows:
+`data-lab-<switch>` on the frame's `#hero`, `_hero-lab.scss` appended after the page's own sheets,
+and the `<video>` swapped. The homepage carries none of it. Each switch's first option is what
+ships, and a combination is its address, so it can be linked. A new candidate is an option in
+`_hero-lab.ts` and its rules in `_hero-lab.scss`; new footage is one `FOOTAGE` entry. Promoting one
+means moving its rules into `Hero.astro` and deleting them from the lab.
 
 ### Promote and retire
 

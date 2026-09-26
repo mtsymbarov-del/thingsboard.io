@@ -1,47 +1,702 @@
 ---
 import VisualPage from '@root/pages/internal/_VisualPage.astro';
-import Variant from '@root/pages/internal/_Variant.astro';
-import HeroFrame from '@root/pages/internal/_HeroFrame.astro';
-import { kv } from '@root/pages/internal/_key-visuals';
+import { SCALES, SCREENS, SWITCHES } from '@root/pages/internal/_hero-lab';
 
 /**
- * The hero — the split layout, its copy on black beside the video panel.
+ * The hero, the homepage's first screen, as SWITCHES rather than directions.
  *
- * Every direction is the real homepage in a frame (`_HeroFrame`), one window tall, so the desktop
- * view is the first screen at this window's size and the phone view is the first screen of a 375
- * phone. A candidate is the same page with different media swapped into the panel; nothing that
- * ships is edited to show it.
+ * Every other page here judges a visual at a width it is handed. The hero cannot be judged that way:
+ * what it is depends on the whole viewport. Width, height and orientation pick its composition, the
+ * fold sizes the footage, and a short screen shrinks the headline. So each frame here is the real
+ * homepage in an iframe the size of a real screen, and the switches are applied INTO it from this
+ * page. Same origin, so this document can reach each frame's DOM: it sets `data-lab-*` on the frame's
+ * `#hero`, adds `_hero-lab.scss` after the page's own styles, and swaps the `<video>`.
  *
- * ORDER: the SHIPPING hero first, then candidates newest first.
+ * NOTHING HERE REACHES THE HOMEPAGE. `/` renders as it did, and each switch's first option is it.
+ * The candidates sit beside it: CSS in `_hero-lab.scss`, the footage list in `_hero-lab.ts`. Promoting
+ * one means moving its rules into `Hero.astro`; retiring one means deleting them.
  *
- * The panel is 16:9 and `cover`, and it stretches to the copy column's height beside it, so a
- * video is cropped at most widths — and a video wider than 16:9 is cropped harder. Judge a
- * candidate at the widths people actually have, not only at this one.
+ * WINDOW shows one frame the size of this window, with the switches floating over it: resize the
+ * window and the hero answers as it does on `/`, which a fixed screen cannot show.
  */
 ---
 
 <VisualPage visual="hero">
-	<Variant
-		visual={kv('hero')}
-		component={HeroFrame}
-		bleed
-		shipping
-		name="Cover"
-		note="tb-cover2 · 1920×1080, 25 fps, 40 s · VP9 7.5 MB, H.264 12.8 MB, from video.thingsboard.io"
-	/>
+	<div class="hl">
+		<div class="hl-bar" data-hl-bar>
+			<div class="hl-bar__head">
+				<p class="hl-bar__note">
+					Each frame is the homepage at that screen's size, with these applied. The first option of each, marked with a
+					dot, is what ships.
+				</p>
+				<p class="hl-bar__read" data-hl-read-window></p>
+				<p class="hl-bar__summary" data-hl-summary></p>
+				<button type="button" class="hl-bar__fold" data-hl-fold aria-expanded="true">Hide</button>
+			</div>
 
-	<Variant
-		visual={kv('hero')}
-		component={HeroFrame}
-		props={{
-			video: {
-				webm: '/videos/horizontal-slider.webm',
-				mp4: '/videos/horizontal-slider.mp4',
-				poster: '/images/hero/horizontal-slider.webp',
-			},
-		}}
-		bleed
-		name="Horizontal slider"
-		note="candidate · the dashboards tour, 1920×924, 30 fps, 40.5 s with the black fades cut · VP9 2.3 MB, H.264 3.3 MB; still 64 KB"
-	/>
+			<div class="hl-bar__row" data-hl-rows>
+				{
+					SWITCHES.map((s) => (
+						<div class="page-ctl" role="group" aria-label={s.label}>
+							<span class="page-ctl__name">
+								{s.label}
+								{s.scope && <span class="hl-scope">{s.scope}</span>}
+							</span>
+							{s.options.map((o, i) => (
+								<button
+									type="button"
+									class:list={[i === 0 && 'hl-ships']}
+									data-hl-switch={s.key}
+									data-hl-value={o.value}
+									aria-pressed={i === 0 ? 'true' : 'false'}
+									title={o.note}
+								>
+									{o.label}
+								</button>
+							))}
+							{s.key === 'footage' && (
+								<input
+									class="hl-src"
+									type="url"
+									data-hl-src
+									placeholder="Paste a video address"
+									aria-label="Video address"
+									spellcheck="false"
+								/>
+							)}
+						</div>
+					))
+				}
+			</div>
+
+			<div class="hl-bar__row hl-bar__row--canvas" data-hl-rows>
+				<div class="page-ctl" role="group" aria-label="Screens" data-hl-screens-only>
+					<span class="page-ctl__name">Screens</span>
+					{
+						SCREENS.map((s) => (
+							<button
+								type="button"
+								data-hl-screen={s.id}
+								aria-pressed={s.on ? 'true' : 'false'}
+								title={`${s.w} × ${s.h}`}
+							>
+								{s.label}
+							</button>
+						))
+					}
+				</div>
+				<div class="page-ctl" role="group" aria-label="Scale" data-hl-screens-only>
+					<span class="page-ctl__name">Scale</span>
+					{
+						SCALES.map((k) => (
+							<button type="button" data-hl-scale={k} aria-pressed="false">
+								{Math.round(k * 100)}%
+							</button>
+						))
+					}
+				</div>
+				<div class="page-ctl" role="group" aria-label="View">
+					<span class="page-ctl__name">View</span>
+					<button type="button" data-hl-view="screens" aria-pressed="true" title="Fixed screens, side by side">
+						Screens
+					</button>
+					<button type="button" data-hl-view="window" aria-pressed="false" title="One frame the size of this window">
+						Window
+					</button>
+				</div>
+				<div class="page-ctl" role="group" aria-label="This combination">
+					<button type="button" data-hl-reset title="Every switch back to what ships">Reset</button>
+					<button type="button" data-hl-copy title="The address of this combination">Copy link</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="hl-stage" data-hl-stage>
+			{
+				SCREENS.map((s) => (
+					<figure class="hl-screen" data-hl-frame={s.id} style={`--w: ${s.w}; --h: ${s.h}`} hidden={!s.on}>
+						<figcaption class="hl-screen__cap">
+							<span class="hl-screen__name">{s.label}</span>
+							<span class="hl-screen__size">
+								{s.w} × {s.h}
+							</span>
+							<span class="hl-screen__read" data-hl-read />
+						</figcaption>
+						<div class="hl-screen__glass">
+							<iframe title={`The homepage at ${s.w} by ${s.h}`} data-src="/" width={s.w} height={s.h} />
+						</div>
+					</figure>
+				))
+			}
+		</div>
+
+		<iframe class="hl-window" data-hl-window data-src="/" title="The homepage at this window's size" hidden></iframe>
+	</div>
 </VisualPage>
+
+<script>
+	import labCss from '@root/pages/internal/_hero-lab.scss?inline';
+	import {
+		FOOTAGE,
+		PASTED,
+		SCREENS,
+		SWITCHES,
+		readState,
+		writeState,
+		type Footage,
+		type LabState,
+		type View,
+	} from '@root/pages/internal/_hero-lab';
+
+	const KEY = 'launch-visuals:hero-lab';
+	/** Hero's own loader withholds the video under this width (its `isPhone`). */
+	const PHONE_BELOW = 768;
+
+	const root = document.documentElement;
+	const all = <T extends Element>(selector: string) => Array.from(document.querySelectorAll<T>(selector));
+
+	const bar = document.querySelector<HTMLElement>('[data-hl-bar]')!;
+	const stage = document.querySelector<HTMLElement>('[data-hl-stage]')!;
+	const srcField = document.querySelector<HTMLInputElement>('[data-hl-src]')!;
+	const windowRead = document.querySelector<HTMLElement>('[data-hl-read-window]')!;
+	const summary = document.querySelector<HTMLElement>('[data-hl-summary]')!;
+	const screenFrames = all<HTMLIFrameElement>('[data-hl-frame] iframe');
+	const windowFrame = document.querySelector<HTMLIFrameElement>('[data-hl-window]')!;
+
+	// The address wins. Without one, the last combination looked at, so arriving from the menu does
+	// not throw it away; the address is then rewritten to say what is showing.
+	let state: LabState = (() => {
+		if (location.search) return readState(new URLSearchParams(location.search));
+		try {
+			return readState(new URLSearchParams(localStorage.getItem(KEY) ?? ''));
+		} catch {
+			return readState(new URLSearchParams());
+		}
+	})();
+
+	// ---- The footage -------------------------------------------------------------------------------
+
+	const footage = (): Footage => {
+		if (state.on.footage === PASTED) {
+			return /\.webm(?:[?#]|$)/i.test(state.src)
+				? { id: PASTED, label: 'Pasted', webm: state.src }
+				: { id: PASTED, label: 'Pasted', mp4: state.src };
+		}
+		return FOOTAGE.find((f) => f.id === state.on.footage) ?? FOOTAGE[0];
+	};
+
+	/** The element Hero's loader builds, built the same way, in the frame's own document. */
+	const makeVideo = (doc: Document, pick: Footage) => {
+		const video = doc.createElement('video');
+		video.autoplay = true;
+		video.loop = true;
+		video.muted = true;
+		video.playsInline = true;
+		video.setAttribute('aria-hidden', 'true');
+		for (const [src, type] of [
+			[pick.webm, 'video/webm'],
+			[pick.mp4, 'video/mp4'],
+		] as const) {
+			if (!src) continue;
+			const source = doc.createElement('source');
+			source.src = src;
+			// A pasted address is whatever it is; the browser sniffs it.
+			if (pick.id !== PASTED) source.type = type;
+			video.append(source);
+		}
+		return video;
+	};
+
+	/**
+	 * The poster and the sources go on the panel, where Hero's loader reads them at `load`, so a frame
+	 * that has not loaded yet plays the right footage by itself. Once it has, the loader is done, and
+	 * this replaces whatever `<video>` it made — or makes one on a phone-width frame, which it never
+	 * does, when phone video is on.
+	 */
+	const setFootage = (win: Window, doc: Document, hero: HTMLElement) => {
+		const cover = hero.querySelector<HTMLElement>('.video-cover');
+		if (!cover) return;
+		const pick = footage();
+		cover.style.setProperty('--hero-bg', pick.poster ? `url('${pick.poster}')` : 'none');
+		cover.dataset.videoWebm = pick.webm ?? '';
+		cover.dataset.videoMp4 = pick.mp4 ?? '';
+		if (doc.readyState !== 'complete') return;
+
+		const playing = cover.querySelector('video');
+		const want = [pick.webm, pick.mp4].filter((u): u is string => !!u).map((u) => new URL(u, doc.baseURI).href);
+		const has = playing ? Array.from(playing.querySelectorAll('source'), (s) => s.src) : [];
+		const plays = want.length > 0 && (win.innerWidth >= PHONE_BELOW || state.on.motion === 'video');
+		if (!plays) playing?.remove();
+		else if (!playing || has.join() !== want.join()) {
+			playing?.remove();
+			cover.append(makeVideo(doc, pick));
+		}
+	};
+
+	// ---- Into a frame ------------------------------------------------------------------------------
+
+	/** The document each frame last had the switches put into, so a reload inside it is noticed. */
+	const applied = new WeakMap<HTMLIFrameElement, Document>();
+	/** The frames with the homepage in them; the rest are blank. */
+	const live = new Set<HTMLIFrameElement>();
+
+	const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+	/**
+	 * What the frame came out as, under it: the headline's size, the footage's box, and how much of
+	 * the next section shows before any scrolling (negative when the hero runs past the fold).
+	 * Two frames later, so Hero's own re-measure has landed.
+	 */
+	const read = (frame: HTMLIFrameElement) => {
+		const win = frame.contentWindow;
+		const out = frame === windowFrame ? windowRead : frame.closest('figure')?.querySelector('[data-hl-read]');
+		if (!win || !out) return;
+		win.requestAnimationFrame(() =>
+			win.requestAnimationFrame(() => {
+				const hero = win.document.getElementById('hero');
+				const headline = hero?.querySelector('h1 > .tb-title:last-child');
+				if (!hero || !headline) return;
+				const box = hero.querySelector('.video-cover')?.getBoundingClientRect();
+				const peek = Math.round(win.innerHeight - (hero.getBoundingClientRect().bottom + win.scrollY));
+				out.textContent = [
+					frame === windowFrame && `${win.innerWidth} × ${win.innerHeight}`,
+					`H1 ${fmt(parseFloat(win.getComputedStyle(headline).fontSize))}`,
+					`footage ${box ? `${Math.round(box.width)}×${Math.round(box.height)}` : 'none'}`,
+					`peek ${peek > 0 ? '+' : ''}${peek}`,
+				]
+					.filter(Boolean)
+					.join(' · ');
+			})
+		);
+	};
+
+	const apply = (frame: HTMLIFrameElement) => {
+		const win = frame.contentWindow;
+		const doc = frame.contentDocument;
+		const hero = doc?.getElementById('hero');
+		if (!win || !doc || !hero) return;
+
+		if (applied.get(frame) !== doc) {
+			applied.set(frame, doc);
+			doc.documentElement.setAttribute('data-hero-lab', '');
+			// In the body, so it follows every sheet in the head, the dev server's included.
+			const sheet = doc.createElement('style');
+			sheet.textContent = labCss;
+			doc.body.append(sheet);
+			// A picture of the page, not a way off it.
+			doc.addEventListener(
+				'click',
+				(e) => {
+					if ((e.target as Element | null)?.closest?.('a[href]')) e.preventDefault();
+				},
+				true
+			);
+			// A reload inside the frame (the dev server's, mostly) drops the switches; `watch` puts them
+			// back as soon as the next document's hero is parsed.
+			win.addEventListener('pagehide', () => watch(frame), { once: true });
+			doc.fonts?.ready.then(() => read(frame));
+		}
+
+		for (const s of SWITCHES) {
+			const value = state.on[s.key];
+			if (value === s.options[0].value) hero.removeAttribute(`data-lab-${s.key}`);
+			else hero.setAttribute(`data-lab-${s.key}`, value);
+		}
+		setFootage(win, doc, hero);
+		// Hero sizes the headline from the copy it measures, and a switch can change the copy.
+		win.dispatchEvent(new Event('resize'));
+		read(frame);
+	};
+
+	/**
+	 * Apply as soon as the frame's hero exists rather than at `load`, which on this page waits for
+	 * every image below the fold: the hero's own entrance would play out in the shipped state first.
+	 */
+	const watch = (frame: HTMLIFrameElement) => {
+		let tries = 0;
+		const tick = () => {
+			if (!live.has(frame)) return;
+			const doc = frame.contentDocument;
+			if (doc && doc !== applied.get(frame) && doc.getElementById('hero')) apply(frame);
+			else if (++tries < 900) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+	};
+
+	/** A frame that is not showing is emptied rather than hidden: the homepage runs a lot of motion. */
+	const load = (frame: HTMLIFrameElement, on: boolean) => {
+		if (on === live.has(frame)) return;
+		if (on) {
+			live.add(frame);
+			frame.src = frame.dataset.src ?? '/';
+			watch(frame);
+		} else {
+			live.delete(frame);
+			applied.delete(frame);
+			frame.src = 'about:blank';
+		}
+	};
+
+	// `load` again once the page is in: Hero's loader has made its `<video>` by then.
+	[...screenFrames, windowFrame].forEach((f) => f.addEventListener('load', () => live.has(f) && apply(f)));
+
+	// ---- The page ----------------------------------------------------------------------------------
+
+	const press = (selector: string, on: (b: HTMLButtonElement) => boolean) =>
+		all<HTMLButtonElement>(selector).forEach((b) => b.setAttribute('aria-pressed', String(on(b))));
+
+	const render = () => {
+		press('[data-hl-switch]', (b) => state.on[b.dataset.hlSwitch!] === b.dataset.hlValue);
+		press('[data-hl-screen]', (b) => state.screens.includes(b.dataset.hlScreen!));
+		press('[data-hl-scale]', (b) => Number(b.dataset.hlScale) === state.scale);
+		press('[data-hl-view]', (b) => b.dataset.hlView === state.view);
+		if (document.activeElement !== srcField) srcField.value = state.src;
+		// What the folded bar still says: every switch moved off what ships.
+		summary.textContent =
+			SWITCHES.filter((s) => state.on[s.key] !== s.options[0].value)
+				.map((s) => `${s.label}: ${s.options.find((o) => o.value === state.on[s.key])?.label}`)
+				.join(' · ') || 'As shipped';
+
+		root.dataset.hlView = state.view;
+		stage.style.setProperty('--hl-scale', String(state.scale));
+
+		const onScreens = state.view === 'screens';
+		screenFrames.forEach((frame) => {
+			const figure = frame.closest<HTMLElement>('[data-hl-frame]')!;
+			const on = onScreens && state.screens.includes(figure.dataset.hlFrame!);
+			figure.hidden = !on;
+			load(frame, on);
+		});
+		windowFrame.hidden = onScreens;
+		load(windowFrame, !onScreens);
+
+		// Frames still loading pick the state up in `watch`.
+		live.forEach((frame) => applied.get(frame) === frame.contentDocument && apply(frame));
+
+		const query = writeState(state);
+		history.replaceState(null, '', location.pathname + query + location.hash);
+		try {
+			localStorage.setItem(KEY, query);
+		} catch {
+			/* private window: the address still has it */
+		}
+	};
+
+	all<HTMLButtonElement>('[data-hl-switch]').forEach((b) =>
+		b.addEventListener('click', () => {
+			const key = b.dataset.hlSwitch!;
+			// Nothing pasted yet: the field is where that starts.
+			if (key === 'footage' && b.dataset.hlValue === PASTED && !state.src) {
+				srcField.focus();
+				return;
+			}
+			state.on[key] = b.dataset.hlValue!;
+			render();
+		})
+	);
+
+	srcField.addEventListener('change', () => {
+		state.src = srcField.value.trim();
+		if (state.src) state.on.footage = PASTED;
+		else if (state.on.footage === PASTED) state.on.footage = FOOTAGE[0].id;
+		render();
+	});
+
+	all<HTMLButtonElement>('[data-hl-screen]').forEach((b) =>
+		b.addEventListener('click', () => {
+			const id = b.dataset.hlScreen!;
+			const on = !state.screens.includes(id);
+			// Kept in the list's order, whatever order they were picked in.
+			state.screens = SCREENS.map((s) => s.id).filter((s) => (s === id ? on : state.screens.includes(s)));
+			render();
+		})
+	);
+
+	all<HTMLButtonElement>('[data-hl-scale]').forEach((b) =>
+		b.addEventListener('click', () => {
+			state.scale = Number(b.dataset.hlScale);
+			render();
+		})
+	);
+
+	all<HTMLButtonElement>('[data-hl-view]').forEach((b) =>
+		b.addEventListener('click', () => {
+			state.view = b.dataset.hlView as View;
+			render();
+		})
+	);
+
+	document.querySelector('[data-hl-reset]')?.addEventListener('click', () => {
+		const shipped = readState(new URLSearchParams());
+		state = { ...state, on: shipped.on, src: '' };
+		render();
+	});
+
+	const copy = document.querySelector<HTMLButtonElement>('[data-hl-copy]')!;
+	copy.addEventListener('click', async () => {
+		try {
+			await navigator.clipboard.writeText(location.href);
+			copy.textContent = 'Copied';
+		} catch {
+			copy.textContent = 'Copy failed';
+		}
+		setTimeout(() => (copy.textContent = 'Copy link'), 1500);
+	});
+
+	// The switches fold away to their head: off the hero's corner in the window, and out of the way of
+	// the frames on a narrow screen, where the bar runs to four rows.
+	const fold = document.querySelector<HTMLButtonElement>('[data-hl-fold]')!;
+	fold.addEventListener('click', () => {
+		const folded = bar.toggleAttribute('data-folded');
+		fold.setAttribute('aria-expanded', String(!folded));
+		fold.textContent = folded ? 'Show' : 'Hide';
+	});
+
+	// The frame IS the window in that view, so a resize is the hero's to answer; the readout follows.
+	window.addEventListener('resize', () => state.view === 'window' && read(windowFrame), { passive: true });
+
+	// The bar sticks under the area bar, whose height depends on what it holds.
+	const areaBar = document.querySelector<HTMLElement>('.abar');
+	if (areaBar) {
+		new ResizeObserver(() => root.style.setProperty('--hl-top', `${areaBar.offsetHeight}px`)).observe(areaBar);
+	}
+
+	render();
+</script>
+
+<style lang="scss">
+	@use '../../../styles/variables' as *;
+
+	// ---- The switches ------------------------------------------------------------------------------
+	//
+	// The groups are `.page-ctl`, the sandbox's own control, styled by `_VisualPage`. They sit in this
+	// bar rather than in its page bar so the whole set can float over the hero in the window view.
+	.hl-bar {
+		position: sticky;
+		top: var(--hl-top, 49px);
+		z-index: 5;
+		display: grid;
+		gap: $spacing-3;
+		margin: 0 0 $spacing-8;
+		padding: $spacing-4 0;
+		border-bottom: 1px solid var(--sl-color-hairline-light);
+		background: var(--color-bg, #fff);
+
+		.page-ctl {
+			max-width: none;
+			margin: 0;
+		}
+	}
+
+	.hl-bar__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: $spacing-1 $spacing-3;
+	}
+
+	.hl-bar__note,
+	.hl-bar__summary {
+		@include text-xs;
+		margin: 0;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	// Folded, the head says what is switched rather than how the page works.
+	.hl-bar__summary {
+		display: none;
+		font-weight: $font-weight-medium;
+		color: var(--color-text, #17181c);
+	}
+
+	.hl-bar[data-folded] {
+		.hl-bar__note,
+		[data-hl-rows] {
+			display: none;
+		}
+
+		.hl-bar__summary {
+			display: block;
+		}
+	}
+
+	.hl-bar__read {
+		@include text-xs;
+		display: none;
+		margin: 0;
+		font-family: $font-family-mono;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.hl-bar__fold {
+		@include text-xs;
+		margin-left: auto;
+		padding: $spacing-1 $spacing-3;
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: $radius-md;
+		background: none;
+		font-family: inherit;
+		font-weight: $font-weight-medium;
+		color: var(--color-text-secondary, #5b616e);
+		cursor: pointer;
+	}
+
+	.hl-bar__row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: $spacing-2 $spacing-6;
+	}
+
+	.hl-bar__row--canvas {
+		padding-top: $spacing-3;
+		border-top: 1px dashed var(--sl-color-hairline-light);
+	}
+
+	.hl-scope {
+		margin-left: $spacing-1;
+		opacity: 0.65;
+
+		&::before {
+			content: '· ';
+		}
+	}
+
+	// What ships: a dot rather than a check, since a switch has no "direction" to promote.
+	.hl-ships::after {
+		content: '';
+		display: inline-block;
+		width: 5px;
+		height: 5px;
+		margin-left: 6px;
+		border-radius: 50%;
+		background: #1f8b4d;
+		vertical-align: 2px;
+	}
+
+	.hl-src {
+		@include text-xs;
+		width: 18em;
+		padding: $spacing-1 $spacing-2;
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: $radius-md;
+		font-family: $font-family-mono;
+		color: var(--color-text, #17181c);
+
+		&:focus-visible {
+			outline: 2px solid $color-brand;
+			outline-offset: 2px;
+		}
+	}
+
+	// ---- The screens -------------------------------------------------------------------------------
+	//
+	// Each frame is laid out at its screen's real size and drawn scaled, so the page inside it lays
+	// out against the real viewport. The glass is the scaled box; `--hl-scale` comes from the script.
+	.hl-stage {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		gap: $spacing-10 $spacing-8;
+		padding-bottom: $spacing-4;
+		overflow-x: auto;
+	}
+
+	.hl-screen {
+		margin: 0;
+	}
+
+	.hl-screen__cap {
+		@include text-xs;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0 $spacing-2;
+		max-width: calc(var(--w) * var(--hl-scale, 0.5) * 1px);
+		margin-bottom: $spacing-2;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.hl-screen__name {
+		font-weight: $font-weight-medium;
+		color: var(--color-text, #17181c);
+	}
+
+	.hl-screen__size,
+	.hl-screen__read {
+		font-family: $font-family-mono;
+	}
+
+	.hl-screen__read {
+		flex-basis: 100%;
+	}
+
+	.hl-screen__glass {
+		width: calc(var(--w) * var(--hl-scale, 0.5) * 1px);
+		height: calc(var(--h) * var(--hl-scale, 0.5) * 1px);
+		overflow: hidden;
+		border-radius: $radius-lg;
+		background: #000;
+		box-shadow:
+			0 0 0 1px rgba(15, 23, 42, 0.12),
+			0 12px 32px -12px rgba(15, 23, 42, 0.35);
+
+		iframe {
+			display: block;
+			width: calc(var(--w) * 1px);
+			height: calc(var(--h) * 1px);
+			border: 0;
+			transform: scale(var(--hl-scale, 0.5));
+			transform-origin: 0 0;
+		}
+	}
+
+	// ---- The window --------------------------------------------------------------------------------
+	//
+	// One frame over the whole window, so its viewport is the window's; the page under it stops
+	// scrolling, and the switches float in the corner, folding away to their head.
+	.hl-window {
+		position: fixed;
+		inset: 0;
+		z-index: 20;
+		width: 100%;
+		height: 100%;
+		border: 0;
+		background: #000;
+	}
+
+	:global(:root[data-hl-view='window']) {
+		overflow: hidden;
+
+		.hl-bar {
+			position: fixed;
+			top: auto;
+			right: $spacing-4;
+			bottom: $spacing-4;
+			z-index: 30;
+			width: min(600px, calc(100vw - #{2 * $spacing-4}));
+			max-height: calc(100vh - #{2 * $spacing-4});
+			margin: 0;
+			padding: $spacing-3 $spacing-4;
+			overflow: auto;
+			border: 1px solid var(--sl-color-hairline-light);
+			border-radius: $radius-lg;
+			box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.5);
+		}
+
+		.hl-bar__note,
+		[data-hl-screens-only] {
+			display: none;
+		}
+
+		.hl-bar__read {
+			display: block;
+		}
+	}
+
+	// The sandbox's island is fixed over the same bottom corner the copy sits in on a phone, and the
+	// window is the hero's alone. Back to Screens and it returns.
+	:global(:root[data-hl-view='window'] [data-internal-nav]) {
+		display: none;
+	}
+</style>

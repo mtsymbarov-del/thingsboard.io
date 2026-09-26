@@ -21,7 +21,7 @@ import { visualHref, type KeyVisual } from '@root/pages/internal/_key-visuals';
  * kicker, no headline, no description, which the page itself carries.
  */
 /** A key visual, or a plain page with its own address and a line to show where the summary goes. */
-export type HubItem = Pick<KeyVisual, 'id' | 'label' | 'title' | 'badge' | 'home' | 'area' | 'href'>;
+export type HubItem = Pick<KeyVisual, 'id' | 'label' | 'title' | 'badge' | 'home' | 'area' | 'href' | 'summary'>;
 
 interface Group {
 	key: string;
@@ -46,10 +46,12 @@ const sourceOf = (v: HubItem) => sources[`/src/pages${visualHref(v).replace(/\/$
 /**
  * Directions and the ones in use, from the page's `<Variant />` blocks: one block is one direction,
  * and a `shipping` attribute marks the one in use. A page with none is a set of stills
- * (`<figure class="stage">`) and says so rather than claiming zero.
+ * (`<figure class="stage">`) and says so rather than claiming zero. A page that is neither, such as
+ * the hero's switches, names itself in its entry's `summary`.
  */
 const summary = (v: HubItem) => {
 	if (v.href) return { count: '', inUse: [] as string[] };
+	if (v.summary) return { count: v.summary, inUse: [] as string[] };
 	const src = sourceOf(v);
 	const blocks = src.match(/<Variant\b[\s\S]*?\/>/g) ?? [];
 	const inUse = blocks.filter((b) => /\sshipping(?=[\s/>])/.test(b)).map((b) => b.match(/\bname="([^"]+)"/)?.[1] ?? '');

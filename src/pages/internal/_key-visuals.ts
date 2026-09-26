@@ -26,6 +26,7 @@ import { SCALE_COPY } from '@data/scale-visual';
 import { DEPLOY_COPY } from '@data/deploy-visual';
 import { WHITELABEL_COPY } from '@data/whitelabel-visual';
 import { AI_COPY } from '@data/ai-visual';
+import { SWITCHES } from '@root/pages/internal/_hero-lab';
 
 export interface KeyVisual {
 	id: string;
@@ -61,17 +62,24 @@ export interface KeyVisual {
 	 * ecosystem cards are in their gallery. Its tile has no directions to summarise.
 	 */
 	href?: string;
+	/**
+	 * What its tile says the page holds, for a page that is neither directions nor stills. The hub
+	 * otherwise counts `<Variant>` blocks in the page's source, and would call the hero's switches one
+	 * still.
+	 */
+	summary?: string;
 }
 
 export const KEY_VISUALS: KeyVisual[] = [
 	{
-		// The top of the page: the split hero, its copy on black beside the video panel. Judged as the
-		// real homepage in a frame (`_HeroFrame`) rather than restated, so the header, its scrim and
-		// the hero's page-level styles are the page's own. No copy here: the frame carries it.
+		// The first screen: headline, lede, buttons and footage. Judged as switches applied to the real
+		// homepage at real screen sizes rather than as directions in a row — see `sections/hero.astro`.
+		// The title is the headline, restated from `index.astro`'s Hero call.
 		id: 'hero',
 		home: 'hero',
 		label: 'Hero',
 		title: 'The all-in-one IoT platform',
+		summary: `${SWITCHES.length} switches`,
 		badge: { icon: 'tabler:layout-navbar', color: '#3d50f5' },
 	},
 	{

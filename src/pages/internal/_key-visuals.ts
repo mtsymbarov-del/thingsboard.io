@@ -8,8 +8,8 @@
  * `KEY_VISUALS[6]`, which meant inserting a visual silently retitled four others. That is also what
  * makes the order below free to change — this array decides the menus' order and nothing else.
  *
- * THE ORDER IS THE PAGE'S ORDER. Platform first: it opens the homepage as a centred section
- * above the rows. Then the rows in the order `index.astro` runs them, so walking the section menu
+ * THE ORDER IS THE PAGE'S ORDER. The hero first, then platform: it opens the homepage's content as
+ * a centred section above the rows. Then the rows in the order `index.astro` runs them, so walking the section menu
  * walks the page. `ai` sits between twin and normalize because that is where `AiSection` runs: a
  * full-bleed section rather than a row, but on the page there. `products` and `ecosystem` close the
  * homepage run.
@@ -64,6 +64,16 @@ export interface KeyVisual {
 }
 
 export const KEY_VISUALS: KeyVisual[] = [
+	{
+		// The top of the page: the split hero, its copy on black beside the video panel. Judged as the
+		// real homepage in a frame (`_HeroFrame`) rather than restated, so the header, its scrim and
+		// the hero's page-level styles are the page's own. No copy here: the frame carries it.
+		id: 'hero',
+		home: 'hero',
+		label: 'Hero',
+		title: 'The all-in-one IoT platform',
+		badge: { icon: 'tabler:layout-navbar', color: '#3d50f5' },
+	},
 	{
 		id: 'platform',
 		home: 'intro',

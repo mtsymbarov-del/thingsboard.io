@@ -1,0 +1,47 @@
+---
+import VisualPage from '@root/pages/internal/_VisualPage.astro';
+import Variant from '@root/pages/internal/_Variant.astro';
+import HeroFrame from '@root/pages/internal/_HeroFrame.astro';
+import { kv } from '@root/pages/internal/_key-visuals';
+
+/**
+ * The hero — the split layout, its copy on black beside the video panel.
+ *
+ * Every direction is the real homepage in a frame (`_HeroFrame`), one window tall, so the desktop
+ * view is the first screen at this window's size and the phone view is the first screen of a 375
+ * phone. A candidate is the same page with different media swapped into the panel; nothing that
+ * ships is edited to show it.
+ *
+ * ORDER: the SHIPPING hero first, then candidates newest first.
+ *
+ * The panel is 16:9 and `cover`, and it stretches to the copy column's height beside it, so a
+ * video is cropped at most widths — and a video wider than 16:9 is cropped harder. Judge a
+ * candidate at the widths people actually have, not only at this one.
+ */
+---
+
+<VisualPage visual="hero">
+	<Variant
+		visual={kv('hero')}
+		component={HeroFrame}
+		bleed
+		shipping
+		name="Cover"
+		note="tb-cover2 · 1920×1080, 25 fps, 40 s · VP9 7.5 MB, H.264 12.8 MB, from video.thingsboard.io"
+	/>
+
+	<Variant
+		visual={kv('hero')}
+		component={HeroFrame}
+		props={{
+			video: {
+				webm: '/videos/horizontal-slider.webm',
+				mp4: '/videos/horizontal-slider.mp4',
+				poster: '/images/hero/horizontal-slider.webp',
+			},
+		}}
+		bleed
+		name="Horizontal slider"
+		note="candidate · the dashboards tour, 1920×924, 30 fps, 40.5 s with the black fades cut · VP9 2.3 MB, H.264 3.3 MB; still 64 KB"
+	/>
+</VisualPage>

@@ -37,21 +37,21 @@ export interface Footage {
 /** A candidate is one entry here: it gets a button. The first is what ships. */
 export const FOOTAGE: Footage[] = [
 	{
-		id: 'cover2',
-		label: 'tb-cover2',
-		note: 'On the homepage now · 1920×1080, 25 fps, 40 s · VP9 7.5 MB, H.264 12.8 MB',
-		webm: 'https://video.thingsboard.io/tb-cover2.webm',
-		mp4: 'https://video.thingsboard.io/tb-cover2.mp4',
-		poster: '/images/hero/tb-cover.webp',
-	},
-	{
 		id: 'slider',
 		label: 'Horizontal slider',
-		note: 'The dashboards tour · 1920×924, 30 fps, 40.5 s, the black fades cut so the loop is a hard cut · VP9 2.3 MB, H.264 3.3 MB',
+		note: 'On the homepage now: the dashboards tour · 1920×924, 30 fps, 40.5 s, the black fades cut so the loop is a hard cut · VP9 2.3 MB, H.264 3.3 MB',
 		webm: '/videos/horizontal-slider.webm',
 		mp4: '/videos/horizontal-slider.mp4',
 		// Its exact first frame, 64 KB.
 		poster: '/images/hero/horizontal-slider.webp',
+	},
+	{
+		id: 'cover2',
+		label: 'tb-cover2',
+		note: 'The homepage before it · 1920×1080, 25 fps, 40 s · VP9 7.5 MB, H.264 12.8 MB',
+		webm: 'https://video.thingsboard.io/tb-cover2.webm',
+		mp4: 'https://video.thingsboard.io/tb-cover2.mp4',
+		poster: '/images/hero/tb-cover.webp',
 	},
 	{
 		id: 'cover',

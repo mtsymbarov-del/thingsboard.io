@@ -57,12 +57,18 @@ import { heroLcpPreload } from '@util/lcp-preload';
 
 // Passed to both <Hero> and the preload, so the <link> can't name a file the CSS
 // won't paint — which is also why backgroundImage isn't left to Hero's default.
-// One 16:9 asset at every width. tb-cover-mobile.webp is a 700x1080 portrait
-// crop, art-directed for the old full-bleed hero; the split layout's panel is
-// 16:9 everywhere, so that crop lost most of its height to `cover` and read as
-// a fragment of a dashboard. tb-cover.webp is exactly 1920x1080, so it fits the
-// panel with no crop at all.
-const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
+// One asset at every width, and it is the video's exact first frame, so the
+// still does not jump when the footage takes over. tb-cover-mobile.webp is a
+// 700x1080 portrait crop, art-directed for the old full-bleed hero; the split
+// layout's panel is landscape everywhere, so that crop lost most of its height
+// to `cover` and read as a fragment of a dashboard.
+//
+// The dashboards tour is 1920x924, wider than the panel, so `cover` trims its
+// sides. Of its width, 98% shows at 1920x960, 89% at 1440x780, 85% at 1280x680,
+// 86% on a phone (the still), and 60% at 1024x698, where the copy beside it
+// makes the panel tall and narrow. tb-cover2, the 16:9 video before it, is kept
+// on /internal/sections/hero/.
+const HERO_BACKGROUND = '/images/hero/horizontal-slider.webp';
 ---
 
 <BaseLayout
@@ -96,8 +102,8 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 		showArrow={false}
 		anchorLink="#intro"
 		videoBackground={{
-			webm: 'https://video.thingsboard.io/tb-cover2.webm',
-			mp4: 'https://video.thingsboard.io/tb-cover2.mp4',
+			webm: '/videos/horizontal-slider.webm',
+			mp4: '/videos/horizontal-slider.mp4',
 		}}
 	>
 		<p class="header-animation hero-note">

@@ -47,7 +47,7 @@ export interface InstallRegion {
 export interface InstallAside {
 	title: string;
 	text: string;
-	link: InstallLink;
+	links: InstallLink[];
 	options: InstallOptionGroup[];
 }
 
@@ -142,7 +142,11 @@ export const installProducts: InstallProduct[] = [
 		aside: {
 			title: 'Private Cloud',
 			text: 'A dedicated cluster we provision and operate for you, in the cloud and the region you choose.',
-			link: { label: cloud.action, href: cloud.href },
+			// A dedicated cluster is a conversation, so the contact link leads; the comparison follows.
+			links: [
+				{ label: 'Contact us', href: '/contact-us/?subject=ThingsBoard%20Private%20Cloud' },
+				{ label: cloud.action, href: cloud.href },
+			],
 			options: [cloudProviders],
 		},
 	},

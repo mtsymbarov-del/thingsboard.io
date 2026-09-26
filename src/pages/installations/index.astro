@@ -124,11 +124,13 @@ const nameParts = (name: string, highlight?: string) => {
 									</div>
 									<p class="install__text">{p.aside.text}</p>
 									<div class="install__actions">
-										<a class="install__link" href={p.aside.link.href}>
-											{p.aside.link.label}
-											<span class="sr-only"> — {p.name}</span>
-											<Icon name="tabler:chevron-right" aria-hidden="true" />
-										</a>
+										{p.aside.links.map((link) => (
+											<a class="install__link" href={link.href}>
+												{link.label}
+												<span class="sr-only"> — {p.name}</span>
+												<Icon name="tabler:chevron-right" aria-hidden="true" />
+											</a>
+										))}
 									</div>
 									{p.aside.options.map((group) => (
 										<div class="install__group">
@@ -376,12 +378,18 @@ const nameParts = (name: string, highlight?: string) => {
 	// and the action at the row's end.
 	// "Try now" over the rows, in the option groups' own label — and the whole block on a panel in
 	// the platform's own tint, so it is the section's primary element: the one thing to do here.
+	// A strong run of the platform's tint, no stroke (asked 2026-09-27 after a 6% flat tint on a
+	// hairline): from 22% at the top-left down to 6% at the bottom-right, so the block is the
+	// coloured thing in the section and the white rows on it stand out as the buttons they are.
 	.install__group--primary {
 		margin-top: $spacing-6;
 		padding: $spacing-4;
-		border: 1px solid color-mix(in srgb, var(--badge-fill) 24%, transparent);
 		border-radius: $radius-lg;
-		background: color-mix(in srgb, var(--badge-fill) 6%, #fff);
+		background: linear-gradient(
+			150deg,
+			color-mix(in srgb, var(--badge-fill) 22%, #fff),
+			color-mix(in srgb, var(--badge-fill) 6%, #fff)
+		);
 
 		.install__group-title {
 			color: var(--badge-fill);
@@ -508,13 +516,15 @@ const nameParts = (name: string, highlight?: string) => {
 	// tile — the section's tile is the product's, and a second one read as a second product.
 	.install__aside-glyph {
 		flex: none;
-		width: 32px;
-		height: 32px;
+		width: 24px;
+		height: 24px;
 		color: var(--badge-fill);
 	}
 
+	// A step under the card size (asked smaller, 2026-09-27): the tile's own title weight, so the
+	// second offering sits under the product's name rather than beside it.
 	.install__aside-title {
-		@include type-card;
+		@include type-tile;
 
 		margin: 0;
 		color: var(--color-text, #17181c);

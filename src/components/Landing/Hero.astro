@@ -139,9 +139,15 @@ const titles = Array.isArray(title) ? title : [title];
 // The copy's measurements, for the two layouts that size something from them: `--hero-copy-h`
 // on the panel, which fills what the stacked copy leaves before the fold, and `--hero-copy-rest`
 // / `--hero-title-lines` on the section, which size the side-by-side headline to the fold
-// (everything in the copy but the headline, and the headline's height in font-sizes). Setting
-// them never changes what they measure: the panel's height does not reach the copy, and the rest
-// and the lines are the same at any headline size.
+// (everything in the copy but the headline, and the headline's height in font-sizes), and the
+// side-by-side panel's floor. The rest and the lines are the same at any headline size, so setting
+// them never changes them. The copy's height is not: side by side, the headline takes its size
+// from those two, so the height is read again once they are set. Read first, it was the copy at
+// the headline's previous size: 573 at 1366x645 against a settled 549, and the panel held to it
+// ran the hero 24px past its fold. The panel's own height never reaches the copy.
+//
+// The headline is the H1's lines at the headline's own size, read off its last line. A line set at
+// any other size, such as a kicker, does not scale with it, so it is counted with the rest.
 //
 // Inline and synchronous, so the first paint already has them; then again on resize (the layout
 // and the short-screen trim both follow the viewport) and once the web fonts are in. Rendered only
@@ -153,11 +159,17 @@ const MEASURE_COPY = `(() => {
 	const panel = hero.querySelector('.video-cover');
 	const measure = () => {
 		const copyHeight = copy.offsetHeight;
-		const titleHeight = title.offsetHeight;
-		const titleSize = parseFloat(getComputedStyle(title.firstElementChild).fontSize);
-		panel.style.setProperty('--hero-copy-h', copyHeight + 'px');
+		const titleSize = parseFloat(getComputedStyle(title.lastElementChild).fontSize);
+		let titleHeight = title.offsetHeight;
+		for (const line of title.children) {
+			const style = getComputedStyle(line);
+			if (parseFloat(style.fontSize) !== titleSize) {
+				titleHeight -= line.offsetHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+			}
+		}
 		hero.style.setProperty('--hero-copy-rest', copyHeight - titleHeight + 'px');
 		hero.style.setProperty('--hero-title-lines', String(titleHeight / titleSize));
+		panel.style.setProperty('--hero-copy-h', copy.offsetHeight + 'px');
 	};
 	measure();
 	let frame = 0;
@@ -632,9 +644,14 @@ const MEASURE_COPY = `(() => {
 				// Clears the fixed bar, then breathes above the panel beneath it. The 36px
 				// bottom matters when the copy is the taller of the two side by side: it
 				// sets the row, and without it "Talk to an expert" sat flush on the hero's
-				// bottom edge with 6px of it under `overflow: hidden`. No background: the
-				// section's black is behind it, and the product pages paint their own.
+				// bottom edge with 6px of it under `overflow: hidden`.
 				padding: calc(var(--home-header-h, #{$header-height}) + var(--hero-top-gap)) var(--hero-pad-x) 36px;
+				// No background: the section's black is behind it, and the product pages paint
+				// their own. Said outright because the centred layout's 0.72 black above still
+				// applied here, invisible on black but not where the footage reaches under the
+				// copy: it dimmed that strip of it and ended in a hard vertical line at the
+				// copy's right edge, the full height of the panel.
+				background-color: transparent;
 
 				// Type sits on solid black here, so the shadows the centred layout
 				// needs over video only muddy it.
@@ -911,10 +928,16 @@ const MEASURE_COPY = `(() => {
 				// share of the viewport, so the column tracked the screen rather than the
 				// text: at 2560 it was 848px of black around 432px of copy.
 				//
-				// THE FOOTAGE IS AS TALL AS THE FOLD ALLOWS: 16:9 of its width, capped only
-				// by `--hero-budget`, which already keeps the next section in view.
+				// THE FOOTAGE GIVES WAY BEFORE THE HEADLINE DOES. 16:9 of its width, but it stops
+				// `--hero-footage-reveal` short of the fold, 100px to the headline's 56: the logo
+				// strip under the hero (99px at these widths) whole, where the headline's fold keeps
+				// only part of it in view. A band off the footage's top and bottom costs nothing a
+				// smaller headline would, so the footage pays for the strip: about 5% of the frame
+				// at 1440x780, 13% at 1920x960 (8% before). Where the copy is the taller of the two
+				// (1024-1280, and any short screen) the row is the copy's and nothing changes.
 				@media #{$hero-split} {
 					grid-template-columns: auto 1fr;
+					--hero-footage-reveal: 100px;
 
 					// THE HEADLINE BY HEIGHT, NOT WIDTH. 48, unless the screen is too short for
 					// the copy and the peek together; only then does it give, and only as much as
@@ -952,7 +975,21 @@ const MEASURE_COPY = `(() => {
 						// narrowing it.
 						width: calc(100% + var(--reach));
 						margin-left: calc(-1 * var(--reach));
-						max-height: var(--hero-budget);
+						// Short of the footage's own fold (above), but never shorter than the copy
+						// beside it (`--hero-copy-h`, measured, which includes the same header
+						// clearance): capped under a copy-tall row, the panel would leave a band of
+						// black beneath it.
+						max-height: max(
+							calc(100svh - var(--promo-h, 0px) - var(--hero-footage-reveal) - var(--home-header-h, #{$header-height})),
+							calc(var(--hero-copy-h, 0px) - var(--home-header-h, #{$header-height}))
+						);
+						// The footage starts 2px inside its box, poster and video alike, so the
+						// fade's own edge is the only edge there. The box's left falls on a
+						// fractional pixel, and two anti-aliased edges on one pixel, the footage's
+						// and the fade's, left a faint column of footage the black did not cover.
+						// 2px under solid black are never missed.
+						padding-left: 2px;
+						background-clip: content-box;
 
 						// The wash becomes the edge (see `hero-edge-fade`). The grain above it is
 						// off; if it comes back it will not fade with the edge.
@@ -962,6 +999,8 @@ const MEASURE_COPY = `(() => {
 						}
 
 						:global(video) {
+							left: 2px;
+							width: calc(100% - 2px);
 							object-position: center;
 						}
 					}

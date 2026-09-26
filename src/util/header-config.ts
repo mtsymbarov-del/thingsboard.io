@@ -18,6 +18,8 @@ export interface HeaderConfig {
 	cta: HeaderCta;
 	showSearch: boolean;
 	showThemeToggle: boolean;
+	/** `transparent` only: the bar it scrolls to, from the top (see `HeaderScrollWatch`). */
+	scrolledAtTop: boolean;
 }
 
 export interface HeaderConfigInput {
@@ -26,6 +28,7 @@ export interface HeaderConfigInput {
 	forceLight?: boolean;
 	showSearch?: boolean;
 	showThemeToggle?: boolean;
+	scrolledAtTop?: boolean;
 }
 
 // Per-variant defaults; only `solid-shadow` defaults to the `marketing` CTA.
@@ -52,5 +55,6 @@ export function resolveHeaderConfig(input: HeaderConfigInput = {}): HeaderConfig
 		cta,
 		showSearch: input.showSearch ?? defaults.showSearch,
 		showThemeToggle,
+		scrolledAtTop: input.scrolledAtTop ?? false,
 	};
 }

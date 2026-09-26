@@ -19,7 +19,7 @@ interface Props {
 }
 
 const { gitHubPlatform, headerConfig, homeNav = false } = Astro.props;
-const { variant, cta, showSearch, showThemeToggle } = headerConfig;
+const { variant, cta, showSearch, showThemeToggle, scrolledAtTop } = headerConfig;
 
 // Ship the scroll-flip script only on the variants that go transparent.
 const needsScrollState = variant === 'transparent' || variant === 'transparent-hover';
@@ -139,7 +139,7 @@ const needsScrollState = variant === 'transparent' || variant === 'transparent-h
 	)
 }
 
-{needsScrollState && <HeaderScrollWatch />}
+{needsScrollState && <HeaderScrollWatch hold={scrolledAtTop} />}
 
 <script>
 	import { lockScroll, unlockScroll } from '@util/scroll-lock';

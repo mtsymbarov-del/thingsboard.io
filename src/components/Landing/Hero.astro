@@ -77,7 +77,19 @@ interface Props {
 		mp4?: string;
 		webm?: string;
 		poster?: string;
+		/**
+		 * Phones play it too. Otherwise they keep the still, as a tablet or desktop on Save-Data or
+		 * a 2G connection always does.
+		 */
+		phones?: boolean;
 	};
+	/**
+	 * `split` panel only: the footage's shape, still and video alike, as `width / height`, where it
+	 * is not 16:9. Stacked from 600, the panel takes it, so the footage shows whole rather than
+	 * trimmed to 16:9 by `cover`. Side by side the panel's shape is the fold's, and on a phone the
+	 * footage is behind the copy; neither is affected.
+	 */
+	footageRatio?: string;
 	/**
 	 * Custom achievement override (if not using default)
 	 */
@@ -110,6 +122,7 @@ const {
 	backgroundImage = '/images/hero/tb-cover.webp',
 	backgroundImageMobile,
 	videoBackground,
+	footageRatio,
 	achievement,
 	layout = 'center',
 	panel = true,
@@ -189,9 +202,10 @@ const MEASURE_COPY = `(() => {
 				class="video-cover"
 				style={`--hero-bg: url('${backgroundImage}')${
 					backgroundImageMobile ? `; --hero-bg-mobile: url('${backgroundImageMobile}')` : ''
-				}`}
+				}${footageRatio ? `; --hero-footage-ratio: ${footageRatio}` : ''}`}
 				data-video-mp4={videoBackground?.mp4}
 				data-video-webm={videoBackground?.webm}
+				data-video-phones={videoBackground?.phones ? '' : undefined}
 			/>
 		)
 	}
@@ -270,6 +284,7 @@ const MEASURE_COPY = `(() => {
 
 <style lang="scss">
 	@use 'sass:math';
+	@use 'sass:list';
 	@use 'sass:string';
 	@use '../../styles/variables' as *;
 
@@ -279,16 +294,20 @@ const MEASURE_COPY = `(() => {
 	// off-screen on every frame, where an overlay is one more layer.
 	//
 	// Eased, not linear: a straight ramp has a visible start and end — the eye reads its two
-	// corners as bands — so the stops follow a smoothstep, 3t² − 2t³, flat at both ends. The
-	// alpha is `1 − (1 − wash) · eased`: solid black at the start, exactly the wash by the end,
-	// and the wash's own number still tunes both.
-	@function hero-edge-fade($length, $steps: 10) {
+	// corners as bands. The stops follow a smootherstep, 6t⁵ − 15t⁴ + 10t³, which is flat in
+	// slope AND in curvature at both ends. The smoothstep before it, 3t² − 2t³ over 10 stops, was
+	// flat in slope only, and its last stop still fell at 0.3 levels a pixel: over a white frame,
+	// where the fade runs the whole range from black to white, the eye read that knee as a line
+	// where the fade ended. 24 stops make the curve a curve rather than a polyline. The alpha is
+	// `1 − (1 − wash) · eased`: solid black at the start, exactly the wash by the end, and the
+	// wash's own number still tunes both.
+	@function hero-edge-fade($length, $steps: 24) {
 		$stops: ();
 		@for $i from 0 through $steps {
 			$t: math.div($i, $steps);
-			$eased: $t * $t * (3 - 2 * $t);
-			$alpha: string.unquote('calc(1 - (1 - var(--hero-video-wash, 0.1)) * #{$eased})');
-			$stops: append($stops, string.unquote('rgba(0, 0, 0, #{$alpha})') ($length * $t), comma);
+			$eased: $t * $t * $t * ($t * ($t * 6 - 15) + 10);
+			$alpha: string.unquote('calc(1 - (1 - var(--hero-video-wash, 0)) * #{$eased})');
+			$stops: list.append($stops, string.unquote('rgba(0, 0, 0, #{$alpha})') ($length * $t), comma);
 		}
 		@return linear-gradient(to right, $stops);
 	}
@@ -580,7 +599,8 @@ const MEASURE_COPY = `(() => {
 			.video-cover {
 				grid-row: 2;
 				width: 100%;
-				aspect-ratio: 16 / 9;
+				// The footage's own shape (`footageRatio`), so stacked from 600 it shows whole.
+				aspect-ratio: var(--hero-footage-ratio, 16 / 9);
 				// Stacked, the panel is the one part of the hero that can afford to give:
 				// the copy above it cannot be cut, so the panel takes the budget instead
 				// and `cover` crops to it. This cannot rescue a viewport too short for the
@@ -592,15 +612,21 @@ const MEASURE_COPY = `(() => {
 				// Base rule parks this at -2 to sit behind a transparent section; the
 				// black background here would swallow it.
 				z-index: 0;
+				// A step more colour. The charts are the footage's point, and at 1.2 they
+				// come up while the navy UI round them, near grey, barely moves. On the
+				// panel rather than the `<video>`, so the still before it plays is graded
+				// the same; the edge fade inside it is black, which saturation leaves be.
+				filter: saturate(1.2);
 
-				// Light wash — enough to seat the footage against the black column
-				// without draining its colour. One number to retune.
+				// No wash: the footage plays at its own brightness. It was 10% black, to
+				// seat the footage against the black column, and it dulled the charts'
+				// colour more than it seated anything. One number to bring it back.
 				&::after {
 					content: '';
 					position: absolute;
 					inset: 0;
 					z-index: 1;
-					background-color: rgba(0, 0, 0, var(--hero-video-wash, 0.1));
+					background-color: rgba(0, 0, 0, var(--hero-video-wash, 0));
 					pointer-events: none;
 				}
 
@@ -622,7 +648,8 @@ const MEASURE_COPY = `(() => {
 
 				// The base rule renders the video at natural size and centres it,
 				// which only works when the box is about as wide as the footage.
-				// Here the panel is already 16:9, so cover fits it exactly.
+				// Here the panel already has the footage's shape, so cover fits it
+				// exactly wherever nothing caps it.
 				:global(video) {
 					top: 0;
 					left: 0;
@@ -841,6 +868,18 @@ const MEASURE_COPY = `(() => {
 
 			// ── THE PANEL ───────────────────────────────────────────────────────────
 			&.split--panel {
+				// THE BRAND LINE FADES DOWN, rather than sitting in flat half white: lighter at the
+				// top and darker toward the bottom, either side of that 0.5, so it sits back as far
+				// as it did. The ramp runs down the line box and the letters fill its middle, so
+				// what shows is nearer 0.58 to 0.42. The headline under it stays plain white. The
+				// logo strip's marks take the same ramp (`CustomersLogo`), as they took the 0.5.
+				#hero-content .tb-title:not(:last-child) {
+					background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38));
+					-webkit-background-clip: text;
+					background-clip: text;
+					color: transparent;
+				}
+
 				// CENTRED ON A PHONE. With the panel under it the copy is the whole width and
 				// nothing sits beside it to hold a left edge against, so it takes the axis
 				// the panel below it already has. Left-aligned it read as a column with the
@@ -864,6 +903,60 @@ const MEASURE_COPY = `(() => {
 
 						:global(.hero-note a) {
 							margin-inline: auto;
+						}
+					}
+				}
+
+				// ON A PHONE THE FOOTAGE IS BEHIND THE COPY, not under it: the panel and the copy
+				// share one cell, and the hero runs to the fold (`--hero-fold`) so the next section
+				// still peeks. Under the copy it was a 16:9 strip 211px tall that a phone reached
+				// only after the whole of the copy. The footage starts under the menu, as it does
+				// side by side.
+				//
+				// THE SCRIM FOLLOWS THE COPY. Measured on the footage's box at 390 and 360, the copy
+				// sits at the same shares of its height: the headline 10-35%, the lede 37-61%, the
+				// buttons 65-74%, the note 79-89%. So the scrim is lightest above the headline, where
+				// there is nothing to read, and darkest under the small type. Over a white frame, the
+				// worst case: the 34px bold headline from 0.62, 6.2:1; the 16px lede on 0.78, 11.7:1;
+				// the note on 0.9. It closes to solid black, where the logo strip carries on. The
+				// lede and the note also take the centred hero's soft halo for type over video,
+				// which darkens only the few pixels round each glyph.
+				@media #{$hero-stack-one} {
+					min-height: var(--hero-fold);
+
+					.video-cover {
+						grid-row: 1;
+						grid-column: 1;
+						align-self: stretch;
+						aspect-ratio: auto;
+						max-height: none;
+						margin-top: var(--home-header-h, #{$header-height});
+
+						&::after {
+							background-color: transparent;
+							background-image: linear-gradient(
+								to bottom,
+								rgba(0, 0, 0, 0.5),
+								rgba(0, 0, 0, 0.62) 10%,
+								rgba(0, 0, 0, 0.78) 36%,
+								rgba(0, 0, 0, 0.8) 62%,
+								rgba(0, 0, 0, 0.85) 74%,
+								rgba(0, 0, 0, 0.9) 80%,
+								rgba(0, 0, 0, 0.9) 90%,
+								#000
+							);
+						}
+					}
+
+					#hero-content {
+						grid-row: 1;
+						grid-column: 1;
+						position: relative;
+						z-index: 1;
+
+						.tb-sub-title,
+						:global(.hero-note) {
+							text-shadow: 0 0 18px rgba(0, 0, 0, 0.66);
 						}
 					}
 				}
@@ -892,8 +985,8 @@ const MEASURE_COPY = `(() => {
 
 					// The footage fills what the copy leaves before the fold (`--hero-copy-h` is
 					// measured, see the script): down to a 30vw band, never a sliver, and up to
-					// the frame's own 16:9, the base `aspect-ratio`, so it is never upscaled
-					// past its shape. Without the script the panel is simply 16:9.
+					// the footage's own shape, the base `aspect-ratio`, so it is never upscaled
+					// past it. Without the script the panel is simply that shape.
 					.video-cover {
 						max-height: max(30vw, calc(var(--hero-fold) - var(--hero-copy-h, 0px)));
 					}
@@ -960,6 +1053,11 @@ const MEASURE_COPY = `(() => {
 
 						grid-column: 2;
 						grid-row: 1;
+						// 16:9 whatever the footage's shape. The fold and the copy set this box's
+						// height, and its width is the column's, so the footage is trimmed to fit
+						// either way; the footage's own shape here would only move the hero's
+						// height off the fold it was set to.
+						aspect-ratio: 16 / 9;
 						// `stretch` still sizes the row from the 16:9 hypothetical height, so the
 						// frame stays uncropped whenever the copy column is the shorter of the two.
 						// When it is taller, the panel grows with the row and `cover` trims the
@@ -1131,10 +1229,15 @@ const MEASURE_COPY = `(() => {
 		}
 	});
 
-	// Deferred video background — tablet and up, fast connection only. Phones
-	// keep the still poster: the panel is there at every width, only the video
-	// is withheld, so the composition never changes shape.
+	// Deferred video background — tablet and up, fast connection only, and phones
+	// too where the page asks (`videoBackground.phones`, the cover's
+	// `data-video-phones`). A phone that isn't asked keeps the still poster: the
+	// panel is there at every width, only the video is withheld, so the
+	// composition never changes shape.
 	window.addEventListener('load', () => {
+		const cover = document.querySelector<HTMLElement>('#hero .video-cover');
+		if (!cover) return;
+
 		// `Android.*Mobile` is how Chrome separates Android phones from Android
 		// tablets, which drop the `Mobile` token; iPad is deliberately absent so
 		// tablets qualify. The old list caught both and left every tablet on the
@@ -1142,14 +1245,11 @@ const MEASURE_COPY = `(() => {
 		const isPhone =
 			window.innerWidth < 768 ||
 			/Android.*Mobile|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-		if (isPhone) return;
+		if (isPhone && !('videoPhones' in cover.dataset)) return;
 
 		const conn = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
 		if (conn?.saveData) return;
 		if (conn?.effectiveType === 'slow-2g' || conn?.effectiveType === '2g') return;
-
-		const cover = document.querySelector<HTMLElement>('#hero .video-cover');
-		if (!cover) return;
 
 		const mp4 = cover.dataset.videoMp4;
 		const webm = cover.dataset.videoWebm;

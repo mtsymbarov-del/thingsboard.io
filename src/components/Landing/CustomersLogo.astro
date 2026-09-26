@@ -282,17 +282,23 @@ const rowVars = [
 
 			// Plain white: `brightness(0)` flattens each mark to black and `invert(1)` takes
 			// it to white — the per-product tints land on light grey here. So the only
-			// variable is how far a mark sits back from the strip, and opacity alone carries
-			// that, which keeps every mark the same hue at rest and on hover.
+			// variable is how far a mark sits back from the strip, and a mask carries that,
+			// which keeps every mark the same hue at rest and on hover.
+			//
+			// The mask is the hero's brand line's ramp, 0.62 at the top to 0.38 at the
+			// bottom, down each mark's own height as the word's runs down its line: the two
+			// muted things bracketing the hero stay one treatment, as they were at a flat 0.5.
+			// A mask rather than an opacity because it is a ramp; hover lifts it to full white.
 			img {
 				filter: brightness(0) invert(1);
-				opacity: 0.5;
-				transition: opacity 0.18s ease;
+				-webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.38));
+				mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.38));
 			}
 
 			.customers-logo__item:hover img,
 			.customers-logo__item:focus-visible img {
-				opacity: 1;
+				-webkit-mask-image: none;
+				mask-image: none;
 			}
 		}
 	}

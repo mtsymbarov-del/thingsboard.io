@@ -63,16 +63,19 @@ import { heroLcpPreload } from '@util/lcp-preload';
 // layout's panel is landscape everywhere, so that crop lost most of its height
 // to `cover` and read as a fragment of a dashboard.
 //
-// The dashboards tour is 1920x924, wider than the panel, so `cover` trims its
-// sides. Of its width, 98% shows at 1920x960, 89% at 1440x780, 85% at 1280x680,
-// 86% on a phone (the still), and 60% at 1024x698, where the copy beside it
-// makes the panel tall and narrow. tb-cover2, the 16:9 video before it, is kept
-// on /internal/sections/hero/.
+// The dashboards tour is 1920x924, wider than 16:9. Stacked from 600 (portrait
+// tablets), the panel takes that shape (`HERO_FOOTAGE_RATIO`) and shows it
+// whole; on a phone it plays behind the copy, to the fold. Side by side the panel's shape is the fold's, so `cover` trims its
+// sides: of its width, 98% shows at 1920x960, 89% at 1440x780, 85% at 1280x680,
+// and 60% at 1024x698, where the copy beside it makes the panel tall and narrow.
+// tb-cover2, the 16:9 video before it, is kept on /internal/sections/hero/.
 const HERO_BACKGROUND = '/images/hero/horizontal-slider.webp';
+const HERO_FOOTAGE_RATIO = '1920 / 924';
 ---
 
 <BaseLayout
 	headerVariant="transparent"
+	headerScrolledAtTop
 	forceLightTheme
 	title="ThingsBoard - The all-in-one IoT platform"
 	description="ThingsBoard is an open-source IoT platform for device management, data collection, processing, and visualization for your IoT projects."
@@ -104,7 +107,10 @@ const HERO_BACKGROUND = '/images/hero/horizontal-slider.webp';
 		videoBackground={{
 			webm: '/videos/horizontal-slider.webm',
 			mp4: '/videos/horizontal-slider.mp4',
+			// 2.3 MB of VP9: small enough to play behind the phone copy too.
+			phones: true,
 		}}
+		footageRatio={HERO_FOOTAGE_RATIO}
 	>
 		<p class="header-animation hero-note">
 			Evaluating for a large deployment?
@@ -471,6 +477,19 @@ const HERO_BACKGROUND = '/images/hero/horizontal-slider.webp';
 		transition-duration: 0.1s;
 	}
 
+	// THE BAR IS WHITE FROM THE TOP (`headerScrolledAtTop`): its scrolled state, held,
+	// over a hero that still clears it as it would a transparent one. The rules for
+	// the transparent bar below stay for the hero sandbox's dark-menu candidate,
+	// which lets go of the hold; on this page as it ships none of them match.
+	//
+	// The page's edge inset, for the bar, is the hero copy's: `page-inset(20px)`
+	// where the header's own floor is 24. The two agree from 800 up, and below it
+	// the logo stood 4px right of the headline (at 600) and the Menu button 4px in
+	// from the copy's right edge.
+	:root header.header {
+		--tb-bar-inset: #{page-inset(20px)};
+	}
+
 	// The transparent bar gets a scrim rather than nothing. It spans both halves
 	// of the split hero — the black text column and the video panel — and over
 	// the footage the nav had no ground of its own, so its legibility changed
@@ -493,8 +512,12 @@ const HERO_BACKGROUND = '/images/hero/horizontal-slider.webp';
 		height: 50px;
 		width: 175px;
 
+		// 191, not 215: the art is 168x44, so 50px tall it is 191 wide. In a 215 box
+		// `contain` centred it 12px in, and the header's nudge for the art's own left
+		// padding (-3.571% of the box, `HeaderContent`) is only right when the box is
+		// the art's width. Together they left the mark 11px right of the headline.
 		@media screen and (min-width: 1025px) {
-			width: 215px;
+			width: 191px;
 		}
 
 		@media screen and (min-width: 1281px) and (max-width: 1599px) {

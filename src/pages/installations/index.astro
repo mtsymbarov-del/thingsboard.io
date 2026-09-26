@@ -277,9 +277,12 @@ const nameParts = (name: string, highlight?: string) => {
 
 	// The way in on the left, the ways in on the right; one column once the row is too narrow for
 	// both to keep a reading width.
+	// The way in takes the larger share (13 to 10, asked 2026-09-27 from five to six): 520 of the
+	// 920 the gap leaves, which holds a product's button and its two links on one row — 497 for
+	// On-premises, the widest set — and the panel of chips beside it wraps without complaint.
 	.install__grid {
 		display: grid;
-		grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+		grid-template-columns: minmax(0, 13fr) minmax(0, 10fr);
 		gap: $spacing-8 $spacing-10;
 		align-items: start;
 
@@ -301,7 +304,7 @@ const nameParts = (name: string, highlight?: string) => {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: $spacing-3 $spacing-6;
+		gap: $spacing-3 $spacing-4;
 		margin-top: $spacing-6;
 	}
 

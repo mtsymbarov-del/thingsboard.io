@@ -11,7 +11,7 @@ import { kv } from '@root/pages/internal/_key-visuals';
  *
  * NEW WITH THE RUNNING ORDERS (2026-09-26, reworked 09-27): two ISO seals with SSO and 2FA, the
  * monolith over the cluster in `ScaleDuo`'s squares and pulse, and the GitHub tile with the star
- * count. One direction: the band is judged on the homepage in its order, and here at every width.
+ * count. CANDIDATE 2026-09-27: `drawings="stages"` (`TrustVisualStages`), under the shipping one.
  */
 ---
 
@@ -23,6 +23,15 @@ import { kv } from '@root/pages/internal/_key-visuals';
 		shipping
 		name="Three cards"
 		note="Shipping in A and B · ISO seals with SSO and 2FA, the monolith over the cluster with its pulse, the GitHub tile and its stars; white cards on a white-to-indigo ground"
+	/>
+
+	<Variant
+		visual={kv('trust')}
+		component={TrustBand}
+		props={{ drawings: 'stages' }}
+		bleed
+		name="One topology at a time"
+		note="candidate · the indigo shield beside white ISO seals, no SSO or 2FA; scale as monolith, then hybrid, then the cluster scaling out, with devices, a three-step chart and each stage's stores lit; the repo as GitHub shows it, the ThingsBoard mark as its org"
 	/>
 </VisualPage>
 

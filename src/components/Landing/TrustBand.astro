@@ -1,6 +1,7 @@
 ---
 import { Icon } from 'astro-icon/components';
 import TrustVisual from '@components/Landing/TrustVisual.astro';
+import TrustVisualStages from '@components/Landing/TrustVisualStages.astro';
 import { TRUST_COPY, TRUST_POINTS } from '@data/home-trust';
 
 /**
@@ -18,6 +19,18 @@ import { TRUST_COPY, TRUST_POINTS } from '@data/home-trust';
  * (`:root section:not(...) { background: none }` in `index.astro`, (0,3,1)), which a scoped rule
  * here cannot outrank without an id; a div is simply not in that rule's reach.
  */
+
+interface Props {
+	/**
+	 * Which drawings open the cards. `shipping` — `TrustVisual`, the homepage's. `stages` — the
+	 * candidate `TrustVisualStages` (2026-09-27): the shield with the seals, scale one topology at a
+	 * time, and the repo as GitHub shows it.
+	 */
+	drawings?: 'shipping' | 'stages';
+}
+
+const { drawings = 'shipping' } = Astro.props;
+const Drawing = drawings === 'stages' ? TrustVisualStages : TrustVisual;
 ---
 
 <section id="trust" class="trust" aria-labelledby="trust-title">
@@ -29,7 +42,7 @@ import { TRUST_COPY, TRUST_POINTS } from '@data/home-trust';
 					TRUST_POINTS.map((p) => (
 						<li class="trust__item">
 							<div class="trust__visual">
-								<TrustVisual kind={p.kind} />
+								<Drawing kind={p.kind} />
 							</div>
 							<h3 class="trust__name">{p.title}</h3>
 							<p class="trust__text">{p.body}</p>

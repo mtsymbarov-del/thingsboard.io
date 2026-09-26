@@ -93,3 +93,50 @@ export const TRUST_VISUAL_LABELS: Record<Exclude<TrustKind, 'open'>, string> = {
 	security: 'Certified to ISO 27001 and ISO 9001, with single sign-on and two-factor sign-in.',
 	scale: 'Two ways to run it: a monolith on PostgreSQL, Citus or Cassandra, and a cluster that adds Kafka and Valkey.',
 };
+
+// --- the stages direction (`TrustBand drawings="stages"`, a candidate, 2026-09-27) --------------
+
+/**
+ * Scale as ONE TOPOLOGY AT A TIME, growing: the monolith, then hybrid storage, then the cluster, each
+ * with the devices it is for and the stores it lights. The ranges are the user's brief, and only one
+ * of them is backed here:
+ * - 10K–1M for hybrid matches benchmark E, 1M devices on one instance with Cassandra (see
+ *   `@data/scale-visual`, which calls the mode "Hybrid storage").
+ * - 1–10K for the monolith on PostgreSQL alone has no source in the docs' recommendations yet.
+ * - "Up to 5M" for the cluster is thingsboard.one's "5+ million", which this repo does not benchmark;
+ *   the Scale row says "Any size". Confirm both before this direction ships.
+ */
+export interface TrustScaleStage {
+	mode: string;
+	devices: string;
+	/** The mode's hue: the cells, its name, its bar. */
+	hue: string;
+	/** Cells lit out of four; more than one lights in turn, the cluster scaling out. */
+	cells: number;
+	/** The stores this stage lights in the one row of marks; the rest stay dim. */
+	stores: string[];
+}
+
+export const TRUST_SCALE_STAGES: TrustScaleStage[] = [
+	{
+		mode: 'Monolith',
+		devices: '1–10K devices',
+		hue: 'var(--color-primary, #3d50f5)',
+		cells: 1,
+		stores: ['PostgreSQL'],
+	},
+	{ mode: 'Hybrid', devices: '10K–1M devices', hue: '#007c7b', cells: 1, stores: ['Cassandra'] },
+	{
+		mode: 'Cluster',
+		devices: 'Up to 5M devices',
+		hue: 'var(--color-product-gw, #6d28d9)',
+		cells: 4,
+		stores: ['Citus', 'Kafka', 'Valkey'],
+	},
+];
+
+export const TRUST_STAGES_LABELS = {
+	security: 'Certified to ISO 27001 and ISO 9001.',
+	scale:
+		'As it grows: a monolith on PostgreSQL for 1 to 10 thousand devices, hybrid storage with Cassandra up to a million, and a cluster with Citus, Kafka and Valkey up to 5 million.',
+};

@@ -1,0 +1,610 @@
+---
+import { Icon } from 'astro-icon/components';
+import { TRUST_CERTS, TRUST_REPO, TRUST_SCALE_STAGES, TRUST_STAGES_LABELS, type TrustKind } from '@data/home-trust';
+import { GITHUB_STARS } from '@data/github-stars';
+import { SCALE_LOGOS, SCALE_MODES } from '@data/scale-visual';
+import { inkedMark } from '@util/tb-mark';
+
+/**
+ * CANDIDATE (2026-09-27): the trust band's drawings as `TrustBand drawings="stages"`, beside the
+ * shipping `TrustVisual`, never an edit to it.
+ *
+ *   security  the shield back, in the brand's indigo, beside two white ISO seals; no SSO or 2FA
+ *   scale     ONE TOPOLOGY AT A TIME, growing: monolith, then hybrid storage, then the cluster, each
+ *             with its devices, its bar in a three-step chart, and its stores lit in the one row
+ *   open      the repo as GitHub shows it: the ThingsBoard mark as the org's avatar, the repo's name
+ *             as the link, and the star count under it
+ *
+ * THE SCALE LOOP is 9s, 3s a stage, each stage dissolving into the next. The monolith and hybrid
+ * light one cell of four — hybrid is still one instance, only its storage changes — and the cluster
+ * lights one, then the other three in turn, scaling out. The chart's bars step up with the devices;
+ * the stage showing is the bar in its hue. Without motion the drawing rests on the cluster.
+ *
+ * 260 units wide and 112 tall, the band's other drawings' box. Type floor 13 units (the repo's
+ * "Public" pill, as small as GitHub sets it), so R = 260 / 13 = 20: ~15px on a phone.
+ */
+
+interface Props {
+	kind: TrustKind;
+}
+
+const { kind } = Astro.props;
+
+const NATIVE = 260;
+const BODY_H = 112;
+
+// --- scale ------------------------------------------------------------------------------------
+const CELLS = 4;
+const S = 24;
+const G = S / 5;
+const STRIP_W = CELLS * S + (CELLS - 1) * G;
+const T = S / 3;
+const BLEED = S / 15;
+const r2 = (v: number) => +v.toFixed(2);
+const at = (n: number) => r2(n * (S + G));
+const STORES = SCALE_MODES[SCALE_MODES.length - 1].stack;
+/** Which stage lights each store: every store is lit in exactly one. */
+const storeStage = (store: string) => TRUST_SCALE_STAGES.findIndex((st) => st.stores.includes(store));
+// The chart: three bars, one per stage, rising with the devices — heights, not a scale, since the
+// ranges are orders of magnitude apart.
+const BAR = { w: 12, gap: 6, h: [16, 32, 52] };
+const BARS_W = BAR.w * 3 + BAR.gap * 2;
+
+// --- openness ---------------------------------------------------------------------------------
+const stars = GITHUB_STARS[TRUST_REPO];
+const starsShort = stars === undefined ? undefined : `${Math.floor(stars / 100) / 10}k`;
+const repoHref = `https://github.com/${TRUST_REPO}`;
+const [owner, repo] = TRUST_REPO.split('/');
+---
+
+<div class="trs-fit">
+	{
+		kind === 'open' ? (
+			<div
+				class="trs"
+				style={`--trs-u: min(1.15px, calc(100cqw / ${NATIVE})); --trs-native: ${NATIVE}; --trs-body-h: ${BODY_H}`}
+			>
+				<a
+					class="trs__repo"
+					href={repoHref}
+					aria-label={`${TRUST_REPO} on GitHub${starsShort ? `, ${starsShort} stars` : ''}`}
+				>
+					<span class="trs__repo-head" aria-hidden="true">
+						<span class="trs__avatar" set:html={inkedMark()} />
+						<span class="trs__repo-name">
+							<span class="trs__owner">{owner}</span>
+							<span class="trs__slash">/</span>
+							<strong class="trs__name">{repo}</strong>
+						</span>
+					</span>
+					<span class="trs__repo-foot" aria-hidden="true">
+						{starsShort && (
+							<span class="trs__star-btn">
+								<Icon name="tabler:star" class="trs__star" />
+								Star
+								<span class="trs__counter">{starsShort}</span>
+							</span>
+						)}
+						<span class="trs__public">Public</span>
+					</span>
+				</a>
+			</div>
+		) : (
+			<div
+				class:list={['trs', `trs--${kind}`]}
+				role="img"
+				aria-label={TRUST_STAGES_LABELS[kind]}
+				style={`--trs-u: min(1.15px, calc(100cqw / ${NATIVE})); --trs-native: ${NATIVE}; --trs-body-h: ${BODY_H}; --trs-strip-w: ${r2(STRIP_W)}; --trs-bars-w: ${BARS_W}`}
+			>
+				{kind === 'security' ? (
+					<div class="trs__pair" aria-hidden="true">
+						<span class="trs__shield">
+							<Icon name="tabler:shield-lock-filled" />
+						</span>
+						<ul class="trs__seals" role="list">
+							{TRUST_CERTS.map((number) => (
+								<li class="trs__seal">
+									<span class="trs__seal-body">ISO</span>
+									<span class="trs__seal-number">{number}</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				) : (
+					<div class="trs__scale" aria-hidden="true">
+						<div class="trs__stack-cell trs__heads">
+							{TRUST_SCALE_STAGES.map((st, i) => (
+								<p class={`trs__layer trs__stage-${i} trs__head`} style={`--trs-hue: ${st.hue}`}>
+									<span class="trs__mode">{st.mode}</span>
+									<span class="trs__devices">{st.devices}</span>
+								</p>
+							))}
+						</div>
+						<div class="trs__stack-cell trs__strips">
+							{TRUST_SCALE_STAGES.map((st, i) => (
+								<svg
+									class={`trs__layer trs__stage-${i} trs__strip`}
+									viewBox={`0 0 ${r2(STRIP_W)} ${r2(S)}`}
+									style={`--trs-hue: ${st.hue}`}
+								>
+									{Array.from({ length: CELLS }, (_, n) => (
+										<rect class="trs__cell" x={at(n)} y={0} width={r2(S)} height={r2(S)} rx={r2(S / 3)} />
+									))}
+									{Array.from({ length: st.cells - 1 }, (_, n) => (
+										<rect
+											class={`trs__link trs__grow-${n + 1}`}
+											x={r2(at(n) + S - BLEED)}
+											y={r2((S - T) / 2)}
+											width={r2(G + BLEED * 2)}
+											height={r2(T)}
+										/>
+									))}
+									{Array.from({ length: st.cells }, (_, n) => (
+										<rect
+											class:list={['trs__lit', n > 0 && `trs__grow-${n}`]}
+											x={at(n)}
+											y={0}
+											width={r2(S)}
+											height={r2(S)}
+											rx={r2(S / 3)}
+										/>
+									))}
+								</svg>
+							))}
+						</div>
+						<svg class="trs__bars" viewBox={`0 0 ${BARS_W} ${BAR.h[2]}`}>
+							{TRUST_SCALE_STAGES.map((st, i) => {
+								const x = i * (BAR.w + BAR.gap);
+								const h = BAR.h[i];
+								return (
+									<g style={`--trs-hue: ${st.hue}`}>
+										<rect class="trs__bar" x={x} y={BAR.h[2] - h} width={BAR.w} height={h} rx="3" />
+										<rect
+											class={`trs__bar-lit trs__stage-${i}`}
+											x={x}
+											y={BAR.h[2] - h}
+											width={BAR.w}
+											height={h}
+											rx="3"
+										/>
+									</g>
+								);
+							})}
+						</svg>
+						<ul class="trs__logos" role="list">
+							{STORES.map((store) => (
+								<li class:list={[`trs__logo--s${storeStage(store)}`, store === 'Cassandra' && 'is-lens']}>
+									<Icon name={SCALE_LOGOS[store]} />
+								</li>
+							))}
+						</ul>
+					</div>
+				)}
+			</div>
+		)
+	}
+</div>
+
+<style lang="scss">
+	@use 'sass:math';
+	@use '../../styles/variables' as *;
+
+	@function u($n) {
+		@return calc(#{$n} * var(--u));
+	}
+
+	.trs-fit {
+		container-type: inline-size;
+	}
+
+	.trs {
+		--u: var(--trs-u);
+		--trs-indigo: var(--color-primary, #3d50f5);
+		--trs-tile-shadow:
+			0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.14),
+			0 #{u(8)} #{u(16)} #{u(-6)} rgba(var(--color-shadow-ui-rgb), 0.38);
+
+		width: 100%;
+		max-width: u(var(--trs-native));
+		height: u(var(--trs-body-h));
+	}
+
+	// --- security: the shield, then two seals ------------------------------------------------
+
+	.trs__pair {
+		display: flex;
+		align-items: center;
+		gap: u(12);
+		height: u(72);
+		margin-top: u(6);
+	}
+
+	// The brand's indigo, lit from the top as the tiles are: the page's own colour for "the platform
+	// vouches for this", where the green of the other direction read as a checkmark.
+	.trs__shield {
+		display: flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: u(72);
+		height: u(72);
+		border-radius: 23%;
+		color: #fff;
+		background: linear-gradient(180deg, #5767f7 0%, #2d3bcc 100%);
+		box-shadow: var(--trs-tile-shadow);
+
+		:global([data-icon]) {
+			width: u(40);
+			height: u(40);
+		}
+	}
+
+	.trs__seals {
+		display: flex;
+		gap: u(8);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	// White seals with an indigo ring inside the edge, so the shield is the one solid thing and the
+	// certificates read as the badges pinned beside it.
+	.trs__seal {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: u(64);
+		height: u(64);
+		margin: 0;
+		border-radius: 50%;
+		background: var(--color-bg-surface, #fff);
+		box-shadow: var(--trs-tile-shadow);
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset: u(4);
+			border: max(1px, #{u(1.5)}) solid color-mix(in srgb, var(--trs-indigo) 40%, transparent);
+			border-radius: 50%;
+		}
+	}
+
+	.trs__seal-body {
+		margin-right: -0.14em;
+		font-size: u(13);
+		font-weight: $font-weight-medium;
+		line-height: u(15);
+		letter-spacing: 0.14em;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	// 16 in the 64 seal: "27001" at 17 touched the ring inside its edge.
+	.trs__seal-number {
+		font-size: u(16);
+		font-weight: $font-weight-bold;
+		line-height: u(20);
+		font-variant-numeric: tabular-nums;
+		color: var(--trs-indigo);
+	}
+
+	// --- openness: the repo as GitHub shows it --------------------------------------------------
+
+	// GitHub's own greys, blue and 6px corner, and its system font stack, so it reads as their UI.
+	// The page's `#overflow li a` makes every list link brand blue; each part names its own colour.
+	.trs__repo {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: u(12);
+		box-sizing: border-box;
+		width: 100%;
+		margin-top: u(6);
+		padding: u(12) u(14);
+		border: 1px solid #d0d7de;
+		border-radius: u(6);
+		background: #fff;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+		text-decoration: none;
+		box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+		transition: border-color 150ms ease-out;
+
+		&:hover {
+			border-color: #8c959f;
+
+			.trs__name {
+				text-decoration: underline;
+			}
+		}
+
+		&:focus-visible {
+			outline: 2px solid #0969da;
+			outline-offset: 2px;
+		}
+	}
+
+	// The name alone on the first line: at 260 it and the "Public" pill do not fit one, so the pill
+	// goes under it, beside the star count.
+	.trs__repo-head,
+	.trs__repo-foot {
+		display: flex;
+		align-items: center;
+		gap: u(8);
+		min-width: 0;
+	}
+
+	// The org's avatar: GitHub squares an organisation's, where a person's is round.
+	.trs__avatar {
+		display: flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: u(28);
+		height: u(28);
+		border: 1px solid #d0d7de;
+		border-radius: u(6);
+		background: #fff;
+
+		:global(svg) {
+			width: u(20);
+			height: u(20);
+		}
+	}
+
+	.trs__repo-name {
+		overflow: hidden;
+		font-size: u(15);
+		line-height: u(22);
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		color: #0969da;
+	}
+
+	.trs__slash {
+		margin-inline: u(3);
+		color: #59636e;
+	}
+
+	.trs__name {
+		font-weight: 600;
+	}
+
+	.trs__public {
+		flex: none;
+		padding: 0 u(7);
+		border: 1px solid #d0d7de;
+		border-radius: 2em;
+		font-size: u(13);
+		font-weight: 500;
+		line-height: u(20);
+		color: #59636e;
+	}
+
+	.trs__star-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: u(6);
+		height: u(30);
+		padding: 0 u(8) 0 u(10);
+		border: 1px solid #d0d7de;
+		border-radius: u(6);
+		background: #f6f8fa;
+		font-size: u(14);
+		font-weight: 500;
+		color: #25292e;
+	}
+
+	.trs__star {
+		width: u(16);
+		height: u(16);
+		color: #59636e;
+	}
+
+	.trs__counter {
+		padding: 0 u(6);
+		border-radius: 2em;
+		background: rgba(129, 139, 152, 0.16);
+		font-size: u(13);
+		font-weight: 600;
+		line-height: u(18);
+	}
+
+	// --- scale: one topology at a time --------------------------------------------------------
+
+	.trs__scale {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) u(var(--trs-bars-w));
+		grid-template-rows: u(20) u(24) auto;
+		column-gap: u(16);
+		row-gap: u(8);
+		padding-top: u(6);
+	}
+
+	// The three stages share each cell and take turns in it.
+	.trs__stack-cell {
+		display: grid;
+		grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+		min-width: 0;
+	}
+
+	.trs__layer {
+		grid-area: 1 / 1;
+		opacity: 0;
+	}
+
+	.trs__heads {
+		grid-area: 1 / 1;
+	}
+
+	.trs__strips {
+		grid-area: 2 / 1;
+	}
+
+	.trs__head {
+		display: flex;
+		align-items: baseline;
+		gap: u(10);
+		margin: 0;
+		white-space: nowrap;
+	}
+
+	.trs__mode {
+		font-size: u(16);
+		font-weight: $font-weight-medium;
+		line-height: u(20);
+		color: var(--trs-hue);
+	}
+
+	.trs__devices {
+		font-size: u(14);
+		line-height: u(20);
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.trs__strip {
+		display: block;
+		width: u(var(--trs-strip-w));
+		max-width: none;
+		height: auto;
+		overflow: visible;
+	}
+
+	.trs__cell {
+		fill: color-mix(in srgb, var(--trs-hue) 14%, #fff);
+	}
+
+	.trs__lit {
+		fill: var(--trs-hue);
+	}
+
+	.trs__link {
+		fill: var(--trs-hue);
+		fill-opacity: 0.45;
+	}
+
+	.trs__bars {
+		grid-area: 1 / 2 / 3 / 3;
+		align-self: end;
+		display: block;
+		width: 100%;
+		max-width: none;
+		height: auto;
+	}
+
+	.trs__bar {
+		fill: color-mix(in srgb, var(--trs-hue) 14%, #fff);
+	}
+
+	.trs__bar-lit {
+		fill: var(--trs-hue);
+		opacity: 0;
+	}
+
+	.trs__logos {
+		grid-column: 1 / -1;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin: u(8) 0 0;
+		padding: 0;
+		list-style: none;
+
+		li {
+			display: flex;
+			margin: 0;
+			opacity: 0.25;
+		}
+
+		:global([data-icon]) {
+			width: u(32);
+			height: u(32);
+			color: var(--color-text, #17181c);
+		}
+
+		.is-lens :global([data-icon]) {
+			transform: scale(1.18);
+		}
+	}
+
+	// AT REST, AND WITHOUT MOTION: the cluster — the last stage, the whole picture.
+	.trs__layer.trs__stage-2,
+	.trs__bar-lit.trs__stage-2,
+	.trs__logos li.trs__logo--s2 {
+		opacity: 1;
+	}
+
+	// ── The loop ──────────────────────────────────────────────────────────
+	// Three windows of 3s each. A stage fades in over the first 3% of its window and out over the last
+	// 2%, so each hands to the next in a quick dissolve; its logos light and dim on the same window.
+	// The cluster's cells after the first light in turn inside its own window.
+	$window: math.div(100%, 3);
+
+	@for $i from 0 through 2 {
+		$start: $i * $window;
+		$end: ($i + 1) * $window;
+
+		@keyframes trs-stage-#{$i} {
+			0%,
+			#{$start} {
+				opacity: 0;
+			}
+			#{$start + 3%},
+			#{$end - 2%} {
+				opacity: 1;
+			}
+			#{$end},
+			100% {
+				opacity: 0;
+			}
+		}
+
+		@keyframes trs-logo-#{$i} {
+			0%,
+			#{$start} {
+				opacity: 0.25;
+			}
+			#{$start + 3%},
+			#{$end - 2%} {
+				opacity: 1;
+			}
+			#{$end},
+			100% {
+				opacity: 0.25;
+			}
+		}
+	}
+
+	@for $k from 1 through 3 {
+		@keyframes trs-grow-#{$k} {
+			0%,
+			#{2 * $window + $k * 6%} {
+				opacity: 0;
+			}
+			#{2 * $window + $k * 6% + 3%},
+			100% {
+				opacity: 1;
+			}
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		@for $i from 0 through 2 {
+			.trs__layer.trs__stage-#{$i},
+			.trs__bar-lit.trs__stage-#{$i} {
+				animation: trs-stage-#{$i} 9s linear infinite;
+			}
+
+			.trs__logos li.trs__logo--s#{$i} {
+				animation: trs-logo-#{$i} 9s linear infinite;
+			}
+		}
+
+		@for $k from 1 through 3 {
+			.trs__grow-#{$k} {
+				animation: trs-grow-#{$k} 9s ease-out infinite;
+			}
+		}
+	}
+</style>

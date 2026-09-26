@@ -1,55 +1,36 @@
 ---
 import { Icon } from 'astro-icon/components';
-import { CLOUD_REGIONS } from '@root/pages/internal/_cloud-auth';
+import CloudRegionDialog from '@components/Landing/CloudRegionDialog.astro';
+import type { CloudRegionId } from '@util/cloud-regions';
 
 /**
- * The website's region chooser, for both buttons that lead to Cloud: "Try for free" and "Sign in".
- * Cloud is two sites, `thingsboard.cloud` and `eu.thingsboard.cloud`, with an account on only one,
- * so both buttons have to know the region before they can send anyone anywhere. `flow` picks which
- * button this is; the dialog is the same shape either way.
- *
- * SIGN UP ("Try for free", from the hero): a thin chooser that asks ONE thing, where the data should
- * live, with the two regions as visible cards, the nearest one marked, and self-hosting demoted to a
- * line beneath. No tabs, no product list: tabs would rebuild the `/installations/` hub inside a
- * modal, and the hub is the thing this replaces as the button's destination.
- *
- * SIGN IN (the header's "Sign in"): the same chooser in place of the header's live "Choose your
- * region" dropdown. The question is which region the account is IN, so each card names its host,
- * the one the visitor has been signing in at, and goes to that host's `/login`. The card chosen is
- * remembered on this site, so the next visit marks it "Last visited" and focuses it. As the dropdown
- * does today, it opens in a new tab and the dialog closes behind it.
- *
- * It is a native `<dialog>`, opened with `showModal()`: focus trap, Escape, the backdrop and the
- * top layer come from the browser rather than from a script. Under 560px it becomes a bottom
- * sheet, because a centred card at phone width is a card with 16px either side pretending to be a
- * page.
+ * The website's region chooser on the ground it ships on. The dialog itself is the shipped
+ * `CloudRegionDialog`, rendered here as the site renders it, so the sandbox judges the thing in use
+ * rather than a copy of it; what this file adds is the slice of homepage under the trigger.
  *
  * THE BAND under the trigger is a slice of the homepage's top: for sign-up the hero's black column
  * with its CTA row, for sign-in the header bar above it, so each button is judged on the ground it
  * ships on and the phone frame reads as the top of a phone screen. Type is restated here rather than
  * imported: `Hero.astro` and `HeaderContent.astro` scope their rules to their own markup.
  *
- * WHICH REGION IS "nearest" is the website's geo default (edge: `CF-IPCountry`; client: an `Intl`
- * timezone under `Europe/`). In sign-up it gets the chip and the initial focus, so Enter straight
- * after the click is the one-decision path. In sign-in a remembered region outranks it: where the
- * visitor signed in before is better evidence than where they are now. Nothing navigates on its
- * own: a dialog that opened and left would be the interstitial it is meant to remove.
+ * The root is a `data-cloud-auth-scope`, so a trigger here reaches only the dialog here: two of
+ * these can share a page (the sandbox stacks directions), and each is wired to its own.
  *
- * Two dialogs can share a page (the sandbox stacks directions), so every id is derived from the
- * `id` prop rather than generated.
+ * A region leads to the faked product page under the flow's address (`_CloudPage`) rather than
+ * to Cloud, so the flow can be clicked through here: button, dialog, form.
  */
 interface Props {
 	/** Which button opens it: the hero's "Try for free" or the header's "Sign in". */
 	flow?: 'signup' | 'signin';
 	/** Prefix for the ids the dialog's labelling needs. Distinct per instance on a page. */
 	id?: string;
-	/** The region the geo default chose: chipped and focused first in sign-up. */
-	nearest?: 'us' | 'eu';
+	/** The region marked nearest, pinned so the draft is judged in a known state. */
+	nearest?: CloudRegionId;
 	/**
 	 * Draft only, sign-in: the region marked "Last visited" while this browser has none stored.
 	 * The product marks nothing until a region has been chosen.
 	 */
-	demoLastUsed?: 'us' | 'eu';
+	demoLastUsed?: CloudRegionId;
 	/**
 	 * The cloud glyph on the sign-up trigger. Off by default: a button that opens a chooser holding
 	 * an Install link is not a Cloud button, and the glyph would promise one.
@@ -60,28 +41,22 @@ interface Props {
 const { flow = 'signup', id = 'tfd', nearest = 'us', demoLastUsed, icon = false } = Astro.props;
 
 const signin = flow === 'signin';
-
-// Sign-up notes are the Cloud FAQ's own claim, data "stored in either North America or the EU",
-// and no narrower: the docs name no country or datacentre for either region. Sign-in notes are the
-// hosts, because the address is what a returning user recognises.
-const STORED_IN: Record<string, string> = { us: 'North America', eu: 'the European Union' };
-const REGIONS = CLOUD_REGIONS.map((r) => ({
-	...r,
-	note: signin ? r.host : `Data stored in ${STORED_IN[r.id]}`,
-	href: `https://${r.host}${signin ? '/login' : '/signup'}`,
-}));
+// The triggers keep the shipped fallback href, so the draft is the site's markup, not a stand-in.
+const fallback = `https://thingsboard.cloud/${signin ? 'login' : 'signup'}`;
+// Where a region leads in the prototype: the faked pages under each flow's own address.
+const PROTOTYPE = { signup: '/internal/flows/sign-up/', signin: '/internal/flows/sign-in/' };
 ---
 
-<div class="tfd" data-tfd data-flow={flow} data-nearest={nearest} data-demo-last={demoLastUsed}>
+<div class="tfd" data-tfd data-cloud-auth-scope data-demo-last={demoLastUsed}>
 	<div class:list={['tfd__band', signin && 'tfd__band--signin']}>
 		{
 			signin && (
 				<div class="tfd__header">
 					<span class="tfd__logo">ThingsBoard</span>
 					<span class="tfd__hctas">
-						<button type="button" class="tfd__hbtn tfd__hbtn--outline" data-tfd-open aria-haspopup="dialog">
+						<a class="tfd__hbtn tfd__hbtn--outline" href={fallback} data-cloud-auth="signin">
 							Sign in
-						</button>
+						</a>
 						<span class="tfd__hbtn tfd__hbtn--brand" aria-hidden="true">
 							Try for free
 						</span>
@@ -98,10 +73,10 @@ const REGIONS = CLOUD_REGIONS.map((r) => ({
 			{
 				!signin && (
 					<div class="tfd__ctas">
-						<button type="button" class="tfd__cta tfd__cta--brand" data-tfd-open aria-haspopup="dialog">
+						<a class="tfd__cta tfd__cta--brand" href={fallback} data-cloud-auth="signup">
 							{icon && <Icon name="tabler:cloud-filled" aria-hidden="true" />}
 							Try for free
-						</button>
+						</a>
 						<a class="tfd__cta tfd__cta--outline" href="/installations/">
 							<Icon name="tabler:download" aria-hidden="true" />
 							Install
@@ -112,134 +87,24 @@ const REGIONS = CLOUD_REGIONS.map((r) => ({
 		</div>
 	</div>
 
-	<dialog class="tfd__dlg" aria-labelledby={`${id}-title`} data-tfd-dlg>
-		<div class="tfd__panel">
-			<form method="dialog">
-				<button type="submit" class="tfd__close" aria-label="Close">
-					<Icon name="tabler:x" aria-hidden="true" />
-				</button>
-			</form>
-
-			{
-				/* No glyph: the dialog is about regions, and clouds were everywhere. The sign-up
-				   kicker is the Cloud page's own copy: "Start for free" (a free tier, not a trial)
-				   and "no credit card required". Sign-in needs no pitch. */
-				!signin && <p class="tfd__kicker">Start for free · No credit card required</p>
-			}
-			<h2 class="tfd__title" id={`${id}-title`}>
-				{signin ? 'Sign in to ThingsBoard Cloud' : 'Where should your data live?'}
-			</h2>
-			<p class="tfd__lede">
-				{
-					signin
-						? 'Choose the region your account is in.'
-						: 'Pick the region closest to you. Your account and its data stay there.'
-				}
-			</p>
-
-			<div class="tfd__regions">
-				{
-					REGIONS.map((r) => (
-						<a
-							class="tfd__region"
-							href={r.href}
-							id={`${id}-${r.id}`}
-							data-region={r.id}
-							target={signin ? '_blank' : undefined}
-							rel={signin ? 'noopener noreferrer' : undefined}
-						>
-							<span class="tfd__rname">
-								{r.name}
-								{!signin && r.id === nearest && <span class="tfd__chip">Nearest to you</span>}
-								{signin && (
-									<span class="tfd__chip" data-tfd-last hidden>
-										Last visited
-									</span>
-								)}
-							</span>
-							<span class="tfd__rnote">{r.note}</span>
-							<Icon name="tabler:chevron-right" class="tfd__go" aria-hidden="true" />
-						</a>
-					))
-				}
-			</div>
-
-			<p class="tfd__alt">
-				{
-					signin ? (
-						<>
-							New to ThingsBoard?
-							<a href="https://thingsboard.cloud/signup">
-								Start for free
-								<Icon name="tabler:chevron-right" aria-hidden="true" />
-							</a>
-						</>
-					) : (
-						<>
-							Rather run it yourself?
-							<a href="/installations/">
-								Install on your own servers
-								<Icon name="tabler:chevron-right" aria-hidden="true" />
-							</a>
-						</>
-					)
-				}
-			</p>
-		</div>
-	</dialog>
+	<CloudRegionDialog flow={flow} id={id} nearest={nearest} prototype={PROTOTYPE} />
 </div>
 
 <script>
-	import { onLastUsed, readLastUsed, writeLastUsed } from '@root/pages/internal/_last-used';
+	import { LAST_REGION, readLastRegion } from '@util/cloud-regions';
 
-	// One handler per instance, found by the root rather than by id, so a page holding two of these
-	// (the sandbox does) wires both. Listeners sit on the nodes, which is what lets them survive the
-	// phone frame's trim: `_VisualPage` MOVES the direction's row into an empty body, it does not
-	// clone it.
-
-	document.querySelectorAll<HTMLElement>('[data-tfd]').forEach((root) => {
-		const dlg = root.querySelector<HTMLDialogElement>('[data-tfd-dlg]');
-		const open = root.querySelector<HTMLButtonElement>('[data-tfd-open]');
-		if (!dlg || !open) return;
-		const signin = root.dataset.flow === 'signin';
-		const cards = [...root.querySelectorAll<HTMLAnchorElement>('.tfd__region')];
-
-		// Sign-in: which card carries "Last visited", from the region stored on this site.
-		let last: string | null = null;
-		const paint = (value: string | null) => {
-			last = value;
-			cards.forEach((c) => {
-				const chip = c.querySelector<HTMLElement>('[data-tfd-last]');
-				if (chip) chip.hidden = c.dataset.region !== value;
-			});
-		};
-		if (signin) {
-			paint(readLastUsed('region') ?? root.dataset.demoLast ?? null);
-			// The page's draft controls, and a dialog in another frame, write the same store: follow them.
-			onLastUsed('region', paint);
-			cards.forEach((c) =>
-				c.addEventListener('click', () => {
-					writeLastUsed('region', c.dataset.region!);
-					dlg.close();
-				})
-			);
-		}
-
-		open.addEventListener('click', () => {
-			dlg.showModal();
-			// `showModal` lands on the first focusable, the close button. The likeliest answer takes
-			// the focus instead, so Enter is the whole interaction: in sign-in the remembered region,
-			// otherwise the nearest.
-			const focus = (signin && last) || root.dataset.nearest;
-			cards.find((c) => c.dataset.region === focus)?.focus();
+	// The draft's "Last visited" while this browser has nothing stored: announced, not stored, so
+	// it does not come back as a real memory on the next load. The shipped dialog listens for the
+	// same event its own store fires. Every instance on the page speaks, and the last one wins,
+	// which on the sandbox pages is the only one.
+	// A task later, so it runs after every hoisted script has registered its listeners, whatever
+	// order the bundler emitted them in.
+	setTimeout(() => {
+		document.querySelectorAll<HTMLElement>('[data-tfd][data-demo-last]').forEach((root) => {
+			if (readLastRegion()) return;
+			window.dispatchEvent(new CustomEvent(LAST_REGION.event, { detail: root.dataset.demoLast }));
 		});
-
-		// The panel fills the dialog box, so a click whose target is the dialog element itself can only
-		// have landed on the backdrop.
-		dlg.addEventListener('click', (e) => {
-			if (e.target === dlg) dlg.close();
-		});
-	});
+	}, 0);
 </script>
 
 <style lang="scss">
@@ -255,7 +120,8 @@ const REGIONS = CLOUD_REGIONS.map((r) => ({
 
 	// ---- The hero slice ---------------------------------------------------------------------
 	// The black column, at the hero's own sizes: 44px buttons, 16px labels, the brand fill and
-	// the 35% white rule on the outline, from `Hero.astro`'s split layout.
+	// the 35% white rule on the outline, from `Hero.astro`'s split layout. The dialog's own
+	// styles ship with `CloudRegionDialog`.
 	.tfd__band {
 		display: flex;
 		align-items: center;
@@ -313,6 +179,7 @@ const REGIONS = CLOUD_REGIONS.map((r) => ({
 		font: inherit;
 		font-size: 14px;
 		color: #fff;
+		text-decoration: none;
 		white-space: nowrap;
 	}
 
@@ -423,203 +290,6 @@ const REGIONS = CLOUD_REGIONS.map((r) => ({
 		&:hover {
 			background: rgba(255, 255, 255, 0.14);
 			border-color: rgba(255, 255, 255, 0.55);
-		}
-	}
-
-	// ---- The dialog ---------------------------------------------------------------------------
-	.tfd__dlg {
-		width: min(560px, calc(100vw - 32px));
-		max-width: none;
-		padding: 0;
-		border: 0;
-		border-radius: $radius-xl;
-		background: #fff;
-		color: #17181c;
-		box-shadow:
-			0 1px 2px rgb(23 24 28 / 12%),
-			0 24px 64px rgb(23 24 28 / 24%);
-
-		&::backdrop {
-			background: rgb(23 24 28 / 55%);
-		}
-
-		// A bottom sheet on a phone: full width, the top corners rounded, sat on the bottom edge.
-		@media (max-width: 559px) {
-			width: 100vw;
-			max-height: calc(100svh - 24px);
-			margin: auto 0 0;
-			border-radius: $radius-xl $radius-xl 0 0;
-		}
-	}
-
-	.tfd__panel {
-		position: relative;
-		padding: 32px;
-
-		@media (max-width: 559px) {
-			padding: 24px 16px 32px;
-		}
-	}
-
-	.tfd__close {
-		position: absolute;
-		top: 16px;
-		right: 16px;
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: transparent;
-		color: #5b616e;
-		cursor: pointer;
-
-		[data-icon] {
-			width: 20px;
-			height: 20px;
-		}
-
-		&:hover {
-			background: #f2f4f8;
-			color: #17181c;
-		}
-
-		&:focus-visible {
-			outline: 2px solid $color-brand;
-			outline-offset: 2px;
-		}
-	}
-
-	.tfd__kicker {
-		margin-bottom: 12px;
-		padding-right: 44px;
-		font-size: 13px;
-		font-weight: $font-weight-medium;
-		color: $color-brand;
-	}
-
-	.tfd__title {
-		font-size: 24px;
-		font-weight: $font-weight-bold;
-		line-height: 1.2;
-		margin-bottom: 8px;
-		text-wrap: balance;
-	}
-
-	.tfd__lede {
-		font-size: 15px;
-		line-height: 1.5;
-		color: #5b616e;
-		margin-bottom: 24px;
-	}
-
-	.tfd__regions {
-		display: grid;
-		gap: 12px;
-		margin-bottom: 20px;
-	}
-
-	// One card per region: name over its note, a chevron. No glyph: the names carry the cards,
-	// and the page already has clouds enough. The chip rides on the name's line, so it never takes
-	// a column from the note: the note keeps the card's full width either way.
-	.tfd__region {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		grid-template-rows: auto auto;
-		column-gap: 14px;
-		align-items: center;
-		padding: 16px;
-		border: 1px solid #e2e5ea;
-		border-radius: 12px;
-		color: inherit;
-		text-decoration: none;
-		transition:
-			border-color 0.15s ease,
-			box-shadow 0.15s ease;
-
-		&:hover,
-		&:focus-visible {
-			border-color: $color-brand;
-			box-shadow: 0 0 0 3px rgb(61 80 245 / 15%);
-			outline: none;
-
-			.tfd__go {
-				transform: translateX(2px);
-				color: $color-brand;
-			}
-		}
-	}
-
-	.tfd__rname {
-		grid-column: 1;
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 4px 8px;
-		font-size: 17px;
-		font-weight: $font-weight-bold;
-		line-height: 1.3;
-	}
-
-	.tfd__rnote {
-		grid-column: 1;
-		font-size: 14px;
-		line-height: 1.4;
-		color: #5b616e;
-	}
-
-	.tfd__chip[hidden] {
-		display: none;
-	}
-
-	.tfd__chip {
-		padding: 2px 8px;
-		border-radius: 999px;
-		background: rgb(61 80 245 / 10%);
-		color: $color-brand;
-		font-size: 12px;
-		font-weight: $font-weight-medium;
-		line-height: 1.4;
-		white-space: nowrap;
-	}
-
-	.tfd__go {
-		grid-column: 2;
-		grid-row: 1 / 3;
-		width: 20px;
-		height: 20px;
-		color: #9aa0ab;
-		transition:
-			transform 0.15s ease,
-			color 0.15s ease;
-	}
-
-	// The other route, as a sentence rather than a third card: it is here to be found, not to be
-	// weighed against the two above.
-	.tfd__alt {
-		font-size: 14px;
-		line-height: 1.5;
-		color: #5b616e;
-
-		a {
-			display: inline-flex;
-			align-items: center;
-			gap: 2px;
-			margin-left: 4px;
-			color: #17181c;
-			font-weight: $font-weight-medium;
-			text-decoration: none;
-
-			[data-icon] {
-				width: 16px;
-				height: 16px;
-			}
-
-			&:hover {
-				text-decoration: underline;
-			}
 		}
 	}
 </style>

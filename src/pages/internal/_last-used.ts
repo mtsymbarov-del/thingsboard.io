@@ -8,11 +8,13 @@
  * name, a region id. Storage can be missing or throw (private windows, blocked site data), and then
  * nothing is marked, which is the product's default.
  */
+import { LAST_REGION } from '@util/cloud-regions';
+
 export const LAST_USED = {
 	/** The method this browser last signed up or in with, on a Cloud host. */
 	method: { key: 'tb.cloud.lastAuthMethod', event: 'csl:last' },
-	/** The region this browser last signed in to from the website. */
-	region: { key: 'tb.site.lastSigninRegion', event: 'tfd:last' },
+	/** The region this browser last went to Cloud in: the shipped dialog's own store. */
+	region: LAST_REGION,
 } as const;
 
 export type LastUsedStore = keyof typeof LAST_USED;

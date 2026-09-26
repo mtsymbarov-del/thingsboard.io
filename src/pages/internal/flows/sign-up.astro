@@ -16,10 +16,12 @@ import { kv } from '@root/pages/internal/_key-visuals';
  * is reached. It keeps Europe visible on the site side for as long as the product's form has no
  * switch, at the cost of one decision.
  *
- * WHAT IT IS TODAY (2026-09-24, on FE-handoff): the hero's "Try for free" goes straight to
- * `thingsboard.cloud/signup`, North America with no way to Europe once there, while the header's goes
- * to `/installations/`, a four-tab product catalogue with the two region buttons under its first
- * tab. Same label, two destinations.
+ * SHIPPING (2026-09-26, on FE-handoff): dialog first. Every "Try for free" on the homepage and the
+ * Cloud page, in the header, the hero and the closing band, opens `CloudRegionDialog`, and the region
+ * is the one decision before `thingsboard.cloud/signup` or `eu.thingsboard.cloud/signup`. Before
+ * it, the hero's button went straight to North America with no way to Europe once there, and the
+ * header's went to `/installations/`, a four-tab product catalogue with the two region buttons under
+ * its first tab, then to `/installations/choose-region/`: three pages where there is now one dialog.
  *
  * Every direction is `bleed`: the form and the hero are whole screens, and the phone frame is the
  * only honest view of a stacked card or a bottom sheet. `_CloudAuth` and `_RegionDialog` each say
@@ -32,28 +34,37 @@ import { kv } from '@root/pages/internal/_key-visuals';
 		<p class="brief__kicker">The flow</p>
 		<dl class="brief__facts">
 			<div>
-				<dt>Today</dt>
+				<dt>Shipping</dt>
+				<dd>
+					Dialog first. Every <em>Try for free</em> (header, hero, closing band) opens the chooser: two regions, the nearest
+					marked and focused, self-hosting one line below. Nearest is the browser's timezone.
+				</dd>
+			</div>
+			<div>
+				<dt>Before</dt>
 				<dd>
 					Hero <em>Try for free</em> → <code>thingsboard.cloud/signup</code> (US only, no way to EU). Header
-					<em>Try for free</em> → <code>/installations/</code> → region → sign-up. Same label, two destinations.
+					<em>Try for free</em> → <code>/installations/</code> → <code>/installations/choose-region/</code> → sign-up.
+				</dd>
+			</div>
+			<div>
+				<dt>Prototype</dt>
+				<dd>
+					Clickable end to end: <em>Try for free</em> → the chooser → a faked <code>/signup</code> page per region, the form
+					draft below as the whole page under a mock address bar.
 				</dd>
 			</div>
 			<div>
 				<dt>Form first</dt>
 				<dd>
 					The CTA lands on the sign-up page of the geo-picked region; a switch in the form corrects it. Each region is a
-					link to its own host.
+					link to its own host. Needs the product's form to change.
 				</dd>
 			</div>
 			<div>
-				<dt>Dialog first</dt>
-				<dd>The CTA opens a thin chooser: two regions, the nearest marked, self-hosting one line below.</dd>
-			</div>
-			<div>
-				<dt>Not drafted</dt>
+				<dt>Not done</dt>
 				<dd>
-					The geo default (edge <code>CF-IPCountry</code>, client <code>Intl</code> timezone) and
-					<code>/installations/</code> rewritten as the Install page.
+					The edge geo default (<code>CF-IPCountry</code>), and <code>/installations/</code> rewritten as the Install page.
 				</dd>
 			</div>
 			<div>
@@ -68,20 +79,21 @@ import { kv } from '@root/pages/internal/_key-visuals';
 
 	<Variant
 		visual={kv('sign-up')}
+		component={RegionDialog}
+		props={{ flow: 'signup', id: 'su-dialog', nearest: 'us' }}
+		bleed
+		shipping
+		name="Dialog first"
+		note="shipping · the CTA opens the site's chooser on the hero: two region cards, the nearest chipped and focused, self-hosting as a line beneath; a bottom sheet under 560 · the nearest region is pinned here, the site reads the timezone · a region lands on the faked sign-up page of that host"
+	/>
+
+	<Variant
+		visual={kv('sign-up')}
 		component={CloudAuth}
 		props={{ mode: 'signup', region: 'us', switchAt: 'beside', id: 'su-form', browser: true }}
 		bleed
 		name="Form first"
 		note="candidate · the CTA lands on the geo-picked region's sign-up page; “Sign up” on the left, the region switch balancing it on the right, the help glyph opening the region dialog · providers in one row, full-bleed on a phone"
-	/>
-
-	<Variant
-		visual={kv('sign-up')}
-		component={RegionDialog}
-		props={{ flow: 'signup', id: 'su-dialog', nearest: 'us' }}
-		bleed
-		name="Dialog first"
-		note="candidate · the CTA opens a thin chooser on the hero: two region cards, the nearest chipped and focused, self-hosting as a line beneath; a bottom sheet under 560"
 	/>
 
 	<Variant

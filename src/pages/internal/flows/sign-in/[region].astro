@@ -1,0 +1,13 @@
+---
+import CloudPage from '@root/pages/internal/_CloudPage.astro';
+import { CLOUD_REGIONS } from '@util/cloud-regions';
+
+/** The faked signin page, one per region. See `_CloudPage`. */
+export function getStaticPaths() {
+	return CLOUD_REGIONS.map((r) => ({ params: { region: r.id }, props: { region: r.id } }));
+}
+
+const { region } = Astro.props;
+---
+
+<CloudPage mode="signin" region={region} />

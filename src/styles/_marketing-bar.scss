@@ -1,0 +1,177 @@
+// =============================================================================
+// THE MARKETING BAR
+//
+// The site header as the homepage draws it: a shorter menu, the larger logo, the brand purple on
+// "Try for free", the Sign in region and the GitHub stars widget beside it. The header component
+// renders these controls for every route in `HOME_NAV_ROUTES` (`components/starlight/Header.astro`)
+// but carries none of their styling — that stayed in `pages/index.astro`, so a page joining the set
+// got the markup with the old bar's sizes and weights: a 47px "Try for free" at regular weight,
+// unpadded. `_product-page.scss` carried a verbatim copy for the product pages; the installations
+// hub is the third page, which is where that copy's own note said a partial begins.
+//
+// `pages/index.astro` still keeps its own copy: its `.n-button--filled` rules are declared in the
+// same rule as `#hero .button.brand`, and splitting that reorders a signed-off cascade. A change
+// here belongs there too until the homepage moves over.
+//
+// `@use` this from a page's `<style is:global>`. It declares the header token every marketing
+// hero reads — `--home-header-h` — so a page's own tokens go after it.
+// =============================================================================
+
+@use 'variables' as *;
+
+// `html:root` rather than `:root`: Starlight sets its accent on `:root` too, and at equal
+// specificity the winner is whichever sheet lands last.
+html:root {
+	// Shorter menu. Hero reads it too, so the video panel and the text column stay clear of it
+	// without a second constant to keep in sync.
+	--home-header-h: 64px;
+
+	// One purple. `--color-primary` resolves through Starlight's accent, which was still the old
+	// #1a6fd4, and `--tb-main-color` was #2a7dec — while `--color-primary-rgb` had already moved
+	// to 61,80,245.
+	--sl-color-text-accent: #{$color-brand};
+	--color-primary: #{$color-brand};
+	--tb-main-color: #{$color-brand};
+}
+
+header.header {
+	height: var(--home-header-h);
+	transition-duration: 0.1s;
+}
+
+// `.logo--lg` in the header component resolves to `header .logo.logo--lg`,
+// which ties with a plain `header.header .logo` — so match its class count
+// and win on order rather than relying on it.
+header.header .logo.logo--lg {
+	height: 50px;
+	width: 175px;
+
+	@media screen and (min-width: 1025px) {
+		width: 215px;
+	}
+
+	@media screen and (min-width: 1281px) and (max-width: 1599px) {
+		width: 160px;
+	}
+
+	// Phones: 175px put the wordmark shoulder to shoulder with the Menu
+	// button on a 375px screen. Height follows so the mark keeps its ratio
+	// inside the box — width drives `contain` at every one of these sizes.
+	@media screen and (max-width: 767px) {
+		width: 168px;
+		height: 48px;
+	}
+
+	@media screen and (max-width: 480px) {
+		width: 152px;
+		height: 44px;
+	}
+}
+
+// Primary: the brand purple at bold, the same rule the homepage gives every filled n-button.
+// White on #3d50f5 is 5.73:1, which clears AA for body-sized text. Scoped to the bar here, since
+// a page decides for itself what its own primaries take — see `--page-accent` in
+// `_product-page.scss`.
+header.header .n-button--filled {
+	position: relative;
+	overflow: hidden;
+	isolation: isolate;
+	font-weight: $font-weight-bold;
+	background-color: $color-brand;
+	color: #fff;
+
+	// A tint on hover rather than a fill, so it never reads as another button mid-interaction.
+	&:hover {
+		background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+	}
+
+	&:active {
+		background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3));
+	}
+}
+
+// Primary trimmed to balance the shorter menu, floored at 40px so it stays a
+// comfortable target alongside the Sign in secondary.
+header.header .head-buttons .n-button.try {
+	width: auto;
+	height: 40px;
+	min-height: 40px;
+	padding: 0 18px;
+	font-size: 14px;
+}
+
+// Tighter than the 0.875rem default — four controls sit in this cluster. Set
+// as the token so the bar and the open drawer cannot drift apart: the shared
+// drawer rule used to restate the default, which widened every gap by 6px and
+// made the cluster spread as it opened.
+header.header .head-buttons {
+	--tb-cluster-gap: 8px;
+}
+
+// The widget was floating off the pair. Two things were doing it, and the
+// larger one was not the margin.
+//
+// GitHubButton reserves a fixed 100px wrap (132 above 1600, where the "Star"
+// label shows) so the star count arriving later cannot shift the nav. But the
+// button itself is only 36px until that count loads — the count cell is
+// `width: 0` and expands to 61px on `.is-loaded` — so the reservation renders
+// as up to 64px of empty space, and it all sits on the RIGHT, between the star
+// and Sign in. Measured 82px from the button's edge to Sign in against the 8px
+// that separates Sign in from Try for free.
+//
+// Right-aligning the button inside its own wrap keeps the reservation exactly
+// as it was — nothing shifts when the count lands, it just grows leftward into
+// space that was already empty — and puts the star on the cluster's 8px gap in
+// both states. The 10px margin on top of that gap goes with it.
+// `text-align` rather than a flex context, because `display` on this wrap is
+// the component's visibility switch — `none` by default, `block` at its own
+// breakpoints and at the tablet one below. Setting it here would show the
+// widget at every width.
+header.header .head-buttons .gh-wrap {
+	text-align: right;
+	margin-right: 0;
+}
+
+// GitHubButton hides itself below 1120px, which suited a bar that dropped
+// every control into the drawer at 1280. Now that the tablet bar keeps the
+// account controls, the stars fit alongside them with room to spare, and on
+// this page the count is part of the pitch. Scoped here rather than lowering
+// the component's own breakpoint, which every other page shares.
+@media screen and (min-width: 768px) and (max-width: 1119px) {
+	header.header .head-buttons .gh-wrap {
+		display: block;
+	}
+}
+
+// Only `.n-button.price` gets an explicit white on the transparent header, so
+// the Sign in secondary inherited dark text and vanished over the hero.
+header.header .region-signin {
+	font-size: 15px;
+}
+
+// White only while the bar is actually transparent over the hero. Both guards
+// are load-bearing, and each one covers a surface this white would otherwise
+// be invisible against:
+//   :not(.opened-burger)        — the drawer is a light surface
+//   :not([data-header-scrolled]) — the scrolled bar flips to solid white
+//
+// The three states are now mutually exclusive by condition rather than by
+// source order, which is what went wrong before: the two guards each add
+// specificity, and with only the first of them this selector outweighed the
+// [data-header-scrolled] rule below that had been winning on order alone.
+// Ordering is no longer what keeps them apart, so adding a fourth state
+// can't silently break the other three.
+// The star widget joins each of these: it takes its ink, border and hover from
+// `currentColor`, so naming the colour here is the whole of its theming — the
+// border and the Octicon follow without a rule of their own. Added as separate
+// selectors rather than a `:is()` so each keeps the specificity the note above
+// depends on.
+header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent']) .region-signin,
+header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent']) .gh-button {
+	color: #fff;
+}
+
+header.header[data-header-scrolled] .region-signin,
+header.header[data-header-scrolled] .gh-button {
+	color: var(--color-text);
+}

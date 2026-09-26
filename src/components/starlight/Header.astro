@@ -31,8 +31,9 @@ const headerConfig = (locals.bslHeaderConfig as HeaderConfig | undefined) ?? res
 // design. Both open on the same split hero, and the old bar above one read as a different site: a
 // smaller logo, "Try it now" rather than "Try for free", no Sign in region and the promo banner
 // pushing the whole thing down. This is the list to add to as more pages move over, and the set is
-// the extension point the route gate was written to have.
-const HOME_NAV_ROUTES = new Set(['/', '/products/paas/', '/products/thingsboard-pe/']);
+// the extension point the route gate was written to have. `/installations/` is the hub rebuilt in
+// the homepage's sections, and its Cloud band signs up by region the way this bar does.
+const HOME_NAV_ROUTES = new Set(['/', '/products/paas/', '/products/thingsboard-pe/', '/installations/']);
 const isHome = HOME_NAV_ROUTES.has(pathname);
 ---
 

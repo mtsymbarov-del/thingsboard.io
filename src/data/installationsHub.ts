@@ -137,7 +137,7 @@ export const installProducts: InstallProduct[] = [
 		accent: cloud.accent,
 		badgeFill: cloud.badgeFill,
 		cornerIcon: cloud.cornerIcon,
-		links: [{ label: 'Cloud pricing', href: '/pricing/' }],
+		links: [{ label: 'See plans', href: '/pricing/' }],
 		regions,
 		aside: {
 			title: 'Private Cloud',
@@ -159,7 +159,7 @@ export const installProducts: InstallProduct[] = [
 		cornerIcon: onPremises.cornerIcon,
 		primary: { label: 'Installation guide', href: '/docs/installation/' },
 		links: [
-			{ label: 'Licences and pricing', href: '/pricing/' },
+			{ label: 'See plans', href: '/pricing/' },
 			{ label: onPremises.action, href: onPremises.href },
 		],
 		// The old page's server row for this product, its own guides; its cloud row is under Private
@@ -194,7 +194,7 @@ export const installProducts: InstallProduct[] = [
 		accent: edge.accent,
 		primary: { label: 'Installation guide', href: '/docs/edge/installation/' },
 		links: [
-			{ label: 'Edge pricing', href: '/pricing/?active=thingsboard-edge' },
+			{ label: 'See plans', href: '/pricing/?active=thingsboard-edge' },
 			{ label: edge.action, href: edge.href },
 		],
 		options: [
@@ -237,7 +237,7 @@ export const installProducts: InstallProduct[] = [
 		accent: trendz.accent,
 		primary: { label: 'Installation guide', href: '/docs/trendz/installation/' },
 		links: [
-			{ label: 'Trendz pricing', href: '/pricing/' },
+			{ label: 'See plans', href: '/pricing/' },
 			{ label: trendz.action, href: trendz.href },
 		],
 		options: [

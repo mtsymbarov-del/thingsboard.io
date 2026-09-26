@@ -119,9 +119,7 @@ const nameParts = (name: string, highlight?: string) => {
 							{p.aside && (
 								<div class="install__options install__aside">
 									<div class="install__aside-head">
-										<span class="install__mark install__mark--small" aria-hidden="true">
-											<Icon name="tabler:cloud-lock" class="install__mark-glyph" />
-										</span>
+										<Icon name="tabler:cloud-lock" class="install__aside-glyph" aria-hidden="true" />
 										<h3 class="install__aside-title">{p.aside.title}</h3>
 									</div>
 									<p class="install__text">{p.aside.text}</p>
@@ -247,10 +245,10 @@ const nameParts = (name: string, highlight?: string) => {
 			background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 62%);
 		}
 
-		// Larger than the homepage card's 64%: on a section the tile is read alone, not beside a
-		// grid of others.
+		// Larger than the homepage card's 64% (78 first, then asked larger again): on a section the
+		// tile is read alone, not beside a grid of others, and the mark's own art carries its padding.
 		.install__icon {
-			width: 78%;
+			width: 92%;
 			filter: brightness(0) invert(1);
 		}
 	}
@@ -376,10 +374,18 @@ const nameParts = (name: string, highlight?: string) => {
 	// The two regions as rows, each a sign-up with a sign-in beside it: the region dialog's cards,
 	// set on the page — a globe in a hue of its own, the region's name over where its data stays,
 	// and the action at the row's end.
-	// "Try now" over the rows, in the option groups' own label, since it is the same kind of thing:
-	// the ways in.
+	// "Try now" over the rows, in the option groups' own label — and the whole block on a panel in
+	// the platform's own tint, so it is the section's primary element: the one thing to do here.
 	.install__group--primary {
 		margin-top: $spacing-6;
+		padding: $spacing-4;
+		border: 1px solid color-mix(in srgb, var(--badge-fill) 24%, transparent);
+		border-radius: $radius-lg;
+		background: color-mix(in srgb, var(--badge-fill) 6%, #fff);
+
+		.install__group-title {
+			color: var(--badge-fill);
+		}
 	}
 
 	.install__regions {
@@ -482,9 +488,10 @@ const nameParts = (name: string, highlight?: string) => {
 	}
 
 	// ── Private Cloud, beside Cloud's way in ──────────────────────────
-	// A panel on a subtle hairline, so the second offering reads as its own thing beside the way
-	// in rather than as more of the same column; its own mark, the section's at two thirds.
-	.install__aside {
+	// EVERY RIGHT COLUMN IS A PANEL on a subtle hairline — Private Cloud beside Cloud's way in, and
+	// the ways in beside every other product's — so the second column reads as its own thing
+	// rather than as more of the same column (asked for the aside first, then for the rest).
+	.install__options {
 		padding: $spacing-5;
 		border: 1px solid rgba(23, 24, 28, 0.1);
 		border-radius: $radius-lg;
@@ -497,17 +504,13 @@ const nameParts = (name: string, highlight?: string) => {
 		margin-bottom: $spacing-3;
 	}
 
-	// The cloud with a lock, in white on the platform's fill: a dedicated cluster, yours alone.
-	.install__mark--small {
-		width: 48px;
-		height: 48px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-	}
-
-	.install__mark-glyph {
-		width: 28px;
-		height: 28px;
-		color: #fff;
+	// The cloud with a lock, bare, in the platform's colour: a dedicated cluster, yours alone. No
+	// tile — the section's tile is the product's, and a second one read as a second product.
+	.install__aside-glyph {
+		flex: none;
+		width: 32px;
+		height: 32px;
+		color: var(--badge-fill);
 	}
 
 	.install__aside-title {

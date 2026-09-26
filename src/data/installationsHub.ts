@@ -25,6 +25,8 @@ export interface InstallLink {
 /** One way to install, as the old page listed them: its logo, and the guide for it. */
 export interface InstallOption {
 	label: string;
+	/** What the label was qualified with in brackets on the old page, set in grey after it. */
+	note?: string;
 	/** A `/src/assets/images/installation/…` wordmark, 180x36. */
 	logo: string;
 	href: string;
@@ -174,10 +176,20 @@ export const installProducts: InstallProduct[] = [
 				title: 'On your servers',
 				items: [
 					{ label: 'Ubuntu Server', logo: logo('ubuntu.svg'), href: '/docs/installation/ubuntu/' },
-					{ label: 'CentOS/RHEL Server', logo: logo('cenos-rhel.svg'), href: '/docs/installation/rhel/' },
+					{ label: 'CentOS / RHEL Server', logo: logo('cenos-rhel.svg'), href: '/docs/installation/rhel/' },
 					{ label: 'Raspberry Pi', logo: logo('raspberry-pi.svg'), href: '/docs/installation/rpi/' },
-					{ label: 'Docker (Linux or Mac OS)', logo: logo('docker-linux-mac.svg'), href: '/docs/installation/docker/' },
-					{ label: 'Docker (Windows)', logo: logo('docker-windows.svg'), href: '/docs/installation/docker-windows/' },
+					{
+						label: 'Docker',
+						note: 'Linux / macOS',
+						logo: logo('docker-linux-mac.svg'),
+						href: '/docs/installation/docker/',
+					},
+					{
+						label: 'Docker',
+						note: 'Windows',
+						logo: logo('docker-windows.svg'),
+						href: '/docs/installation/docker-windows/',
+					},
 					{
 						label: 'Building from source',
 						logo: logo('sources.svg'),
@@ -206,14 +218,16 @@ export const installProducts: InstallProduct[] = [
 				title: 'Install on',
 				items: [
 					{ label: 'Ubuntu Server', logo: logo('ubuntu.svg'), href: '/docs/edge/installation/ubuntu/' },
-					{ label: 'CentOS/RHEL Server', logo: logo('cenos-rhel.svg'), href: '/docs/edge/installation/rhel/' },
+					{ label: 'CentOS / RHEL Server', logo: logo('cenos-rhel.svg'), href: '/docs/edge/installation/rhel/' },
 					{
-						label: 'Docker (Linux or Mac OS)',
+						label: 'Docker',
+						note: 'Linux / macOS',
 						logo: logo('docker-linux-mac.svg'),
 						href: '/docs/edge/installation/docker/',
 					},
 					{
-						label: 'Docker (Windows)',
+						label: 'Docker',
+						note: 'Windows',
 						logo: logo('docker-windows.svg'),
 						href: '/docs/edge/installation/docker-windows/',
 					},
@@ -250,14 +264,16 @@ export const installProducts: InstallProduct[] = [
 				items: [
 					{ label: 'Trendz Cloud', logo: logo('trendz-cloud.svg'), href: '/docs/trendz/installation/cloud/' },
 					{ label: 'Ubuntu Server', logo: logo('ubuntu.svg'), href: '/docs/trendz/installation/ubuntu/' },
-					{ label: 'CentOS/RHEL Server', logo: logo('cenos-rhel.svg'), href: '/docs/trendz/installation/rhel/' },
+					{ label: 'CentOS / RHEL Server', logo: logo('cenos-rhel.svg'), href: '/docs/trendz/installation/rhel/' },
 					{
-						label: 'Docker (Linux or Mac OS)',
+						label: 'Docker',
+						note: 'Linux / macOS',
 						logo: logo('docker-linux-mac.svg'),
 						href: '/docs/trendz/installation/docker/',
 					},
 					{
-						label: 'Docker (Windows)',
+						label: 'Docker',
+						note: 'Windows',
 						logo: logo('docker-windows.svg'),
 						href: '/docs/trendz/installation/docker-windows/',
 					},
@@ -281,12 +297,14 @@ export const installProducts: InstallProduct[] = [
 				title: 'Install on',
 				items: [
 					{
-						label: 'Docker (Linux or Mac OS)',
+						label: 'Docker',
+						note: 'Linux / macOS',
 						logo: logo('docker-linux-mac.svg'),
 						href: '/docs/iot-gateway/installation/docker-installation/',
 					},
 					{
-						label: 'Docker (Windows)',
+						label: 'Docker',
+						note: 'Windows',
 						logo: logo('docker-windows.svg'),
 						href: '/docs/iot-gateway/installation/docker-windows/',
 					},

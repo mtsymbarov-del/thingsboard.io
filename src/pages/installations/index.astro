@@ -145,6 +145,7 @@ const nameParts = (name: string, highlight?: string) => {
 														<a class="install__chip" href={option.href}>
 															<SmartImage src={option.logo} alt="" width="90" height="18" loading="lazy" />
 															{option.label}
+															{option.note && <span class="install__chip-note">{option.note}</span>}
 														</a>
 													</li>
 												))}
@@ -165,6 +166,7 @@ const nameParts = (name: string, highlight?: string) => {
 														<a class="install__chip" href={option.href}>
 															<SmartImage src={option.logo} alt="" width="90" height="18" loading="lazy" />
 															{option.label}
+															{option.note && <span class="install__chip-note">{option.note}</span>}
 														</a>
 													</li>
 												))}
@@ -180,6 +182,13 @@ const nameParts = (name: string, highlight?: string) => {
 		</div>
 	</section>
 </BaseLayout>
+
+<style is:global lang="scss">
+	// On the home nav (`HOME_NAV_ROUTES` in `components/starlight/Header.astro`): the larger logo, the
+	// GitHub stars, the Sign in region and "Try for free" opening the region dialog. The header only
+	// renders those; the bar's sizes and weights are the partial's.
+	@use '../../styles/marketing-bar';
+</style>
 
 <style lang="scss">
 	@use '../../styles/variables' as *;
@@ -586,30 +595,39 @@ const nameParts = (name: string, highlight?: string) => {
 		list-style: none;
 	}
 
+	// Base size and 40px tall: the old page's cards were the ways in, and at small they read as tags.
+	// What the old label qualified in brackets — Docker (Linux or Mac OS) — follows the name in grey,
+	// so the row reads Docker, Docker, and the platform is the difference.
 	.install__chip {
-		@include type-small-strong;
+		@include type-body;
 
 		display: inline-flex;
 		align-items: center;
 		gap: $spacing-2;
-		height: 36px;
-		padding: 0 $spacing-3 0 $spacing-3;
+		height: 40px;
+		padding: 0 $spacing-4;
 		border: 1px solid rgba(23, 24, 28, 0.12);
 		border-radius: $radius-full;
 		background: var(--color-bg-surface, #fff);
 		color: var(--color-text, #17181c);
+		font-weight: $font-weight-medium;
 		text-decoration: none;
 		white-space: nowrap;
 
 		:global(img) {
 			width: auto;
-			height: 16px;
+			height: 20px;
 		}
 
 		&:hover {
 			border-color: rgba(23, 24, 28, 0.3);
 			background: rgba(23, 24, 28, 0.03);
 		}
+	}
+
+	.install__chip-note {
+		color: var(--color-text-secondary, #{$color-text-secondary});
+		font-weight: $font-weight-normal;
 	}
 
 	// Stacked, the head's mark comes down a step and the regions take the width.

@@ -2,6 +2,8 @@
 import VisualPage from '@root/pages/internal/_VisualPage.astro';
 import Variant from '@root/pages/internal/_Variant.astro';
 import AiSection from '@components/Landing/AiSection.astro';
+import AiTwoUp from '@components/Landing/AiTwoUp.astro';
+import AiWide from '@components/Landing/AiWide.astro';
 import { kv } from '@root/pages/internal/_key-visuals';
 import { AI_BADGE_CYCLE_HANDOFF } from '@data/ai-visual';
 
@@ -22,6 +24,15 @@ import { AI_BADGE_CYCLE_HANDOFF } from '@data/ai-visual';
  * A REFERENCE (a previous homepage) must pin EVERY prop it depends on, not just the one it differs
  * by, or the next promotion changes it too: `bands` pins `terminal: 'cli'`, because the 2026-09-24
  * promotion made the agent terminal the default and it silently took it.
+ *
+ * PROMOTED 2026-09-27 to orders A and B, with `wash: 'cycle'`: `AiWide` (a candidate from
+ * 2026-09-26), a component beside `AiSection` — the switcher with a 600px window beside smaller copy
+ * that ends on a call to action; both windows whole and squarer, the chat's bar a plain label, the
+ * terminal at 14px printing the ThingsBoard wordmark, then its status, then the
+ * session. `wash: 'cycle'` is the same section with the band following the mark's colours.
+ *
+ * CANDIDATE 2026-09-26: `AiTwoUp`, a component beside `AiSection` — both routes side by side under one
+ * band, each window over its copy, the band washed from its corners in the two routes' hues.
  *
  * PROMOTED 2026-09-23: the toggle with the hand-off, now `AiSection`'s default and the homepage's.
  * The plain-fade toggle was retired and deleted with it. `layout="bands"` is the page that came
@@ -54,11 +65,37 @@ import { AI_BADGE_CYCLE_HANDOFF } from '@data/ai-visual';
 <VisualPage visual="ai">
 	<Variant
 		visual={kv('ai')}
-		component={AiSection}
+		component={AiWide}
+		props={{ wash: 'cycle' }}
 		bleed
 		shipping
+		name="Wide window · cycling wash"
+		note="Promoted 2026-09-27 to running orders A and B · the Wide window with the band's wash following the section's mark through the page's section colours, on the mark's clock"
+	/>
+
+	<Variant
+		visual={kv('ai')}
+		component={AiWide}
+		bleed
+		name="Wide window"
+		note="candidate · the switcher with the window at 600 of the 960 measure; both windows whole and squarer, the chat's bar a plain label, the terminal at 14px opening on the ThingsBoard wordmark, its status under it, then the session; smaller headings, no kickers, and a call to action under each route's copy"
+	/>
+
+	<Variant
+		visual={kv('ai')}
+		component={AiTwoUp}
+		bleed
+		name="Two-up"
+		note="candidate · both routes side by side under one band, each window over its copy; the wash rises from the band's corners, green on the chat's side and violet on the terminal's"
+	/>
+
+	<Variant
+		visual={kv('ai')}
+		component={AiSection}
+		props={{ cta: 'block', wash: 'cycle' }}
+		bleed
 		name="Toggle"
-		note="The toggle with the hand-off (2026-09-23), the coding-agent terminal, the freezer-door chat and windows that fill their column (2026-09-24); the wash following the mark and a call to action under the row (2026-09-26, running order A), all promoted from this page"
+		note="previous homepage (A and B, 2026-09-26 to 09-27; the handoff's section still) · the toggle with the hand-off, the wash following the mark and a call to action band under the row"
 	/>
 
 	<Variant

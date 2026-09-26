@@ -35,6 +35,12 @@ interface Props {
 	showSearch?: boolean;
 	/** Override theme-toggle visibility (defaults to the variant default). */
 	showThemeToggle?: boolean;
+	/**
+	 * `transparent` only: draw the bar in its scrolled state from the top — the solid white bar
+	 * with the dark logo — while keeping the variant's overlay, so a hero that clears the fixed
+	 * bar itself still starts under it.
+	 */
+	headerScrolledAtTop?: boolean;
 	ogImage?: string;
 	ogType?: string;
 	ogImageAlt?: string;
@@ -57,6 +63,7 @@ const {
 	headerCta,
 	showSearch,
 	showThemeToggle,
+	headerScrolledAtTop,
 	ogImage: ogImageProp,
 	ogType = 'website',
 	ogImageAlt,
@@ -107,6 +114,7 @@ const headerConfig = resolveHeaderConfig({
 	forceLight: forceLightTheme,
 	showSearch,
 	showThemeToggle,
+	scrolledAtTop: headerScrolledAtTop,
 });
 locals.bslHeaderConfig = headerConfig;
 

@@ -13,9 +13,10 @@ import { kv } from '@root/pages/internal/_key-visuals';
  * on the method this browser signed in with before, and a help dialog that switches region for
  * anyone who landed on the wrong one.
  *
- * THE DIALOG replaces the header's live "Sign in" dropdown ("Choose your region", two links to the
+ * THE DIALOG is what ships (2026-09-26, on FE-handoff): the header's "Sign in" opens
+ * `CloudRegionDialog` in place of the dropdown it had ("Choose your region", two links to the
  * hosts' roots). Same question, asked in the chooser the sign-up flow uses, with the region this
- * browser last signed in to marked and focused.
+ * browser last went to Cloud in marked and focused.
  *
  * Both directions are `bleed`. Their "Last used" states are set from the draft controls under the
  * brief, outside the frames, so every state is judged in one variant and the frames show only what
@@ -28,10 +29,25 @@ import { kv } from '@root/pages/internal/_key-visuals';
 		<p class="brief__kicker">The flow</p>
 		<dl class="brief__facts">
 			<div>
-				<dt>Today</dt>
+				<dt>Shipping</dt>
+				<dd>
+					Header <em>Sign in</em> → the chooser → <code>thingsboard.cloud/login</code> or
+					<code>eu.thingsboard.cloud/login</code> in a new tab. The region chosen, from either flow, is the one marked next
+					time.
+				</dd>
+			</div>
+			<div>
+				<dt>Before</dt>
 				<dd>
 					Header <em>Sign in</em> → a “Choose your region” dropdown → <code>thingsboard.cloud</code> or
 					<code>eu.thingsboard.cloud</code> in a new tab → the teal sign-in card.
+				</dd>
+			</div>
+			<div>
+				<dt>Prototype</dt>
+				<dd>
+					Clickable end to end: <em>Sign in</em> → the chooser → a faked <code>/login</code> page per region, the form draft
+					below as the whole page under a mock address bar.
 				</dd>
 			</div>
 			<div>
@@ -80,6 +96,16 @@ import { kv } from '@root/pages/internal/_key-visuals';
 
 	<Variant
 		visual={kv('sign-in')}
+		component={RegionDialog}
+		props={{ flow: 'signin', id: 'si-dialog', nearest: 'us', demoLastUsed: 'eu' }}
+		bleed
+		shipping
+		name="Dialog"
+		note="shipping · the header’s Sign in opens the site's chooser: two regions named by their hosts, the last visited one marked and focused, each opening its /login in a new tab · set the last visited region from the draft controls under the brief · here a region lands on the faked sign-in page of that host"
+	/>
+
+	<Variant
+		visual={kv('sign-in')}
 		component={CloudAuth}
 		props={{
 			mode: 'signin',
@@ -92,15 +118,6 @@ import { kv } from '@root/pages/internal/_key-visuals';
 		bleed
 		name="Form"
 		note="candidate · the card at /login: “Forgot your password?” under the field, no terms · a “Last used” badge on the method this browser last used, set from the draft controls under the brief · the help glyph asks which region the account is in and can switch"
-	/>
-
-	<Variant
-		visual={kv('sign-in')}
-		component={RegionDialog}
-		props={{ flow: 'signin', id: 'si-dialog', nearest: 'us', demoLastUsed: 'eu' }}
-		bleed
-		name="Dialog"
-		note="candidate · the header’s Sign in opens the chooser: two regions named by their hosts, the last visited one marked and focused, each opening its /login in a new tab · set the last visited region from the draft controls under the brief"
 	/>
 </VisualPage>
 

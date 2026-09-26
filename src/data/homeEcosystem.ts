@@ -130,12 +130,13 @@ export const homeEcosystem: EcosystemItem[] = [
 		// product page anyway, for want of real store URLs), so the whole card
 		// is the target. The previous form lives on the library page.
 		wholeCard: true,
-		// Flipped wherever it has two columns. On the 3-column grid the phone
-		// lands mid-row — Trendz's copy, the phone, this card's copy — the centre
-		// of the composition. On the 2-column grid, where three full-width
-		// doubles stack, the middle one mirroring breaks the template read. The
+		// Flipped on the 3-column grid only, where the phone lands mid-row —
+		// Trendz's copy, the phone, this card's copy — the centre of the
+		// composition. On the 2-column grid the three full-width doubles stack
+		// and keep one template, copy then visual, as the homepage's rows do
+		// below desktop: alternation is a desktop pattern here. The
 		// phone-on-a-phone video goes below md.
-		at: { cols3: 'flip', cols2: 'flip', stack: 'no-visual' },
+		at: { cols3: 'flip', stack: 'no-visual' },
 		// Reused from the mobile page's "Rich set of mobile actions" block —
 		// 564 KB webm / 940 KB mp4, so it is lazy-loaded rather than shipped
 		// with the page.

@@ -115,10 +115,12 @@ const faqPageSchema = buildFaqPageSchema(
 				href: paasCtas.primary.href,
 				variant: 'brand',
 				ariaLabel: 'Try ThingsBoard Cloud for free',
+				attrs: paasCtas.primary.attrs,
 			},
 			{ text: paasCtas.secondary.text, icon: 'tabler:message-circle', href: paasCtas.secondary.href, variant: 'outline' },
 		]}
 		layout="split"
+		panel={false}
 		showArrow={false}
 		anchorLink="#benefits"
 	>
@@ -437,7 +439,7 @@ const faqPageSchema = buildFaqPageSchema(
 				Start free on Public Cloud in under five minutes, or talk to our team about a dedicated Private Cloud cluster.
 			</p>
 			<div class="page-closing__actions">
-				<a class="page-closing__primary" href={paasCtas.primary.href}>
+				<a class="page-closing__primary" href={paasCtas.primary.href} {...paasCtas.primary.attrs}>
 					<Icon name="tabler:cloud-filled" aria-hidden="true" />
 					{paasCtas.primary.text}
 				</a>

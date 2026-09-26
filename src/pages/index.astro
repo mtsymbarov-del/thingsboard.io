@@ -38,16 +38,25 @@ const { composition = shippingComposition(), preview = false } = Astro.props;
 
 // Passed to both <Hero> and the preload, so the <link> can't name a file the CSS
 // won't paint — which is also why backgroundImage isn't left to Hero's default.
-// One 16:9 asset at every width. tb-cover-mobile.webp is a 700x1080 portrait
-// crop, art-directed for the old full-bleed hero; the split layout's panel is
-// 16:9 everywhere, so that crop lost most of its height to `cover` and read as
-// a fragment of a dashboard. tb-cover.webp is exactly 1920x1080, so it fits the
-// panel with no crop at all.
-const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
+// One asset at every width, and it is the video's exact first frame, so the
+// still does not jump when the footage takes over. tb-cover-mobile.webp is a
+// 700x1080 portrait crop, art-directed for the old full-bleed hero; the split
+// layout's panel is landscape everywhere, so that crop lost most of its height
+// to `cover` and read as a fragment of a dashboard.
+//
+// The dashboards tour is 1920x924, wider than 16:9. Stacked from 600 (portrait
+// tablets), the panel takes that shape (`HERO_FOOTAGE_RATIO`) and shows it
+// whole; on a phone it plays behind the copy, to the fold. Side by side the panel's shape is the fold's, so `cover` trims its
+// sides: of its width, 98% shows at 1920x960, 89% at 1440x780, 85% at 1280x680,
+// and 60% at 1024x698, where the copy beside it makes the panel tall and narrow.
+// tb-cover2, the 16:9 video before it, is kept on /internal/sections/hero/.
+const HERO_BACKGROUND = '/images/hero/horizontal-slider.webp';
+const HERO_FOOTAGE_RATIO = '1920 / 924';
 ---
 
 <BaseLayout
 	headerVariant="transparent"
+	headerScrolledAtTop
 	forceLightTheme
 	title="ThingsBoard - The all-in-one IoT platform"
 	description="ThingsBoard is an open-source IoT platform for device management, data collection, processing, and visualization for your IoT projects."
@@ -66,19 +75,25 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 			{
 				text: 'Try for free',
 				icon: 'tabler:cloud-filled',
+				// The region dialog the header renders takes the click; the href is the no-script fallback.
 				href: 'https://thingsboard.cloud/signup',
 				variant: 'brand',
 				ariaLabel: 'Try ThingsBoard Cloud for free',
+				attrs: { 'data-cloud-auth': 'signup' },
 			},
 			{ text: 'Install', icon: 'tabler:download', href: '/installations/', variant: 'outline' },
 		]}
 		layout="split"
+		achievement={null}
 		showArrow={false}
 		anchorLink="#intro"
 		videoBackground={{
-			webm: 'https://video.thingsboard.io/tb-cover2.webm',
-			mp4: 'https://video.thingsboard.io/tb-cover2.mp4',
+			webm: '/videos/horizontal-slider.webm',
+			mp4: '/videos/horizontal-slider.mp4',
+			// 2.3 MB of VP9: small enough to play behind the phone copy too.
+			phones: true,
 		}}
+		footageRatio={HERO_FOOTAGE_RATIO}
 	>
 		<p class="header-animation hero-note">
 			Evaluating for a large deployment?
@@ -234,6 +249,19 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 		transition-duration: 0.1s;
 	}
 
+	// THE BAR IS WHITE FROM THE TOP (`headerScrolledAtTop`): its scrolled state, held,
+	// over a hero that still clears it as it would a transparent one. The rules for
+	// the transparent bar below stay for the hero sandbox's dark-menu candidate,
+	// which lets go of the hold; on this page as it ships none of them match.
+	//
+	// The page's edge inset, for the bar, is the hero copy's: `page-inset(20px)`
+	// where the header's own floor is 24. The two agree from 800 up, and below it
+	// the logo stood 4px right of the headline (at 600) and the Menu button 4px in
+	// from the copy's right edge.
+	:root header.header {
+		--tb-bar-inset: #{page-inset(20px)};
+	}
+
 	// The transparent bar gets a scrim rather than nothing. It spans both halves
 	// of the split hero — the black text column and the video panel — and over
 	// the footage the nav had no ground of its own, so its legibility changed
@@ -256,8 +284,12 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 		height: 50px;
 		width: 175px;
 
+		// 191, not 215: the art is 168x44, so 50px tall it is 191 wide. In a 215 box
+		// `contain` centred it 12px in, and the header's nudge for the art's own left
+		// padding (-3.571% of the box, `HeaderContent`) is only right when the box is
+		// the art's width. Together they left the mark 11px right of the headline.
 		@media screen and (min-width: 1025px) {
-			width: 215px;
+			width: 191px;
 		}
 
 		@media screen and (min-width: 1281px) and (max-width: 1599px) {
@@ -421,7 +453,7 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 
 	// Only `.n-button.price` gets an explicit white on the transparent header, so
 	// the Sign in secondary inherited dark text and vanished over the hero.
-	header.header .region-signin summary {
+	header.header .region-signin {
 		font-size: 15px;
 	}
 
@@ -442,15 +474,12 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 	// border and the Octicon follow without a rule of their own. Added as separate
 	// selectors rather than a `:is()` so each keeps the specificity the note above
 	// depends on.
-	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent'])
-		.region-signin
-		summary,
-	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent'])
-		.gh-button {
+	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent']) .region-signin,
+	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent']) .gh-button {
 		color: #fff;
 	}
 
-	header.header[data-header-scrolled] .region-signin summary,
+	header.header[data-header-scrolled] .region-signin,
 	header.header[data-header-scrolled] .gh-button {
 		color: var(--color-text);
 	}
@@ -474,7 +503,7 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 	// GitHub's own palette (#21262d / #30363d / #e6edf3), which is a near-black
 	// pill: invisible over the dark hero and a hole on the light scrolled bar, so
 	// this block repainted it per state. It now takes its border, ink and hover
-	// from `currentColor` — the same contract `.region-signin summary` keeps — so
+	// from `currentColor` — the same contract `.region-signin` keeps — so
 	// it follows the bar through transparent, scrolled and drawer on its own, and
 	// there is no second palette to keep in sync. See GitHubButton.astro.
 

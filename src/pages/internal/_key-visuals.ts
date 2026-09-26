@@ -8,8 +8,8 @@
  * `KEY_VISUALS[6]`, which meant inserting a visual silently retitled four others. That is also what
  * makes the order below free to change — this array decides the menus' order and nothing else.
  *
- * THE ORDER IS THE PAGE'S ORDER. Platform first: it opens the homepage as a centred section
- * above the rows. Then the rows in the order `index.astro` runs them, so walking the section menu
+ * THE ORDER IS THE PAGE'S ORDER. The hero first, then platform: it opens the homepage's content as
+ * a centred section above the rows. Then the rows in the order `index.astro` runs them, so walking the section menu
  * walks the page. `ai` sits between twin and normalize because that is where `AiSection` runs: a
  * full-bleed section rather than a row, but on the page there. Then the sections the running orders
  * brought or reworked — the use cases, the trust band — around `products` and `ecosystem`, and
@@ -33,6 +33,7 @@ import { DASHBOARDS_BADGE, DASHBOARDS_COPY } from '@data/home-dashboards';
 import { TRUST_COPY } from '@data/home-trust';
 import { HOME_FEATURES_COPY } from '@data/homeFeatures';
 import { VOICES_COPY } from '@data/home-voices';
+import { SWITCHES } from '@root/pages/internal/_hero-lab';
 
 export interface KeyVisual {
 	id: string;
@@ -68,9 +69,26 @@ export interface KeyVisual {
 	 * ecosystem cards are in their gallery. Its tile has no directions to summarise.
 	 */
 	href?: string;
+	/**
+	 * What its tile says the page holds, for a page that is neither directions nor stills. The hub
+	 * otherwise counts `<Variant>` blocks in the page's source, and would call the hero's switches one
+	 * still.
+	 */
+	summary?: string;
 }
 
 export const KEY_VISUALS: KeyVisual[] = [
+	{
+		// The first screen: headline, lede, buttons and footage. Judged as switches applied to the real
+		// homepage at real screen sizes rather than as directions in a row — see `sections/hero.astro`.
+		// The title is the headline, restated from `index.astro`'s Hero call.
+		id: 'hero',
+		home: 'hero',
+		label: 'Hero',
+		title: 'The all-in-one IoT platform',
+		summary: `${SWITCHES.length} switches`,
+		badge: { icon: 'tabler:layout-navbar', color: '#3d50f5' },
+	},
 	{
 		id: 'platform',
 		home: 'intro',

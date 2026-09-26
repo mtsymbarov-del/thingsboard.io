@@ -1,0 +1,493 @@
+---
+import SectionHeader from './SectionHeader.astro';
+import AiAssistant from './AiAssistant.astro';
+import AgentTerminal from './AgentTerminal.astro';
+import {
+	AI_COPY,
+	AI_COLUMNS,
+	AI_COLUMNS_VALUE,
+	AI_AGENT_SESSION,
+	AI_AGENT_LABEL,
+	AI_BADGE_CYCLE,
+} from '@data/ai-visual';
+import type { AiChatScenario } from '@data/ai-visual';
+
+/**
+ * CANDIDATE (2026-09-26): the AI section's two routes SIDE BY SIDE, under ONE band.
+ *
+ * A component beside `AiSection`, not a layout on it, per `Landing/CLAUDE.md`: the shipping section
+ * is one route at a time behind a switch, and its stylesheet is built around that — the hand-off,
+ * the docking, two bands held to one height. None of it applies here, and a fourth `layout` value
+ * would have had to opt out of most of it.
+ *
+ * ── THE COMPOSITION ───────────────────────────────────────────────────────────────────────────
+ * Two columns in one row, each a window over its copy: the chat on the left, the terminal on the
+ * right, the same sides the shipping section gives them. Both routes are on the page at once, so the
+ * lede and the kickers come back — the switch was carrying the "two ways in" argument, and with no
+ * switch the words have to. This is the prototype's two-up, which `AiSection` deliberately did not
+ * port, drawn against this page's measure: 960 of content, the rows' 56px gutter, 452 a column.
+ *
+ * ONE BAND, WASHED FROM ITS BOTTOM CORNERS. Rather than one hue per band, two radial gradients rise
+ * from the band's bottom corners — the chat's green from the left, the terminal's violet from the
+ * right — and stop short of each other, so the middle of the band is pure white and each hue stays
+ * on its own side. The peak is the shipping wash's 20-odd per cent at the corner, so the kickers,
+ * derived to read against that wash, still do. Stacked, both glows stay in the bottom corners and
+ * tighten, so the band ends on colour and the rest of it is white.
+ *
+ * ── THE WINDOWS ───────────────────────────────────────────────────────────────────────────────
+ * The shipping section's treatment, at the column's width. The chat is authored at 365 and scaled
+ * 1.24 to fill 452, which puts its body type at 16.1px — level with the terminal, which comes down
+ * to 16px mono for the same column. It is still cut at the top by its box and docked to the band's
+ * top edge, taking the `New chat` bar with the cut; the terminal stands whole, centred in a box of
+ * the same height, sized to show ten whole lines. Stacked and on a phone the columns take the
+ * shipping section's own stacked numbers, so the two candidates can be compared on a phone with
+ * nothing but the band's shape differing.
+ */
+
+interface Props {
+	/** Play both windows. Off renders them as stills — used by the sandbox. */
+	animate?: boolean;
+	/** Which copy the columns carry: `shipping` is `AI_COLUMNS`, `value` the candidate `AI_COLUMNS_VALUE`. */
+	copy?: 'shipping' | 'value';
+	/** Which conversation the chat plays (`AI_ASSISTANT_SCENARIOS`). */
+	chat?: AiChatScenario;
+}
+
+const { animate = true, copy = 'shipping', chat = 'shipping' } = Astro.props;
+const COLS = copy === 'value' ? AI_COLUMNS_VALUE : AI_COLUMNS;
+
+/**
+ * The section's id, from the props, so the sandbox can stack several of these without two elements
+ * answering to one id. Never `ai`: that is the homepage anchor, and it belongs to the shipping section.
+ */
+const uid = `${copy}${chat === 'shipping' ? '' : `-${chat}`}`;
+const sectionId = uid === 'shipping' ? 'ai-twoup' : `ai-twoup-${uid}`;
+
+/** The mark's colour cycle, as `AiSection` hands it over — see `AI_BADGE_CYCLE`. */
+const badgeHues = AI_BADGE_CYCLE.map((hue, i) => `--ai-hue-${i + 1}: ${hue}`).join('; ');
+---
+
+<section id={sectionId} class="twoup" style={badgeHues} data-animate={animate ? 'on' : null}>
+	<div class="main-div">
+		<SectionHeader
+			title={AI_COPY.title}
+			subtitle={AI_COPY.body}
+			titleSize="section"
+			titleMeasure="headline"
+			subtitleMeasure="copy"
+			badge={AI_COPY.badge}
+		/>
+	</div>
+
+	{
+		/* One full-bleed band for both routes. The two hues are handed to it here so the gradient below
+		   can read them; each column carries its own as `--accent`, which the kicker and the terminal's
+		   prompt read. */
+	}
+	<div class="twoup__band" style={`--twoup-a: ${COLS.assistant.accent}; --twoup-b: ${COLS.cli.accent}`}>
+		<div class="main-div">
+			<div class="twoup__row">
+				<div
+					class="twoup__col twoup__col--chat"
+					style={`--accent: ${COLS.assistant.accent}; --accent-text: ${COLS.assistant.accentText}`}
+				>
+					<div class="twoup__media twoup__media--chat">
+						<AiAssistant animate={animate} scenario={chat} />
+					</div>
+
+					<div class="twoup__copy">
+						<p class="twoup__eyebrow">{COLS.assistant.kicker ?? COLS.assistant.eyebrow}</p>
+						<h3 class="twoup__title">{COLS.assistant.title}</h3>
+						<p class="twoup__text">{COLS.assistant.body}</p>
+					</div>
+				</div>
+
+				<div
+					class="twoup__col twoup__col--cli"
+					style={`--accent: ${COLS.cli.accent}; --accent-text: ${COLS.cli.accentText}`}
+				>
+					<div class="twoup__media twoup__media--cli">
+						<div class="twoup__cli">
+							<AgentTerminal session={AI_AGENT_SESSION} path="smart-retail" ariaLabel={AI_AGENT_LABEL} />
+						</div>
+					</div>
+
+					<div class="twoup__copy">
+						<p class="twoup__eyebrow">{COLS.cli.kicker ?? COLS.cli.eyebrow}</p>
+						<h3 class="twoup__title">{COLS.cli.title}</h3>
+						<p class="twoup__text">{COLS.cli.body}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	// ── The numbers ───────────────────────────────────────────────────
+	// The page's content grid is 960 and the rows' gutter is 56, so a column is 452. The chat is
+	// authored at 365 (its default) and the scale is what fills the column; the terminal simply takes
+	// it. Every crop box is wider than its window by the shadow's reach each side — the shipping
+	// section's method — because the chat's box masks its top fade and a mask deletes whatever paints
+	// outside the box, which would be both side shadows.
+	$gap: 56px;
+	$col: 452px;
+	$room: 24px;
+	$box: 350px;
+	$chat-scale: 1.24; // 452 / 365 — body type 13 x 1.24 = 16.1px, level with the terminal's 16
+	$stack-window: 544px; // the shipping section's stacked window, at its 1.36
+
+	.twoup {
+		// Top only, as the shipping section: the band ends on colour and the next row carries its own 80.
+		padding: $spacing-16 0 0;
+	}
+
+	// ── The band ──────────────────────────────────────────────────────
+	// Two radial washes, one from each BOTTOM corner, in the two routes' hues. The reach is a custom
+	// property so the stacked layout, whose band is three times as tall as it is wide, can tighten
+	// the glows without restating the gradient.
+	//
+	// The reach is an ellipse in the band's own proportions: the first number is the horizontal
+	// radius as a share of the band's width, the second the vertical as a share of its height. The
+	// hue is gone by 85% of the radius, so at 46% the two glows end at 39% and 61% of the width and
+	// the middle fifth of the band is pure white — neither hue crosses into the other's column, and
+	// nothing under the gutter reads as grey. The fall-off is front-loaded — 22% at the corner, 7% by
+	// two fifths of the way out — so the colour sits in the corner and the band is mostly white.
+	.twoup__band {
+		--twoup-reach: 46% 100%;
+
+		margin-top: $spacing-12;
+		padding: 0 0 $spacing-16;
+		background-image:
+			radial-gradient(
+				var(--twoup-reach) at 0% 100%,
+				color-mix(in srgb, var(--twoup-a) 22%, transparent) 0%,
+				color-mix(in srgb, var(--twoup-a) 7%, transparent) 40%,
+				transparent 85%
+			),
+			radial-gradient(
+				var(--twoup-reach) at 100% 100%,
+				color-mix(in srgb, var(--twoup-b) 22%, transparent) 0%,
+				color-mix(in srgb, var(--twoup-b) 7%, transparent) 40%,
+				transparent 85%
+			);
+		// The crop boxes run 24px past their columns; outward that is page margin, and it must never
+		// become scrollable overflow.
+		overflow-x: clip;
+	}
+
+	// `section .main-div` ships a ~5px vertical margin from `landing.scss`, which would sit between
+	// the chat's cut and the band edge it is docked to.
+	.twoup__band .main-div {
+		margin-top: 0;
+		margin-bottom: 0;
+	}
+
+	// ── The columns ───────────────────────────────────────────────────
+	.twoup__row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: $gap;
+	}
+
+	.twoup__col {
+		display: flex;
+		flex-direction: column;
+		gap: $spacing-8;
+		min-width: 0;
+	}
+
+	// The crop box: shorter than the chat it holds, so the window is cut rather than shrunk. No
+	// background of its own — the colour behind it is the band's.
+	.twoup__media {
+		position: relative;
+		height: $box;
+		margin-inline: -$room;
+		overflow: hidden;
+	}
+
+	// The chat dissolves at the cut — fill, side shadows and content together — on the box rather
+	// than the window, for the reason `AiSection` gives: a mask on the window deletes its outer shadow.
+	.twoup__media--chat {
+		-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 48px);
+		mask-image: linear-gradient(to bottom, transparent 0, #000 48px);
+	}
+
+	// The terminal stands whole; its box only places it, and the shadow paints past.
+	.twoup__media--cli {
+		overflow: visible;
+	}
+
+	// The chat: 365 native x 1.24 = 452, the bottom edge 20px up — the shadow's reach at this scale
+	// (5 + 15) — and the height set under `media-up(lg)` so the cut takes the whole `New chat` bar:
+	//
+	//   310 x 1.24 = 384 (window) + 20 (offset) − 350 (box) = 54 cut from the top
+	//
+	// against a bar of 42 (34 x 1.24) and a log that holds transparent for 25 (20 x 1.24) past it,
+	// so the seam lands inside the hold. Positioned, not in the flow, because a transform does not
+	// shrink the layout box — see the same rule in `AiSection`.
+	.twoup__media :global(.assistant) {
+		--ui-scale: #{$chat-scale};
+
+		position: absolute;
+		right: 0;
+		bottom: 20px;
+		left: 0;
+		width: calc(min(#{$col}, 100% - 2 * #{$room}) / #{$chat-scale});
+		margin: 0 auto;
+	}
+
+	// The terminal, centred in the box: (350 − 306) / 2.
+	.twoup__cli {
+		position: absolute;
+		top: 22px;
+		right: 0;
+		left: 0;
+		width: min(#{$col}, 100% - 2 * #{$room});
+		margin: 0 auto;
+	}
+
+	// 16px mono on the shipping section's 1.3 leading, so the two windows' type is one size. The
+	// height shows TEN WHOLE LINES when scrolled to its end: a line is 20.8, the bar 38.2 (its label's
+	// line box pinned below), the composer 39.4 (8 + 20.8 + 9.6 + 1), so 306 leaves the log 228.4 =
+	// 10 x 20.8 + the one-line foot. Re-derive if the leading, the size, or the chrome changes.
+	.twoup__cli :global(.agent) {
+		--agent-lead: 1.3;
+
+		display: flex;
+		flex-direction: column;
+		height: 306px;
+		border-radius: 10px;
+		// Tightened from the component's `0 12px 32px` to match the chat's lift beside it.
+		box-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.06) inset,
+			0 8px 18px rgba(0, 0, 0, 0.3);
+		font-size: 16px;
+	}
+
+	.twoup__cli :global(.agent__scroll) {
+		flex: 1 1 auto;
+		min-height: 0;
+	}
+
+	// The bar's label holds the shipping ratio to its log (14:16 here against 16:18), and its line box
+	// is pinned so the bar keeps its 38.2 whatever the label's size.
+	.twoup__cli :global(.agent__path) {
+		font-size: 14px;
+		line-height: 18.2px;
+	}
+
+	// ── The copy ──────────────────────────────────────────────────────
+	// The shipping section's voice, to the value — the rows' heading, its 14px gap, body in ink — and
+	// the kicker in its route's TEXT hue, derived to read against that hue's wash.
+	.twoup__copy {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.twoup__eyebrow {
+		@include type-eyebrow;
+
+		margin: 0 0 $spacing-3;
+		color: var(--accent-text, var(--accent));
+	}
+
+	.twoup__title {
+		@include type-subsection;
+
+		margin: 0 0 14px;
+		color: var(--color-text);
+		text-wrap: balance;
+	}
+
+	.twoup__text {
+		@include type-body;
+
+		margin: 0;
+		color: var(--color-text, #17181c);
+	}
+
+	// ── The section's mark ────────────────────────────────────────────
+	// The same cycle as `AiSection`: the tile moves through the other sections' badge hues while it is
+	// on screen, on a 9s clock, paused rather than removed when it leaves so it picks up where it was.
+	.twoup :global(.section-header__badge) {
+		animation: twoup-badge-hues 9s linear infinite;
+		animation-play-state: paused;
+	}
+
+	.twoup :global(.section-header__badge.is-cycling) {
+		animation-play-state: running;
+	}
+
+	@keyframes twoup-badge-hues {
+		0%,
+		100% {
+			background-color: var(--badge-color);
+		}
+		16.67% {
+			background-color: var(--ai-hue-1);
+		}
+		33.33% {
+			background-color: var(--ai-hue-2);
+		}
+		50% {
+			background-color: var(--ai-hue-3);
+		}
+		66.67% {
+			background-color: var(--ai-hue-4);
+		}
+		83.33% {
+			background-color: var(--ai-hue-5);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.twoup :global(.section-header__badge) {
+			animation: none;
+		}
+	}
+
+	// ── Desktop: the chat's height ────────────────────────────────────
+	// Only here, because stacked the chat keeps the component's own 289, which is what the shipping
+	// section's stacked numbers below are derived from.
+	@include media-up(lg) {
+		.twoup__media :global(.assistant) {
+			height: 310px;
+		}
+	}
+
+	// ── Stacked: one column, the shipping section's stacked numbers ──────
+	// The windows at 544 (the chat 400 native x 1.36, cut 67 as on the shipping section), the copy
+	// capped to the window's width and centred with it, so each route reads as one column. The band
+	// pads both ends now that no window is docked to an edge. The glows stay in the bottom corners
+	// and tighten: the band is now some three times taller than it is wide, so a reach stated in its
+	// proportions has to come down or the two ellipses would run most of its height as stripes.
+	@include media-down(lg) {
+		.twoup__band {
+			--twoup-reach: 50% 32%;
+
+			padding: $spacing-12 0;
+		}
+
+		.twoup__row {
+			grid-template-columns: minmax(0, 1fr);
+			gap: $spacing-12;
+		}
+
+		.twoup__col {
+			align-items: center;
+		}
+
+		.twoup__media {
+			align-self: stretch;
+		}
+
+		.twoup__media :global(.assistant) {
+			--ui-scale: 1.36;
+
+			bottom: 24px;
+			width: calc(min(#{$stack-window}, 100% - 2 * #{$room}) / 1.36);
+		}
+
+		// 316 and 18px, the shipping section's window: nine whole lines, centred in the 350 box.
+		.twoup__cli {
+			top: 17px;
+			width: min(#{$stack-window}, 100% - 2 * #{$room});
+		}
+
+		.twoup__cli :global(.agent) {
+			height: 316px;
+			font-size: 18px;
+		}
+
+		.twoup__cli :global(.agent__path) {
+			font-size: 16px;
+		}
+
+		.twoup__copy {
+			width: 100%;
+			max-width: $stack-window;
+		}
+	}
+
+	// ── Phone: the shipping section's phone, to the number ────────────
+	// Drawn at the cell's width at scale 1, the boxes bleeding into the 20px gutter so the shadows
+	// have somewhere to go; see `AiSection`'s `max-width: 599px` block for every derivation.
+	@media (max-width: 599px) {
+		.twoup__media {
+			height: 250px;
+			margin-inline: -20px;
+		}
+
+		.twoup__media--chat {
+			-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
+			mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
+		}
+
+		.twoup__media :global(.assistant) {
+			--ui-scale: 1;
+
+			bottom: 16px;
+			width: calc(100% - 40px);
+			max-width: 365px;
+		}
+
+		.twoup__cli {
+			top: 16.5px;
+			width: calc(100% - 40px);
+			max-width: 365px;
+		}
+
+		.twoup__cli :global(.agent) {
+			--agent-lead: 1.4;
+			--agent-chrome: 0.65;
+
+			height: 217px;
+			font-size: 11.5px;
+		}
+
+		.twoup__cli :global(.agent__path) {
+			font-size: 11.5px;
+			line-height: 13.3px;
+		}
+
+		.twoup__copy {
+			max-width: 365px;
+		}
+	}
+
+	@media (max-width: 374px) {
+		.twoup__cli :global(.agent) {
+			font-size: 9.5px;
+		}
+
+		.twoup__cli :global(.agent__path) {
+			font-size: 8.5px;
+		}
+	}
+
+	@include media-down(md) {
+		.twoup {
+			padding: 60px 0 0;
+		}
+	}
+</style>
+
+<script>
+	// The section mark cycles colour while it is on screen — `AiSection`'s observer, for this section's
+	// own class, since that one looks for `section.ai` and would not find these.
+	const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const cycling = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) entry.target.classList.toggle('is-cycling', entry.isIntersecting);
+		},
+		{ threshold: 0.5 }
+	);
+
+	document.querySelectorAll<HTMLElement>('section.twoup').forEach((section) => {
+		const badge = section.querySelector('.section-header__badge');
+		if (badge && section.dataset.animate === 'on' && !reduced) cycling.observe(badge);
+	});
+</script>

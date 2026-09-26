@@ -66,7 +66,11 @@ export const AREAS: Area[] = [
 	{
 		id: 'flows',
 		label: 'Flows',
-		pages: [overview('/internal/flows/'), ...inArea('flows').map((v) => ({ href: visualHref(v), label: v.label }))],
+		// A flow's faked product pages live under its own address, so they count as the flow.
+		pages: [
+			overview('/internal/flows/'),
+			...inArea('flows').map((v) => ({ href: visualHref(v), label: v.label, match: visualHref(v) })),
+		],
 	},
 	{
 		id: 'design',

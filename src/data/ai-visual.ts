@@ -106,8 +106,9 @@ export const AI_CTA_BAND = {
 /**
  * The call to action at the end of each route's copy (`AiWide`, 2026-09-26): one button and a short
  * line beside it, the route's own way in. The copy began as the home-compositions branch's band,
- * `AI_CTA_BAND` above — a band of its own under the section, with a lead, a longer line and a second link to the other
- * route — and was cut down the same day: the section holds it, the switch is the other route, and
+ * `AI_CTA_BAND` above — a band of its own under the section, with a lead, a longer line and a second
+ * link to the other route — and was cut down the same day: the section holds it, the switch is the
+ * other route, and
  * the line is one sentence small enough to sit beside the button.
  *
  * "TRY FOR FREE" IS THE SIGN-UP'S LABEL, with the cloud glyph saying where — "Start for free" until

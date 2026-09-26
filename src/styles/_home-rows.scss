@@ -236,18 +236,33 @@
 	}
 }
 
-// --- the phone ------------------------------------------------------------------------------
+// --- stacked --------------------------------------------------------------------------------
 
 // Everything above is sized for a row read side by side. Stacked, the same numbers are mostly
 // scroll: 80px of padding top and bottom plus a 56px gap is 216px of nothing per row, which on a
 // 812px screen is a quarter of the section before a word of it has been read. Five rows came to
 // 3885px — very nearly five screenfuls.
-@media screen and (max-width: 768px) {
-	.new-rows .main-div {
-		padding: 36px 20px;
-	}
-
+//
+// THE ROW STACKS BELOW `lg` — ON THIS PAGE ONLY, which is why the stack lives here rather than
+// in the component. `FeatureBlockSection` still stacks at 768, because the Edge page shares it
+// and has not had this pass; fencing that off with a prop would put a flag in a shared component
+// to say which of its two callers is which. Matching on `.new-rows` says the same thing and adds
+// nothing to the component — and the sandbox renders a real `.new-rows`, so it follows for free.
+//
+// It wins on specificity, not order: Astro compiles a component's scoped rules to
+// `:where(.astro-hash) .block`, so the component's own `.block` scores (0,1,0) and `.new-rows
+// .block` beats it whatever the source order. Same for its two `:global(.preview…)` rules at
+// (0,2,0) against these at (0,3,0).
+//
+// Side by side the copy is a fixed 40ch measure and the media takes what is left — 312-430px
+// between 769 and 1023, narrower than the same visual gets stacked on a 360px phone. Two columns
+// now begin at 1024, where the container first reaches the measure these were drawn against.
+//
+// Everything here is about STACKING and applies at any width where the row is stacked. What is
+// genuinely about a phone stays at 768, below.
+@include media-down(lg) {
 	.new-rows .block {
+		flex-direction: column;
 		// 32, not 20. Stacked, the gap is what sits between a row's link and the visual under it, and
 		// at 20 the link read as touching the drawing — a caption for it rather than the end of the
 		// copy.
@@ -257,14 +272,54 @@
 		min-height: 0;
 	}
 
+	// The two reversed rows stop reversing. Stacked, `order: -1` puts the drawing above the
+	// sentence that explains it, on every second row.
+	.new-rows .preview.media-first {
+		order: 0;
+	}
+
+	// `align-items: center` makes the cross axis shrink-to-fit once the row stacks, and a slotted
+	// component sized `width: 100%` then resolves that against a parent sizing to its own content.
+	// The two agree on zero and the visual disappears with no error.
+	.new-rows .preview.has-slot {
+		align-self: stretch;
+		max-width: none;
+	}
+
 	// The one that was really costing the height. `flex: 0 1 42ch` is a MEASURE — a reading width
 	// — and it is only that while the row is a row. Once it stacks, flex-basis is the main axis
 	// again, so 42ch resolved to 379px of HEIGHT and the copy sat in a box 76px taller than its
-	// own text, on every row. A measure has no meaning in a single-column layout; the screen is
-	// the measure.
+	// own text, on every row.
+	//
+	// The measure comes back as a WIDTH instead: 544, centred, the AI section's own stacked copy
+	// (`--ai-fit-window` in `AiSection`). Left to the screen, a tablet ran these paragraphs 765px
+	// at 820 — about 95 characters a line — directly above and below a section holding its copy
+	// to 544, so the text column jumped 111px in and out going down the page. Now every stacked
+	// section's copy stands on one edge. The visual under it keeps the full width: that width is
+	// its type size. Below ~584 the cap does not bind, so a phone is untouched.
 	.new-rows .feature-des {
 		flex: 0 1 auto;
+		align-self: center;
+		width: 100%;
+		max-width: 544px;
+	}
+
+	// The 560 cap is a desktop ceiling — it exists so a visual is not upscaled past its design
+	// size in a wide column. Stacked, the column is the page, and leaving the cap in would only
+	// re-centre the visual inside the width just given to it.
+	.new-rows .preview > * {
 		max-width: none;
+	}
+}
+
+// --- the phone ------------------------------------------------------------------------------
+
+// What a phone needs on top of stacking: the row's own padding closed up, the visual out past
+// the gutter, and the copy's rhythm tightened. A tablet is stacked but is not short of room, so
+// none of this applies to it.
+@media screen and (max-width: 768px) {
+	.new-rows .main-div {
+		padding: 36px 20px;
 	}
 
 	// Out past the page's own gutter, to 8px of the screen edge.
@@ -282,13 +337,6 @@
 		// rather than 4. At 4 it read as a drawing that had overshot the page; 8 reads as a
 		// deliberately wider measure. The bleed is still outward only — see the note above.
 		margin-inline: -12px;
-	}
-
-	// The 560 cap is a desktop ceiling — it exists so a visual is not upscaled past its design
-	// size in a wide column. At 367 nothing is near it, and leaving it in would only re-centre
-	// the visual inside the width just given to it.
-	.new-rows .preview > * {
-		max-width: none;
 	}
 
 	// The copy's own rhythm, closed up to match.

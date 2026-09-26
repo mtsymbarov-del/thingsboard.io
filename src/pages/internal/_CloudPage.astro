@@ -1,0 +1,51 @@
+---
+import PlaygroundLayout from '@layouts/PlaygroundLayout.astro';
+import CloudAuth from '@root/pages/internal/_CloudAuth.astro';
+import { kv } from '@root/pages/internal/_key-visuals';
+import { CLOUD_REGIONS, type CloudRegionId } from '@util/cloud-regions';
+
+/**
+ * The faked product page a region lands on, so the prototype can be clicked through end to end:
+ * the site's button, the region dialog, then this, standing in for `thingsboard.cloud/signup` or
+ * `/login` on the region's host. It is `_CloudAuth`, the sign-up and sign-in form draft, drawn as
+ * the whole page under a mock address bar that names the host, with the region it was reached by
+ * arriving current.
+ *
+ * Two routes render it, one per flow, each once per region: `/internal/flows/sign-up/<region>/`
+ * and `/internal/flows/sign-in/<region>/`. They sit under the flow pages' own addresses, so the
+ * top bar keeps the flow's tab lit while the form is on show.
+ */
+interface Props {
+	mode: 'signup' | 'signin';
+	region: CloudRegionId;
+}
+
+const { mode, region } = Astro.props;
+const signin = mode === 'signin';
+const visual = kv(signin ? 'sign-in' : 'sign-up');
+const host = CLOUD_REGIONS.find((r) => r.id === region)!;
+const path = signin ? '/login' : '/signup';
+---
+
+<PlaygroundLayout
+	title={`${host.name} · ${signin ? 'Sign in' : 'Sign up'} page`}
+	description={`Faked: stands in for ${host.host}${path}, the page the ${signin ? 'sign-in' : 'sign-up'} dialog's “${host.name}” leads to. The form draft, as the whole page.`}
+	badge={visual.badge}
+>
+	<div class="cloud-page">
+		<CloudAuth mode={mode} region={region} switchAt="beside" browser demoLastUsed={signin ? 'google' : undefined} />
+	</div>
+</PlaygroundLayout>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	// The draft owns its ground; this only gives it the page's measure and a rounded edge, as
+	// the flow pages' full-bleed rows have.
+	.cloud-page {
+		max-width: 1200px;
+		margin: 0 auto $spacing-12;
+		border-radius: $radius-lg;
+		overflow: hidden;
+	}
+</style>

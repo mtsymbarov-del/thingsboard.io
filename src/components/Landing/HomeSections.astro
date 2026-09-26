@@ -9,6 +9,7 @@ import NormalizeSeries from '@components/Landing/NormalizeSeries.astro';
 import AutomateSwitch from '@components/Landing/AutomateSwitch.astro';
 import ScaleDuo from '@components/Landing/ScaleDuo.astro';
 import AiSection from '@components/Landing/AiSection.astro';
+import AiWide from '@components/Landing/AiWide.astro';
 import UseCasesSection from '@components/Landing/UseCasesSection.astro';
 import TrustBand from '@components/Landing/TrustBand.astro';
 import CustomerVoices from '@components/Landing/CustomerVoices.astro';
@@ -293,7 +294,11 @@ const visualFirst = (block: Extract<Block, { kind: 'rows' }>, i: number) => (blo
 				   chooses which one is on the page — the chat first, the terminal a click away. It never
 				   sits inside `.new-rows` (see the grouping above), whose `.main-div` padding would blow
 				   apart the band geometry the windows are docked to. */
-				return <AiSection id="ai" cta={section.cta} wash={section.wash} hues={aiHues} />;
+				return section.layout === 'wide' ? (
+					<AiWide id="ai" wash={section.wash} hues={aiHues} />
+				) : (
+					<AiSection id="ai" cta={section.cta} wash={section.wash} hues={aiHues} />
+				);
 			case 'dashboards':
 				return <UseCasesSection hued={composition.hues === 'section'} />;
 			case 'trust':

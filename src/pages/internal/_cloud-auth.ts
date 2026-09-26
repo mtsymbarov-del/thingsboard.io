@@ -1,13 +1,9 @@
 /**
  * ThingsBoard Cloud's two regions, for every draft that names them: `_CloudAuth` and
- * `_RegionDialog`. Each region is its own host, and an account lives on one of them.
+ * `_RegionDialog`. They are the site's own list, re-exported so the drafts and the shipped dialog
+ * cannot name different hosts.
  */
-export const CLOUD_REGIONS = [
-	{ id: 'us', name: 'North America', host: 'thingsboard.cloud' },
-	{ id: 'eu', name: 'Europe', host: 'eu.thingsboard.cloud' },
-] as const;
-
-export type CloudRegionId = (typeof CLOUD_REGIONS)[number]['id'];
+export { CLOUD_REGIONS, type CloudRegionId } from '@util/cloud-regions';
 
 /**
  * The provider marks for `_CloudAuth`, lifted verbatim from the live

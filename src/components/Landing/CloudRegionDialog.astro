@@ -1,0 +1,641 @@
+---
+import { Icon } from 'astro-icon/components';
+import EcosystemMark from '@components/Landing/EcosystemMark.astro';
+import { CLOUD_REGIONS, type CloudRegionId } from '@util/cloud-regions';
+
+/**
+ * The website's region chooser, for both buttons that lead to Cloud: "Try for free" and "Sign in".
+ * Cloud is two sites, `thingsboard.cloud` and `eu.thingsboard.cloud`, with an account on only one,
+ * so both buttons have to know the region before they can send anyone anywhere. `flow` picks which
+ * button this is; the dialog is the same shape either way.
+ *
+ * It replaces two hops. "Try for free" used to go to `/installations/`, a four-tab product
+ * catalogue, and from its first tab to `/installations/choose-region/`, and only then to Cloud; the
+ * hero's own copy of the button skipped both and sent everyone to North America, with no way to
+ * Europe once there. "Sign in" opened a dropdown in the header. Now every one of those buttons opens
+ * this, and the region is the one decision between the site and the product.
+ *
+ * SIGN UP: a thin chooser that asks ONE thing, where the data should live, with the two regions as
+ * visible cards, the nearest one marked, and self-hosting demoted to a line beneath. No tabs, no
+ * product list: tabs would rebuild the installations hub inside a modal, and the hub is the thing
+ * this replaces as the button's destination.
+ *
+ * SIGN IN: the same chooser. The question is which region the account is IN, so each card names its
+ * host, the one the visitor has been signing in at, and goes to that host's `/login`. The card
+ * chosen is remembered on this site, so the next visit marks it "Last visited" and focuses it. As
+ * the dropdown did, it opens in a new tab and the dialog closes behind it.
+ *
+ * ONE DIALOG PER FLOW ON A PAGE, and any number of triggers: every element carrying
+ * `data-cloud-auth="signup"` or `"signin"` opens the matching dialog. The triggers stay links to
+ * the North American host, so without script the button still leads to Cloud, as it did before.
+ * A trigger inside an element marked `data-cloud-auth-scope` only reaches a dialog inside the same
+ * element, which is what lets the sandbox stack several of these on one page.
+ *
+ * It is a native `<dialog>`, opened with `showModal()`: focus trap, Escape, the backdrop and the
+ * top layer come from the browser rather than from a script. The dialog element itself is a
+ * transparent, viewport-filling box and the white card is a panel inside it, the way the IoT Hub's
+ * install dialog is built: a modal dialog clips its overflow, and the panel's badge hangs OUTSIDE
+ * its top edge. Under 560px the panel becomes a bottom sheet, because a centred card at phone width
+ * is a card with 16px either side pretending to be a page.
+ *
+ * THE BADGE on the panel's top edge is the Cloud page's hero mark: the ThingsBoard mark knocked
+ * out white on a squircle in the Cloud indigo, straddling the edge, at the product card's size. It
+ * names the product the dialog leads to, and it is the one thing on the dialog that is a picture.
+ * The head under it is centred on it, eyebrow, title and lede, the way the product cards centre
+ * on theirs. Each region card carries a globe in a hue of its own; the hues are decoration, as
+ * they were in the header's old menu, and the region names carry the meaning. Sign-up's other
+ * route, on the last line, carries the other product's glyph in its colour, the On-premises server
+ * in green; sign-in's other route is sign-up itself, and needs no glyph to say so.
+ *
+ * WHICH REGION IS "nearest" comes from the browser's timezone, see `nearestCloudRegion`. In sign-up
+ * it gets the chip and the initial focus, so Enter straight after the click is the one-decision
+ * path. In sign-in a remembered region outranks it: where the visitor signed in before is better
+ * evidence than where they are now. Nothing navigates on its own: a dialog that opened and left
+ * would be the interstitial it is meant to remove.
+ */
+interface Props {
+	/** Which button opens it: "Try for free" or "Sign in". */
+	flow: 'signup' | 'signin';
+	/** Prefix for the ids the dialog's labelling needs. Distinct per instance on a page. */
+	id?: string;
+	/**
+	 * Pins the region marked nearest, instead of reading the browser's timezone. For the sandbox,
+	 * where a draft is judged with a known state; the site leaves it unset.
+	 */
+	nearest?: CloudRegionId;
+	/**
+	 * Sandbox only: the base paths of the faked product pages, one per flow. A region then leads to
+	 * `<base><region>/` in the same tab instead of to Cloud, so the whole flow can be clicked
+	 * through on the site. The site leaves it unset.
+	 */
+	prototype?: Record<'signup' | 'signin', string>;
+}
+
+const { flow, id = `cloud-${flow}`, nearest, prototype } = Astro.props;
+
+const signin = flow === 'signin';
+
+// Sign-up notes are the Cloud FAQ's own claim, data "stored in either North America or the EU",
+// and no narrower: the docs name no country or datacentre for either region. Sign-in notes are the
+// hosts, because the address is what a returning user recognises.
+const STORED_IN: Record<CloudRegionId, string> = { us: 'North America', eu: 'the European Union' };
+// The ids the analytics events are keyed on: the sign-up ones are what the retired
+// `/installations/choose-region/` buttons carried, so the funnel keeps its names.
+const GTM_ID: Record<CloudRegionId, string> = signin
+	? { us: 'SignIn_Cloud_NorthAmerica', eu: 'SignIn_Cloud_Europe' }
+	: { us: 'TryItNow_Cloud_NorthAmerica', eu: 'TryItNow_Cloud_Europe' };
+const REGIONS = CLOUD_REGIONS.map((r) => ({
+	...r,
+	note: signin ? r.host : `Data stored in ${STORED_IN[r.id]}`,
+	href: prototype ? `${prototype[flow]}${r.id}/` : `https://${r.host}${signin ? '/login' : '/signup'}`,
+	gtmId: GTM_ID[r.id],
+}));
+
+// Sign-in leaves for a new tab, as the header's menu did; the prototype stays in its own.
+const newTab = signin && !prototype;
+
+// Without script the chip sits on North America, where the site sent everyone before it asked;
+// the script moves it before the dialog can be opened.
+const initialNearest: CloudRegionId = nearest ?? 'us';
+
+// Sign-in's other route, sign-up: on the site the dialog behind "Try for free" takes the click and
+// the href is its fallback; in the prototype it is the faked sign-up page of the pinned region.
+const signupHref = prototype ? `${prototype.signup}${initialNearest}/` : 'https://thingsboard.cloud/signup';
+
+// The Cloud page's hero mark, knocked out white on the squircle by `EcosystemMark`.
+const TB_MARK = '/src/assets/images/landings/thingsboard-mark.svg';
+---
+
+<dialog
+	class="crd"
+	aria-labelledby={`${id}-title`}
+	data-cloud-dialog={flow}
+	data-nearest={initialNearest}
+	data-nearest-pinned={nearest ? '' : undefined}
+>
+	<div class="crd__panel">
+		<span class="crd__badge" aria-hidden="true">
+			<EcosystemMark src={TB_MARK} class="crd__mark" filled />
+		</span>
+
+		<form method="dialog">
+			<button type="submit" class="crd__close" aria-label="Close">
+				<Icon name="tabler:x" aria-hidden="true" />
+			</button>
+		</form>
+
+		{
+			/* The kicker names the product the badge shows, in the product cards' own eyebrow type
+			   and the primary colour, as the cards set theirs in their accent. The title asks the one
+			   question, formally and short. Sign-up's lede says what hangs on the answer and closes
+			   on the Cloud page's "no credit card required". Sign-in has no lede: its title is the
+			   whole question, and a title that said "Sign in" over it named the product's page, not
+			   this dialog. */
+		}
+		<p class="crd__eyebrow">ThingsBoard Cloud</p>
+		<h2 class="crd__title" id={`${id}-title`}>
+			{signin ? 'Choose the region your account is in' : 'Choose your data region'}
+		</h2>
+		{
+			!signin && (
+				<p class="crd__lede">
+					Your data stays in the region you choose, for residency and compliance. No credit card required.
+				</p>
+			)
+		}
+
+		<div class="crd__regions">
+			{
+				REGIONS.map((r) => (
+					<a
+						class="crd__region gtm_button"
+						href={r.href}
+						id={r.gtmId}
+						data-region={r.id}
+						target={newTab ? '_blank' : undefined}
+						rel={newTab ? 'noopener noreferrer' : undefined}
+					>
+						<span class={`crd__globe crd__globe--${r.id}`}>
+							<Icon name="tabler:world" aria-hidden="true" />
+						</span>
+						<span class="crd__rname">
+							<span class="crd__rlabel">{r.name}</span>
+							{!signin && (
+								<span class="crd__chip" data-crd-nearest hidden={r.id !== initialNearest}>
+									Nearest to you
+								</span>
+							)}
+							{signin && (
+								<span class="crd__chip" data-crd-last hidden>
+									Last visited
+								</span>
+							)}
+						</span>
+						<span class="crd__rnote">{r.note}</span>
+						<Icon name="tabler:chevron-right" class="crd__go" aria-hidden="true" />
+					</a>
+				))
+			}
+		</div>
+
+		<p class="crd__alt">
+			{
+				signin ? (
+					<>
+						<span>New to ThingsBoard?</span>
+						<a href={signupHref} data-cloud-auth={prototype ? undefined : 'signup'}>
+							Start for free
+							<Icon name="tabler:chevron-right" class="crd__alt-go" aria-hidden="true" />
+						</a>
+					</>
+				) : (
+					<>
+						<span>Rather run it yourself?</span>
+						<a href="/installations/">
+							<Icon name="tabler:server-2" class="crd__alt-icon crd__alt-icon--onprem" aria-hidden="true" />
+							Install on your own servers
+							<Icon name="tabler:chevron-right" class="crd__alt-go" aria-hidden="true" />
+						</a>
+					</>
+				)
+			}
+		</p>
+	</div>
+</dialog>
+
+<script>
+	import { lockScroll, unlockScroll } from '@util/scroll-lock';
+	import {
+		isCloudRegionId,
+		nearestCloudRegion,
+		onLastRegion,
+		readLastRegion,
+		writeLastRegion,
+		type CloudRegionId,
+	} from '@util/cloud-regions';
+
+	const SCOPE = '[data-cloud-auth-scope]';
+
+	// One handler per dialog, found by its attribute rather than by id, so a page holding several
+	// (the sandbox does) wires each. Listeners sit on the nodes, which is what lets them survive
+	// the sandbox's phone frame: it MOVES a direction's row into an empty body, it does not clone it.
+	document.querySelectorAll<HTMLDialogElement>('dialog[data-cloud-dialog]').forEach((dlg) => {
+		const flow = dlg.dataset.cloudDialog;
+		const signin = flow === 'signin';
+		const cards = [...dlg.querySelectorAll<HTMLAnchorElement>('.crd__region')];
+		const card = (id: string | null | undefined) => cards.find((c) => c.dataset.region === id);
+
+		// The chip and the fallback focus: the browser's timezone, unless the sandbox pinned one.
+		let nearest: CloudRegionId = 'us';
+		if (dlg.hasAttribute('data-nearest-pinned') && isCloudRegionId(dlg.dataset.nearest)) {
+			nearest = dlg.dataset.nearest;
+		} else {
+			nearest = nearestCloudRegion();
+			cards.forEach((c) => {
+				const chip = c.querySelector<HTMLElement>('[data-crd-nearest]');
+				if (chip) chip.hidden = c.dataset.region !== nearest;
+			});
+		}
+
+		// Sign-in: which card carries "Last visited", from the region stored on this site.
+		let last: CloudRegionId | null = null;
+		const paint = (value: CloudRegionId | null) => {
+			last = value;
+			cards.forEach((c) => {
+				const chip = c.querySelector<HTMLElement>('[data-crd-last]');
+				if (chip) chip.hidden = c.dataset.region !== value;
+			});
+		};
+		if (signin) {
+			paint(readLastRegion());
+			// Another dialog on the page, or one in another document, writes the same store: follow it.
+			onLastRegion(paint);
+		}
+
+		// A region chosen is a region remembered, from either flow: signing up in Europe is the best
+		// evidence of where the next sign-in belongs. Sign-in leaves for a new tab, so the dialog
+		// closes behind it; sign-up leaves this page, and the dialog goes with it.
+		cards.forEach((c) =>
+			c.addEventListener('click', () => {
+				if (isCloudRegionId(c.dataset.region)) writeLastRegion(c.dataset.region);
+				if (signin) dlg.close();
+			})
+		);
+
+		const open = () => {
+			if (dlg.open) return;
+			dlg.showModal();
+			lockScroll();
+			// `showModal` lands on the first focusable, the close button. The likeliest answer takes
+			// the focus instead, so Enter is the whole interaction: in sign-in the remembered region,
+			// otherwise the nearest.
+			(card(signin ? last : null) ?? card(nearest))?.focus();
+		};
+		// `close` is dispatched a task later, so when one dialog hands off to another (sign-in's
+		// "Start for free"), the event lands after the next one has already taken the lock: the page
+		// unlocks only once no region dialog is left open.
+		dlg.addEventListener('close', () => {
+			if (!document.querySelector('dialog[data-cloud-dialog][open]')) unlockScroll();
+		});
+
+		// The panel fills the dialog box, so a click whose target is the dialog element itself can
+		// only have landed on the backdrop.
+		dlg.addEventListener('click', (e) => {
+			if (e.target === dlg) dlg.close();
+		});
+
+		// The triggers: every `data-cloud-auth` for this flow in the dialog's scope. A trigger stays a
+		// link to the fallback host, so the click is taken over rather than replaced.
+		const scope = dlg.closest<HTMLElement>(SCOPE) ?? document;
+		scope.querySelectorAll<HTMLElement>(`[data-cloud-auth="${flow}"]`).forEach((trigger) => {
+			if ((trigger.closest(SCOPE) ?? document) !== scope) return;
+			trigger.setAttribute('aria-haspopup', 'dialog');
+			trigger.addEventListener('click', (e) => {
+				// A modified click asks for a new tab or window: let the link do that.
+				if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+				e.preventDefault();
+				// The sign-in dialog's "Start for free" opens the sign-up one: the first closes so the
+				// two never stack in the top layer.
+				const within = trigger.closest<HTMLDialogElement>('dialog[data-cloud-dialog]');
+				if (within && within !== dlg && within.open) within.close();
+				open();
+			});
+		});
+	});
+</script>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	// The product cards' squircle, and the headroom the panel leaves for the half of it that
+	// hangs above the edge.
+	$badge: 72px;
+
+	// The region hues. Decoration, not information: both globes are aria-hidden and the names
+	// carry the meaning. North America takes the brand indigo, which is also Cloud's own colour.
+	// Europe has no palette token: the only blue-green the site owns names an EDITION, and
+	// pointing it at a region would collide wherever the two appear together, so the header's old
+	// menu kept a local value for it, and this is that value.
+	$region-us: $color-brand;
+	$region-eu: #0e8aa8;
+
+	// The dialog is a transparent box over the whole viewport, so a click on it is a click beside
+	// the panel, and the panel's badge has somewhere to hang. The UA hides a closed dialog with
+	// `display: none`, which an unconditional `display: grid` here would override, so the grid
+	// is set on `[open]` only.
+	.crd {
+		width: 100%;
+		height: 100%;
+		max-width: none;
+		max-height: none;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+
+		&[open] {
+			display: grid;
+			place-items: center;
+		}
+
+		&::backdrop {
+			background: rgb(23 24 28 / 55%);
+		}
+
+		// A bottom sheet on a phone: the panel sat on the bottom edge, full width.
+		@media (max-width: 559px) {
+			&[open] {
+				place-items: end center;
+			}
+		}
+
+		// `:where()` so the reset sits under the class rules below, which set their own margins.
+		:where(p, h2) {
+			margin: 0;
+		}
+	}
+
+	// Its own colours, from the theme tokens: the homepage and the product pages that carry the
+	// header are locked to light, but the dialog reads the theme rather than assuming it.
+	.crd__panel {
+		position: relative;
+		width: min(560px, calc(100vw - 32px));
+		// The badge's upper half lies above the panel, inside the dialog's box: the margin is what
+		// keeps it there when the panel is as tall as the viewport allows.
+		margin-top: calc($badge / 2);
+		padding: calc($badge / 2 + 24px) 32px 32px;
+		border-radius: $radius-xl;
+		background-color: var(--color-bg-surface, #fff);
+		// The product cards' glow, to the number: the badge's own hue falling from where the badge
+		// sits, centred on the top edge, and gone by the cards.
+		background-image: radial-gradient(
+			95% 105% at 50% 0%,
+			color-mix(in srgb, var(--color-product-cloud, #{$color-brand}) 17%, transparent),
+			color-mix(in srgb, var(--color-product-cloud, #{$color-brand}) 7%, transparent) 42%,
+			transparent 84%
+		);
+		color: var(--color-text, #17181c);
+		box-shadow:
+			0 1px 2px rgb(23 24 28 / 12%),
+			0 24px 64px rgb(23 24 28 / 24%);
+
+		@media (max-width: 559px) {
+			width: 100vw;
+			padding: calc($badge / 2 + 20px) 16px 32px;
+			border-radius: $radius-xl $radius-xl 0 0;
+		}
+	}
+
+	// The Cloud page's hero mark at the product card's size: an app-style squircle straddling the
+	// top edge, the product's indigo under a static sheen off the top-left, the mark knocked out
+	// white. The `border-radius` in percent is the practical squircle, as it is there.
+	.crd__badge {
+		position: absolute;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		display: grid;
+		place-items: center;
+		width: $badge;
+		height: $badge;
+		border-radius: 32%;
+		background-color: var(--color-product-cloud, #{$color-brand});
+		background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 62%);
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+	}
+
+	// The hero mark's own rule, to the number: 82% of the squircle, height from the artwork.
+	.crd__mark {
+		width: 82%;
+		height: auto;
+	}
+
+	.crd__close {
+		position: absolute;
+		top: 16px;
+		right: 16px;
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		padding: 0;
+		border: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--color-text-secondary, #5b616e);
+		cursor: pointer;
+
+		[data-icon] {
+			width: 20px;
+			height: 20px;
+		}
+
+		&:hover {
+			background: color-mix(in srgb, currentColor 10%, transparent);
+			color: var(--color-text, #17181c);
+		}
+
+		&:focus-visible {
+			outline: 2px solid $color-brand;
+			outline-offset: 2px;
+		}
+	}
+
+	// The head, centred on the badge as the product cards centre on theirs. The kicker is the
+	// cards' own eyebrow type in the primary colour, the way each card sets its eyebrow in its
+	// accent. It starts below the close button's row, so the two never share a line at any width.
+	.crd__eyebrow {
+		@include type-eyebrow;
+		margin-bottom: 6px;
+		text-align: center;
+		color: var(--color-primary, #{$color-brand});
+	}
+
+	// Sign-in's title is the last thing before the cards, so it carries the lede's clearance.
+	.crd__title {
+		font-size: 24px;
+		font-weight: $font-weight-bold;
+		line-height: 1.2;
+		margin-bottom: 8px;
+		text-align: center;
+		text-wrap: balance;
+
+		[data-cloud-dialog='signin'] & {
+			margin-bottom: 24px;
+		}
+	}
+
+	.crd__lede {
+		max-width: 44ch;
+		margin: 0 auto 24px;
+		font-size: 15px;
+		line-height: 1.5;
+		text-align: center;
+		text-wrap: pretty;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.crd__regions {
+		display: grid;
+		gap: 12px;
+		margin-bottom: 20px;
+	}
+
+	// One card per region: a globe in the region's hue, the name over its note, a chevron. The
+	// chip rides on the name's line, so it never takes a column from the note: the note keeps the
+	// card's full width either way.
+	//
+	// The homepage's cards, to the number. No stroke, at rest or on hover: the fill draws no edge
+	// on the white panel, so the resting shadow carries the whole card, a step under the hover
+	// shadow so hover reads as a change rather than more of the same. Hover is the shadow
+	// spreading, wider and lighter, and the name underlining as the card's link: no lift, no
+	// recolouring, the way every card on the homepage answers it. Keyboard focus keeps its ring,
+	// which hover never shows: it says where Enter goes when the dialog opens.
+	.crd__region {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		grid-template-rows: auto auto;
+		column-gap: 14px;
+		align-items: center;
+		padding: 16px;
+		border-radius: 12px;
+		background-color: var(--color-bg-surface, #fff);
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.06),
+			0 10px 20px -8px rgba(0, 0, 0, 0.1);
+		color: inherit;
+		text-decoration: none;
+		transition: box-shadow 0.18s ease;
+
+		&:hover,
+		&:focus-visible {
+			box-shadow: 0 12px 28px rgba(0, 0, 0, 0.07);
+
+			.crd__rlabel {
+				text-decoration: underline;
+				text-underline-offset: 3px;
+			}
+		}
+
+		&:focus-visible {
+			outline: 2px solid $color-brand;
+			outline-offset: 3px;
+		}
+	}
+
+	// The globe on a disc of its own hue at a tenth, the way the chip sits on the brand's.
+	.crd__globe {
+		grid-column: 1;
+		grid-row: 1 / 3;
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--region) 12%, transparent);
+		color: var(--region);
+
+		[data-icon] {
+			width: 22px;
+			height: 22px;
+		}
+
+		&--us {
+			--region: #{$region-us};
+		}
+
+		&--eu {
+			--region: #{$region-eu};
+		}
+	}
+
+	.crd__rname {
+		grid-column: 2;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 8px;
+		font-size: 17px;
+		font-weight: $font-weight-bold;
+		line-height: 1.3;
+	}
+
+	.crd__rnote {
+		grid-column: 2;
+		font-size: 14px;
+		line-height: 1.4;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.crd__chip {
+		padding: 2px 8px;
+		border-radius: 999px;
+		background: rgb(61 80 245 / 10%);
+		color: $color-brand;
+		font-size: 12px;
+		font-weight: $font-weight-medium;
+		line-height: 1.4;
+		white-space: nowrap;
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	// Still, as the homepage's chevrons are: the shadow and the underline carry the hover.
+	.crd__go {
+		grid-column: 3;
+		grid-row: 1 / 3;
+		width: 20px;
+		height: 20px;
+		color: #9aa0ab;
+	}
+
+	// The other route, as a sentence rather than a third card: it is here to be found, not to be
+	// weighed against the two above. Sign-up's link leads with the other product's glyph in that
+	// product's colour, the way the product cards' buttons carry theirs; both end on the chevron.
+	// The question and the link are one centred row, the glyph and the words on one middle line:
+	// a flex row rather than inline text, because an inline-flex link takes its baseline from its
+	// first item, the glyph, and the words then sat a pixel or two off the question's.
+	.crd__alt {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-items: center;
+		gap: 4px 8px;
+		font-size: 14px;
+		line-height: 1.5;
+		color: var(--color-text-secondary, #5b616e);
+
+		a {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			color: var(--color-text, #17181c);
+			font-weight: $font-weight-medium;
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+	}
+
+	.crd__alt-icon {
+		width: 20px;
+		height: 20px;
+		flex: 0 0 auto;
+
+		&--onprem {
+			color: var(--brand-pe, #1f8b4d);
+		}
+	}
+
+	// Closer to the words than the glyph is: it belongs to them, the glyph stands before them.
+	.crd__alt-go {
+		width: 16px;
+		height: 16px;
+		flex: 0 0 auto;
+		margin-left: -3px;
+	}
+</style>

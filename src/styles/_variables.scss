@@ -142,6 +142,13 @@ $header-height: 80px;
 $container-max-width: 1080px;
 $container-max-width-sm: 1200px;
 
+// The page's side inset: how far the header's logo and buttons, the hero's copy and the logo
+// strip under it stand from the viewport's edge. One formula, so the three stay on one line; the
+// floor is the only thing a caller varies (20 where a phone needs every pixel, 24 otherwise).
+@function page-inset($floor: 24px) {
+	@return clamp(#{$floor}, calc(0.5rem + 2vw), 56px);
+}
+
 // Transitions
 $transition-fast: 0.15s ease;
 $transition-base: 0.3s ease;

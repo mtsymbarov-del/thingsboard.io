@@ -59,7 +59,13 @@ export type HomeSection =
 	| {
 			id: 'ai';
 			/**
-			 * `block` — one call to action under the row, on the wash: a line, a button and a link, all
+			 * `wide` — `AiWide` (FE-handoff, 2026-09-26): a whole 600px window beside a column of copy that
+			 * ends on its own call to action, so `cta` does not apply. `toggle` — `AiSection`, as the
+			 * handoff shipped it.
+			 */
+			layout: 'wide' | 'toggle';
+			/**
+			 * For `toggle` only. `block` — one call to action under the row, on the wash: a line, a button and a link, all
 			 * following the switch (Cloud sign-up for the Assistant, the CLI guide for the agent). `route`
 			 * — the same two actions, one at the end of each route's copy. `none` — no action, as the
 			 * handoff shipped it.
@@ -152,9 +158,9 @@ export const HOME_COMPOSITIONS: HomeComposition[] = [
 		label: 'A',
 		name: 'Show, then explain',
 		hues: 'section',
-		note: 'The AI demo straight under the hero, with a call to action, then the platform loop and its four rows in the loop’s own order. A trust band, “Why choose” under a value heading, and customer quotes join; Scale leaves for the On-premises page. Every section takes its own colour.',
+		note: 'The AI demo straight under the hero, in the wide window with its call to action, then the platform loop and its four rows in the loop’s own order. A trust band, “Why choose” under a value heading, and customer quotes join; Scale leaves for the On-premises page. Every section takes its own colour.',
 		sections: [
-			{ id: 'ai', cta: 'block', wash: 'cycle' },
+			{ id: 'ai', layout: 'wide', cta: 'none', wash: 'cycle' },
 			{ id: 'platform', heading: 'loop' },
 			{ id: 'connect' },
 			{ id: 'twin' },
@@ -179,7 +185,7 @@ export const HOME_COMPOSITIONS: HomeComposition[] = [
 			{ id: 'connect' },
 			{ id: 'solution' },
 			{ id: 'twin' },
-			{ id: 'ai', cta: 'none', wash: 'route' },
+			{ id: 'ai', layout: 'toggle', cta: 'none', wash: 'route' },
 			{ id: 'normalize', media: 'pulse' },
 			{ id: 'scale' },
 			{ id: 'dashboards' },
@@ -196,7 +202,7 @@ export const HOME_COMPOSITIONS: HomeComposition[] = [
 		note: 'A with its first two sections swapped: the platform loop orients first, then the AI demo. The smallest change from the handoff that still moves AI up.',
 		sections: [
 			{ id: 'platform', heading: 'loop' },
-			{ id: 'ai', cta: 'block', wash: 'cycle' },
+			{ id: 'ai', layout: 'wide', cta: 'none', wash: 'cycle' },
 			{ id: 'connect' },
 			{ id: 'twin' },
 			{ id: 'normalize', media: 'switch' },

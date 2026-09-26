@@ -4,6 +4,7 @@ import HeaderScrollWatch from '@components/Landing/HeaderScrollWatch.astro';
 import HeaderIcons from '@components/Landing/HeaderIcons.astro';
 import GitHubButton from '@components/Landing/GitHubButton.astro';
 import NButton from '@components/Landing/NButton.astro';
+import CloudRegionDialog from '@components/Landing/CloudRegionDialog.astro';
 import SmartImage from '@components/SmartImage.astro';
 import { Icon } from 'astro-icon/components';
 import { Products } from '@models/site.models';
@@ -18,7 +19,7 @@ interface Props {
 }
 
 const { gitHubPlatform, headerConfig, homeNav = false } = Astro.props;
-const { variant, cta, showSearch, showThemeToggle } = headerConfig;
+const { variant, cta, showSearch, showThemeToggle, scrolledAtTop } = headerConfig;
 
 // Ship the scroll-flip script only on the variants that go transparent.
 const needsScrollState = variant === 'transparent' || variant === 'transparent-hover';
@@ -77,27 +78,36 @@ const needsScrollState = variant === 'transparent' || variant === 'transparent-h
 	}
 	{
 		/* Cloud has two regions and no single sign-in host, so the button asks
-		   before it sends you somewhere you can't sign in. */
+		   before it sends you somewhere you can't sign in: it opens the region
+		   dialog rendered at the end of this component. The link under it is the
+		   no-script fallback, the host most accounts are on. */
 		homeNav && (
-			<details class="region-signin">
-				<summary aria-haspopup="menu">Sign in</summary>
-				<div class="region-signin__menu" role="menu">
-					<span class="region-signin__label">Choose your region</span>
-					<a href="https://thingsboard.cloud" role="menuitem" target="_blank" rel="noopener noreferrer">
-						<Icon name="tabler:cloud" class={`region-cloud region-cloud--us`} aria-hidden="true" />
-						North America
-					</a>
-					<a href="https://eu.thingsboard.cloud" role="menuitem" target="_blank" rel="noopener noreferrer">
-						<Icon name="tabler:cloud" class={`region-cloud region-cloud--eu`} aria-hidden="true" />
-						Europe
-					</a>
-				</div>
-			</details>
+			<a class="region-signin" href="https://thingsboard.cloud/login" data-cloud-auth="signin">
+				Sign in
+			</a>
 		)
 	}
-	<NButton id="Menu_TryItNow" href="/installations/" variant="filled" class="try gtm_button">
-		{homeNav ? 'Try for free' : 'Try it now'}
-	</NButton>
+	{
+		/* The homepage's "Try for free" asks the region in the same dialog, so
+		   the path to a Cloud account is one decision long. Every other page keeps
+		   "Try it now" and the installations hub, its catalogue of every product. */
+		homeNav ? (
+			<NButton
+				id="Menu_TryItNow"
+				href="https://thingsboard.cloud/signup"
+				target="_self"
+				variant="filled"
+				class="try gtm_button"
+				data-cloud-auth="signup"
+			>
+				Try for free
+			</NButton>
+		) : (
+			<NButton id="Menu_TryItNow" href="/installations/" variant="filled" class="try gtm_button">
+				Try it now
+			</NButton>
+		)
+	}
 	{
 		/* Menu last, so the cluster ends on the control that opens the drawer.
 		   Living inside .head-buttons rather than back in .logo-burger is what
@@ -116,24 +126,23 @@ const needsScrollState = variant === 'transparent' || variant === 'transparent-h
 
 <Navigation homeNav={homeNav} />
 
-{needsScrollState && <HeaderScrollWatch />}
+{
+	/* The region choosers behind "Sign in" and "Try for free", one per flow. Any element on the
+	   page carrying `data-cloud-auth="signup"` or `"signin"` opens the matching one: the hero's and
+	   the closing band's buttons included, so they are rendered here, with the header every one of
+	   those pages carries, rather than once per page. */
+	homeNav && (
+		<>
+			<CloudRegionDialog flow="signup" />
+			<CloudRegionDialog flow="signin" />
+		</>
+	)
+}
+
+{needsScrollState && <HeaderScrollWatch hold={scrolledAtTop} />}
 
 <script>
 	import { lockScroll, unlockScroll } from '@util/scroll-lock';
-
-	// <details> stays open on outside click and ignores Escape, so wire both.
-	document.addEventListener('click', (e) => {
-		const open = document.querySelector<HTMLDetailsElement>('.region-signin[open]');
-		if (open && !open.contains(e.target as Node)) open.removeAttribute('open');
-	});
-	document.addEventListener('keydown', (e) => {
-		if (e.key !== 'Escape') return;
-		const open = document.querySelector<HTMLDetailsElement>('.region-signin[open]');
-		if (open) {
-			open.removeAttribute('open');
-			open.querySelector('summary')?.focus();
-		}
-	});
 
 	// Burger menu toggle
 	function Burger() {
@@ -284,11 +293,11 @@ const needsScrollState = variant === 'transparent' || variant === 'transparent-h
 	}
 
 	header.header {
-		// The bar's edge inset, matching the clamp the hero column uses so the two
-		// line up. Named rather than restated: the logo side, the buttons side and
+		// The bar's edge inset: the page's (`page-inset`), which the hero's copy stands on
+		// too, so the two line up. Named rather than restated: the logo side, the buttons side and
 		// the open-drawer rule all need it, and the drawer rule in particular has
 		// to restore it after the stacked treatment zeroes the padding.
-		--tb-bar-inset: clamp(24px, calc(0.5rem + 2vw), 56px);
+		--tb-bar-inset: #{page-inset()};
 		position: fixed;
 		// Sits below the promo banner; tracks the live offset so it slides to
 		// top:0 as the banner collapses on scroll (--promo-cur → 0).
@@ -335,85 +344,31 @@ const needsScrollState = variant === 'transparent' || variant === 'transparent-h
 			}
 		}
 
-		// Secondary in the menu. Border follows the label colour so it survives the
-		// header's flip from transparent to solid without a second rule.
+		// Secondary in the menu: the link that opens the sign-in region dialog.
+		// Border follows the label colour so it survives the header's flip from
+		// transparent to solid without a second rule.
 		.region-signin {
-			position: relative;
+			display: inline-flex;
+			align-items: center;
+			height: 40px;
+			padding: 0 16px;
+			border: 1px solid rgba(255, 255, 255, 0.35);
+			border-color: color-mix(in srgb, currentColor 35%, transparent);
+			border-radius: 4px;
+			font-size: 14px;
+			color: inherit;
+			text-decoration: none;
+			cursor: pointer;
+			white-space: nowrap;
+			transition:
+				background-color 0.15s ease,
+				border-color 0.15s ease;
 
-			summary {
-				display: inline-flex;
-				align-items: center;
-				height: 40px;
-				padding: 0 16px;
-				border: 1px solid rgba(255, 255, 255, 0.35);
-				border-color: color-mix(in srgb, currentColor 35%, transparent);
-				border-radius: 4px;
-				font-size: 14px;
-				cursor: pointer;
-				list-style: none;
-				white-space: nowrap;
-				transition:
-					background-color 0.15s ease,
-					border-color 0.15s ease;
-
-				&::-webkit-details-marker {
-					display: none;
-				}
-
-				&:hover,
-				&:focus-visible {
-					background-color: color-mix(in srgb, currentColor 12%, transparent);
-					border-color: color-mix(in srgb, currentColor 55%, transparent);
-				}
-			}
-
-			&[open] summary {
+			&:hover,
+			&:focus-visible {
 				background-color: color-mix(in srgb, currentColor 12%, transparent);
-			}
-
-			&__menu {
-				position: absolute;
-				top: calc(100% + 8px);
-				right: 0;
-				z-index: 40;
-				display: flex;
-				flex-direction: column;
-				min-width: 180px;
-				padding: 6px;
-				border-radius: 6px;
-				background-color: var(--color-bg-surface, #fff);
-				border: 1px solid var(--sl-color-hairline-light);
-				box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-
-				// The region name is the whole of the choice now that no mark sits beside
-				// it, so it is set above the menu's own 14px rather than level with it —
-				// and above the 15px "Sign in" that opens the menu, because the decision
-				// is here rather than on the trigger. The extra row padding is what keeps
-				// two 16px lines from reading as a cramped block once the 24px badge and
-				// its 8px gap are gone.
-				a {
-					display: flex;
-					align-items: center;
-					gap: 10px;
-					padding: 10px;
-					border-radius: 4px;
-					font-size: 16px;
-					font-weight: $font-weight-medium;
-					line-height: 1.3;
-					color: var(--sl-color-text, #24292f);
-					text-decoration: none;
-
-					&:hover,
-					&:focus-visible {
-						background-color: rgba(61, 80, 245, 0.08);
-					}
-				}
-			}
-
-			&__label {
-				padding: 4px 10px 8px;
-				font-size: 14px;
-				opacity: 0.6;
+				border-color: color-mix(in srgb, currentColor 55%, transparent);
+				text-decoration: none;
 			}
 		}
 
@@ -1037,7 +992,7 @@ const needsScrollState = variant === 'transparent' || variant === 'transparent-h
 		// The drawer flips to a light surface, but this control inherits the
 		// header's white and disappeared into it — rendered, sized and clickable,
 		// just invisible. Its border tracks currentColor, so it follows along.
-		.region-signin summary {
+		.region-signin {
 			color: var(--color-text);
 		}
 	}

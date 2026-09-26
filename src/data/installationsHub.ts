@@ -41,7 +41,14 @@ export interface InstallRegion {
 	/** Where the data stays, in the Cloud FAQ's own words. */
 	note: string;
 	signup: string;
-	signin: string;
+}
+
+/** A second column beside the way in: Cloud's Private Cloud, with the cloud-provider options under it. */
+export interface InstallAside {
+	title: string;
+	text: string;
+	link: InstallLink;
+	options: InstallOptionGroup[];
 }
 
 export interface InstallProduct {
@@ -62,6 +69,7 @@ export interface InstallProduct {
 	links: InstallLink[];
 	options?: InstallOptionGroup[];
 	regions?: InstallRegion[];
+	aside?: InstallAside;
 }
 
 const product = (highlight: string) => {
@@ -90,18 +98,32 @@ const REGION_NOTES: Record<CloudRegionId, string> = {
 };
 
 /**
- * THE REGIONS ARE THE WAY IN, listed on the page as the old page listed them — one button per
- * region — with a sign-in beside each for a returning user. Cloud is two sites with an account on
+ * THE REGIONS ARE THE WAY IN, listed on the page under "Try now" as the old page listed them — one
+ * row per region, each the sign-up on that region's host. Cloud is two sites with an account on
  * only one, so the region is the one thing to decide, and it is decided here rather than behind a
- * dialog.
+ * dialog. No sign-in: a returning user has the header's.
  */
 const regions: InstallRegion[] = CLOUD_REGIONS.map((r) => ({
 	id: r.id,
 	name: r.name,
 	note: REGION_NOTES[r.id],
 	signup: `https://${r.host}/signup`,
-	signin: `https://${r.host}/login`,
 }));
+
+/**
+ * The old page's "cloud" row of the self-hosted guides — AWS, Azure, GCP, DigitalOcean — sits
+ * under Cloud's Private Cloud column now (asked 2026-09-27), beside the managed offering that runs
+ * on those providers. The guides themselves are still the self-hosted installs on each provider.
+ */
+const cloudProviders: InstallOptionGroup = {
+	title: 'In a cloud of your choice',
+	items: [
+		{ label: 'AWS', logo: logo('aws.svg'), href: '/docs/installation/aws/' },
+		{ label: 'Microsoft Azure', logo: logo('azure.svg'), href: '/docs/installation/azure/' },
+		{ label: 'Google Cloud Platform', logo: logo('gcp.svg'), href: '/docs/installation/gcp/' },
+		{ label: 'DigitalOcean', logo: logo('digital-ocean.svg'), href: '/docs/installation/digital-ocean/' },
+	],
+};
 
 export const installProducts: InstallProduct[] = [
 	{
@@ -115,11 +137,14 @@ export const installProducts: InstallProduct[] = [
 		accent: cloud.accent,
 		badgeFill: cloud.badgeFill,
 		cornerIcon: cloud.cornerIcon,
-		links: [
-			{ label: 'Cloud pricing', href: '/pricing/' },
-			{ label: cloud.action, href: cloud.href },
-		],
+		links: [{ label: 'Cloud pricing', href: '/pricing/' }],
 		regions,
+		aside: {
+			title: 'Private Cloud',
+			text: 'A dedicated cluster we provision and operate for you, in the cloud and the region you choose.',
+			link: { label: cloud.action, href: cloud.href },
+			options: [cloudProviders],
+		},
 	},
 	{
 		id: 'on-premises',
@@ -137,8 +162,9 @@ export const installProducts: InstallProduct[] = [
 			{ label: 'Licences and pricing', href: '/pricing/' },
 			{ label: onPremises.action, href: onPremises.href },
 		],
-		// The old page's two rows for this product, its own guides. "Cluster setup" goes to the
-		// guide's index, as it did: the cluster guides are several, and the index lists them.
+		// The old page's server row for this product, its own guides; its cloud row is under Private
+		// Cloud above. "Cluster setup" goes to the guide's index, as it did: the cluster guides are
+		// several, and the index lists them.
 		options: [
 			{
 				title: 'On your servers',
@@ -154,15 +180,6 @@ export const installProducts: InstallProduct[] = [
 						href: '/docs/installation/building-from-source/',
 					},
 					{ label: 'Cluster setup', logo: logo('kubernetes.svg'), href: '/docs/installation/' },
-				],
-			},
-			{
-				title: 'In a cloud of your choice',
-				items: [
-					{ label: 'AWS', logo: logo('aws.svg'), href: '/docs/installation/aws/' },
-					{ label: 'Microsoft Azure', logo: logo('azure.svg'), href: '/docs/installation/azure/' },
-					{ label: 'Google Cloud Platform', logo: logo('gcp.svg'), href: '/docs/installation/gcp/' },
-					{ label: 'DigitalOcean', logo: logo('digital-ocean.svg'), href: '/docs/installation/digital-ocean/' },
 				],
 			},
 		],

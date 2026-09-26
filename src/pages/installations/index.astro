@@ -73,30 +73,29 @@ const nameParts = (name: string, highlight?: string) => {
 								<p class="install__text">{p.description}</p>
 
 								{p.regions && (
-									<ul class="install__regions">
-										{p.regions.map((region) => (
-											<li class="install__region" data-region={region.id}>
-												<a class="install__region-signup" href={region.signup} {...externalLinkAttrs(region.signup)}>
-													<span class="install__region-globe">
-														<Icon name="tabler:world" aria-hidden="true" />
-													</span>
-													<span class="install__region-name">
-														{region.name}
-														<small>{region.note}</small>
-													</span>
-													<span class="install__region-cta">
-														{p.cornerIcon && <Icon name={p.cornerIcon} aria-hidden="true" />}
-														Sign up
-														<span class="sr-only"> for ThingsBoard Cloud in {region.name}</span>
-													</span>
-												</a>
-												<a class="install__region-signin" href={region.signin} {...externalLinkAttrs(region.signin)}>
-													Sign in
-													<span class="sr-only"> to ThingsBoard Cloud in {region.name}</span>
-												</a>
-											</li>
-										))}
-									</ul>
+									<div class="install__group install__group--primary">
+										<p class="install__group-title">Try now</p>
+										<ul class="install__regions">
+											{p.regions.map((region) => (
+												<li class="install__region" data-region={region.id}>
+													<a class="install__region-signup" href={region.signup} {...externalLinkAttrs(region.signup)}>
+														<span class="install__region-globe">
+															<Icon name="tabler:world" aria-hidden="true" />
+														</span>
+														<span class="install__region-name">
+															{region.name}
+															<small>{region.note}</small>
+														</span>
+														<span class="install__region-cta">
+															Sign up
+															<span class="sr-only"> for ThingsBoard Cloud in {region.name}</span>
+															<Icon name="tabler:chevron-right" aria-hidden="true" />
+														</span>
+													</a>
+												</li>
+											))}
+										</ul>
+									</div>
 								)}
 
 								<div class="install__actions">
@@ -116,6 +115,35 @@ const nameParts = (name: string, highlight?: string) => {
 									))}
 								</div>
 							</div>
+
+							{p.aside && (
+								<div class="install__options install__aside">
+									<h3 class="install__aside-title">{p.aside.title}</h3>
+									<p class="install__text">{p.aside.text}</p>
+									<div class="install__actions">
+										<a class="install__link" href={p.aside.link.href}>
+											{p.aside.link.label}
+											<span class="sr-only"> — {p.name}</span>
+											<Icon name="tabler:chevron-right" aria-hidden="true" />
+										</a>
+									</div>
+									{p.aside.options.map((group) => (
+										<div class="install__group">
+											<p class="install__group-title">{group.title}</p>
+											<ul class="install__chips">
+												{group.items.map((option) => (
+													<li>
+														<a class="install__chip" href={option.href}>
+															<SmartImage src={option.logo} alt="" width="90" height="18" loading="lazy" />
+															{option.label}
+														</a>
+													</li>
+												))}
+											</ul>
+										</div>
+									))}
+								</div>
+							)}
 
 							{p.options && (
 								<div class="install__options">
@@ -214,8 +242,10 @@ const nameParts = (name: string, highlight?: string) => {
 			background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 62%);
 		}
 
+		// Larger than the homepage card's 64%: on a section the tile is read alone, not beside a
+		// grid of others.
 		.install__icon {
-			width: 60%;
+			width: 78%;
 			filter: brightness(0) invert(1);
 		}
 	}
@@ -341,11 +371,17 @@ const nameParts = (name: string, highlight?: string) => {
 	// The two regions as rows, each a sign-up with a sign-in beside it: the region dialog's cards,
 	// set on the page — a globe in a hue of its own, the region's name over where its data stays,
 	// and the action at the row's end.
+	// "Try now" over the rows, in the option groups' own label, since it is the same kind of thing:
+	// the ways in.
+	.install__group--primary {
+		margin-top: $spacing-6;
+	}
+
 	.install__regions {
 		display: grid;
 		gap: $spacing-3;
-		max-width: 520px;
-		margin: $spacing-6 0 0;
+		max-width: 480px;
+		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
@@ -353,7 +389,6 @@ const nameParts = (name: string, highlight?: string) => {
 	.install__region {
 		display: flex;
 		align-items: center;
-		gap: $spacing-4;
 	}
 
 	.install__region-signup {
@@ -441,17 +476,20 @@ const nameParts = (name: string, highlight?: string) => {
 		}
 	}
 
-	.install__region-signin {
-		@include type-small-strong;
+	// ── Private Cloud, beside Cloud's way in ──────────────────────────
+	.install__aside-title {
+		@include type-card;
 
-		flex: none;
-		color: var(--color-text-secondary, #{$color-text-secondary});
-		text-decoration: none;
+		margin: 0 0 $spacing-3;
+		color: var(--color-text, #17181c);
+	}
 
-		&:hover {
-			color: var(--color-text, #17181c);
-			text-decoration: underline;
-		}
+	.install__aside .install__actions {
+		margin-top: $spacing-3;
+	}
+
+	.install__aside .install__group {
+		margin-top: $spacing-5;
 	}
 
 	// ── The ways in ───────────────────────────────────────────────────
@@ -508,17 +546,6 @@ const nameParts = (name: string, highlight?: string) => {
 		.install__mark {
 			width: 56px;
 			height: 56px;
-		}
-
-		// The sign-in drops under its row on a phone, at the row's end rather than orphaned at its
-		// start.
-		.install__region {
-			flex-wrap: wrap;
-			row-gap: $spacing-1;
-		}
-
-		.install__region-signin {
-			margin-left: auto;
 		}
 	}
 </style>

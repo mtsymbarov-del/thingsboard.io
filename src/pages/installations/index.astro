@@ -51,7 +51,11 @@ const nameParts = (name: string, highlight?: string) => {
 				installProducts.map((p) => (
 					<article
 						id={p.id}
-						class:list={['install__product', p.badgeFill && 'install__product--platform']}
+						class:list={[
+							'install__product',
+							p.badgeFill && 'install__product--platform',
+							p.regions && 'install__product--band',
+						]}
 						style={`--accent: ${p.accent}${p.badgeFill ? `; --badge-fill: ${p.badgeFill}` : ''}`}
 					>
 						<div class="install__head">
@@ -187,6 +191,9 @@ const nameParts = (name: string, highlight?: string) => {
 	.install {
 		padding: $spacing-12 0 $spacing-20;
 		background: var(--color-bg, #fff);
+		// The Cloud band below runs to the viewport's edges through negative margins; clipped here so
+		// a classic scrollbar's width never becomes sideways scroll.
+		overflow-x: clip;
 
 		// Centred by hand: the homepage's `landing` sheet, which centres every section's
 		// `.main-div`, is not loaded on this page.
@@ -381,21 +388,36 @@ const nameParts = (name: string, highlight?: string) => {
 	// and the action at the row's end.
 	// "Try now" over the rows, in the option groups' own label — and the whole block on a panel in
 	// the platform's own tint, so it is the section's primary element: the one thing to do here.
-	// A strong run of the platform's tint, no stroke (asked 2026-09-27 after a 6% flat tint on a
-	// hairline): from 22% at the top-left down to 6% at the bottom-right, so the block is the
-	// coloured thing in the section and the white rows on it stand out as the buttons they are.
+	// "Try now" in the platform's colour; the tint that was on this block alone is the whole
+	// section's now (below), so the block itself is bare and the white rows on it are the buttons.
 	.install__group--primary {
 		margin-top: $spacing-6;
-		padding: $spacing-4;
-		border-radius: $radius-lg;
+
+		.install__group-title {
+			color: var(--badge-fill);
+		}
+	}
+
+	// THE CLOUD SECTION IS A BAND (asked 2026-09-26, moved off the Try now block): the platform's
+	// tint run full-bleed, 22% at the top-left down to 6% at the bottom-right, the content staying on
+	// the measure — the homepage's band idiom, for the one section that is the way in with nothing
+	// to install. Its hairline goes, since the band's own edge is the boundary.
+	.install__product--band {
+		margin-inline: calc(50% - 50vw);
+		padding-inline: calc(50vw - 50%);
+		border-top: 0;
 		background: linear-gradient(
 			150deg,
 			color-mix(in srgb, var(--badge-fill) 22%, #fff),
 			color-mix(in srgb, var(--badge-fill) 6%, #fff)
 		);
 
-		.install__group-title {
-			color: var(--badge-fill);
+		&:first-of-type {
+			padding-top: $spacing-10;
+		}
+
+		+ .install__product {
+			border-top: 0;
 		}
 	}
 

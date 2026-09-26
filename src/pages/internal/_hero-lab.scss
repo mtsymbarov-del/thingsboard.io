@@ -1,23 +1,42 @@
+@use 'sass:list';
+@use 'sass:math';
+@use 'sass:string';
 @use '../../styles/variables' as *;
 
 // The candidates behind the hero's switches (`_hero-lab.ts`), added to each frame of the homepage by
 // `sections/hero.astro`. Nothing in this file is on the homepage itself: promoting a candidate means
-// moving its rules into `Hero.astro` and deleting them here.
+// moving its rules into `Hero.astro` and deleting them here. What the homepage had before a promotion
+// stays here as a candidate too, restated, so the two can still be set side by side.
 //
 // EVERY RULE NAMES `#hero-content` WHERE HERO'S OWN RULE DOES. Hero's selectors carry two ids
 // (`#hero … #hero-content`), and ids are compared before anything else, so a candidate with one id
 // loses to a Hero rule with two however many classes it adds. The `html[data-hero-lab]` in front is
-// what the script sets on each frame; it keeps these rules to the frames and adds the class that
-// settles a tie.
+// what the script sets on each frame, with each switch's `data-lab-<switch>` beside it; together they
+// keep these rules to the frames and add the classes that settle a tie.
 
 // Hero's composition queries, restated: they are local to its style block.
 $split: 'screen and (min-width: #{$breakpoint-md}) and (orientation: landscape)';
 $stack-one: 'screen and (max-width: 599px)';
 
-@mixin headline-gradient {
-	background-image: linear-gradient(to bottom, #fff 25%, rgba(255, 255, 255, 0.6));
-	-webkit-background-clip: text;
-	background-clip: text;
+// The brand line, which every brand and fill rule below is about.
+$brand: 'h1 > .tb-title:first-child:not(:last-child)';
+
+// Hero's `hero-edge-fade`, restated with its easing as a parameter so the fade before it can be too.
+// `smootherstep`, 6t⁵ − 15t⁴ + 10t³, is what ships; `smoothstep`, 3t² − 2t³ over 10 stops, is what
+// it replaced, flat in slope at its end but not in curvature. `$length` may be any CSS length, a
+// percentage of the panel's width included.
+@function edge-fade($length, $ease: smootherstep, $steps: 24) {
+	$stops: ();
+	@for $i from 0 through $steps {
+		$t: math.div($i, $steps);
+		$eased: $t * $t * $t * ($t * ($t * 6 - 15) + 10);
+		@if $ease == smoothstep {
+			$eased: $t * $t * (3 - 2 * $t);
+		}
+		$alpha: string.unquote('calc(1 - (1 - var(--hero-video-wash, 0)) * #{$eased})');
+		$stops: list.append($stops, string.unquote('rgba(0, 0, 0, #{$alpha}) calc(#{$length} * #{$t})'), comma);
+	}
+	@return linear-gradient(to right, $stops);
 }
 
 // ── The frame ──
@@ -36,95 +55,145 @@ html[data-hero-lab] {
 	}
 }
 
-html[data-hero-lab] #hero {
+html[data-hero-lab] {
 	// ── Brand line: removed ──
 	// Hidden rather than taken out, so the headline is still the H1's second child and keeps the
 	// measure Hero gives a headline with a line above it (`.tb-title:not(:first-child):last-child`).
-	&[data-lab-brand='none'] #hero-content h1 > .tb-title:first-child:not(:last-child) {
+	&[data-lab-brand='none'] #hero #hero-content #{$brand} {
 		display: none;
 	}
 
 	// ── Brand line: kicker ──
-	// The page's eyebrow step, in the muted hero ink the buttons' qualifiers use. It does not scale
-	// with the headline, so Hero's script counts it with the rest of the copy.
-	&[data-lab-brand='kicker'] #hero-content h1 > .tb-title:first-child:not(:last-child) {
+	// The page's eyebrow step, in the muted hero ink the buttons' qualifiers use, fading down as the
+	// word does at the headline's size. It does not scale with the headline, so Hero's script counts
+	// it with the rest of the copy.
+	&[data-lab-brand='kicker'] #hero #hero-content #{$brand} {
 		@include type-eyebrow;
 		margin-bottom: $spacing-3;
+		background-image: linear-gradient(to bottom, rgba(150, 164, 255, 0.84), rgba(150, 164, 255, 0.6));
+	}
+
+	// ── Brand fill: flat ──
+	// The word in flat half white, as before the gradient; the logo strip's marks with it at 0.5.
+	// Also the marks' state whenever there is no word for them to match.
+	&[data-lab-fill='flat'] #hero #hero-content #{$brand} {
+		background-image: none;
+		color: rgba(255, 255, 255, 0.5);
+	}
+
+	&[data-lab-fill='flat'][data-lab-brand='kicker'] #hero #hero-content #{$brand} {
 		color: var(--hero-muted, rgba(150, 164, 255, 0.72));
 	}
 
-	// ── Headline: gradient ──
-	// One gradient down the whole H1 rather than one per line, so the lines step down from white
-	// together: the brand line at the top is the brightest.
-	&[data-lab-fill='gradient'] #hero-content h1 {
-		@include headline-gradient;
+	&:is([data-lab-fill='flat'], [data-lab-brand='none']) #tb-customers {
+		img {
+			-webkit-mask-image: none;
+			mask-image: none;
+			opacity: 0.5;
+		}
 
-		> .tb-title {
-			color: transparent;
+		.customers-logo__item:hover img,
+		.customers-logo__item:focus-visible img {
+			opacity: 1;
 		}
 	}
 
-	// Under a kicker the gradient is the headline's alone. The kicker keeps its own colour, and that
-	// ink is translucent: over the gradient it would come out lighter than it does on black.
-	&[data-lab-fill='gradient'][data-lab-brand='kicker'] #hero-content h1 {
-		background-image: none;
+	// ── Colour ──
+	// On the panel, where Hero grades it, so the still gets the same.
+	&[data-lab-colour='shot'] #hero .video-cover {
+		filter: none;
+	}
 
-		> .tb-title:last-child {
-			@include headline-gradient;
+	&[data-lab-colour='vivid'] #hero .video-cover {
+		filter: saturate(1.35) contrast(1.06);
+	}
+
+	// ── Logo strip: light ──
+	// The strip turns from the hero's closing band into the start of the page: a light grey against
+	// the hero's black, easing to the page's white by its bottom edge, so the section after it sits
+	// on the same ground with no second edge. The marks are the dark strip's inverted: flattened to
+	// black, and set back by the same kind of ramp, a stronger grey at the top to a lighter one,
+	// either side of 0.45; flat at 0.45 where the dark strip is flat.
+	&[data-lab-logos='light'] #tb-customers {
+		background-color: #fff;
+		background-image: linear-gradient(to bottom, #eef0f4, #fff);
+
+		img {
+			filter: brightness(0);
+			-webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.35));
+			mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.35));
 		}
+
+		.customers-logo__item:hover img,
+		.customers-logo__item:focus-visible img {
+			-webkit-mask-image: none;
+			mask-image: none;
+			opacity: 0.85;
+		}
+	}
+
+	&[data-lab-logos='light']:is([data-lab-fill='flat'], [data-lab-brand='none']) #tb-customers img {
+		-webkit-mask-image: none;
+		mask-image: none;
+		opacity: 0.45;
 	}
 }
 
-// ── Edge fade: off ──
-// Side by side, the footage in its own column rather than reaching under the copy, and the plain
-// wash back over the whole of it. The copy's own right padding is the gap.
+// ── Edge fade ──
+// Longer is the shipping curve over a third of the panel, 240 to 360px: gentler for its length, at
+// the cost of more of the footage's left side. Previous is the smoothstep fade it replaced. Off puts
+// the footage in its own column rather than under the copy, with the plain wash over the whole of it.
 @media #{$split} {
-	html[data-hero-lab] #hero.split--panel[data-lab-fade='off'] .video-cover {
+	html[data-hero-lab][data-lab-fade='long'] #hero.split--panel .video-cover::after {
+		background-image: edge-fade(clamp(240px, 34%, 360px));
+	}
+
+	html[data-hero-lab][data-lab-fade='previous'] #hero.split--panel .video-cover::after {
+		background-image: edge-fade(240px, smoothstep, 10);
+	}
+
+	html[data-hero-lab][data-lab-fade='off'] #hero.split--panel .video-cover {
 		width: 100%;
 		margin-left: 0;
 
 		&::after {
 			background-image: none;
-			background-color: rgba(0, 0, 0, var(--hero-video-wash, 0.1));
+			background-color: rgba(0, 0, 0, var(--hero-video-wash, 0));
 		}
 	}
 }
 
-// ── Phone: backdrop ──
-// The panel and the copy share one cell: the footage behind the copy rather than under it, and the
-// hero down to the fold (`--hero-fold`, Hero's own) so the next section still peeks. The footage
-// starts under the menu, as it does side by side. The scrim is for the lede, white 16px over whatever
-// frame is playing: at its lightest, 0.55, white text over a white frame still measures 4.7:1, and
-// under the middle of the copy, 0.65, 7:1. It closes to solid black, where the logo strip carries on.
+// ── Phone: panel below ──
+// The phone hero before the backdrop, restated: the footage back in its own row under the copy, at
+// its own shape up to the fold's budget, with the plain wash; the hero as tall as the two; the copy
+// with no halo, on solid black.
 @media #{$stack-one} {
-	html[data-hero-lab] #hero.split--panel[data-lab-phone='backdrop'] {
-		min-height: var(--hero-fold);
+	html[data-hero-lab][data-lab-phone='panel'] #hero.split--panel {
+		min-height: 0;
 
 		.video-cover {
-			grid-row: 1;
-			grid-column: 1;
-			align-self: stretch;
-			aspect-ratio: auto;
-			max-height: none;
-			margin-top: var(--home-header-h, #{$header-height});
+			grid-row: 2;
+			grid-column: auto;
+			align-self: auto;
+			aspect-ratio: var(--hero-footage-ratio, 16 / 9);
+			max-height: var(--hero-budget);
+			margin-top: 0;
 
 			&::after {
-				background-color: transparent;
-				background-image: linear-gradient(
-					to bottom,
-					rgba(0, 0, 0, 0.55),
-					rgba(0, 0, 0, 0.65) 50%,
-					rgba(0, 0, 0, 0.85) 85%,
-					#000
-				);
+				background-image: none;
+				background-color: rgba(0, 0, 0, var(--hero-video-wash, 0));
 			}
 		}
 
 		#hero-content {
 			grid-row: 1;
-			grid-column: 1;
-			position: relative;
-			z-index: 1;
+			grid-column: auto;
+			z-index: auto;
+
+			.tb-sub-title,
+			.hero-note {
+				text-shadow: none;
+			}
 		}
 	}
 }

@@ -332,11 +332,12 @@ And a technical EXHIBIT — a breakpoint pinned down, a component's parts laid o
 orientation pick its composition, and it sizes itself to the fold — so neither a row nor a probe can
 show it. `sections/hero.astro` frames the REAL homepage at fixed screen sizes (or one frame the size
 of the window) and applies each switch into the frames from outside, which same origin allows:
-`data-lab-<switch>` on the frame's `#hero`, `_hero-lab.scss` appended after the page's own sheets,
-and the `<video>` swapped. The homepage carries none of it. Each switch's first option is what
-ships, and a combination is its address, so it can be linked. A new candidate is an option in
-`_hero-lab.ts` and its rules in `_hero-lab.scss`; new footage is one `FOOTAGE` entry. Promoting one
-means moving its rules into `Hero.astro` and deleting them from the lab.
+`data-lab-<switch>` on the frame's `<html>`, `_hero-lab.scss` appended after the page's own sheets,
+the `<video>` swapped, and for the white menu the header held in its scrolled state. The homepage
+carries none of it. Each switch's first option is what ships, and a combination is its address, so
+it can be linked. A new candidate is an option in `_hero-lab.ts` and its rules in `_hero-lab.scss`;
+new footage is one `FOOTAGE` entry. Promoting one means moving its rules into `Hero.astro` and
+deleting them from the lab.
 
 ### Promote and retire
 

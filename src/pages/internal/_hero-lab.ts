@@ -5,8 +5,9 @@
  * EVERY SWITCH'S FIRST OPTION IS WHAT SHIPS. A page with no query is the homepage as it is, and the
  * address carries only what differs from it, so a link to a combination is short enough to paste.
  *
- * The candidates themselves are CSS, in `_hero-lab.scss`, keyed to `data-lab-<switch>` on `#hero`.
- * Footage and phone video are the two the stylesheet cannot do: the page's script swaps the `<video>`.
+ * The candidates themselves are CSS, in `_hero-lab.scss`, keyed to `data-lab-<switch>` on the frame's
+ * `<html>`. Three need the page's script as well: footage and phone video swap the `<video>`, and the
+ * dark menu lets go of the header's scrolled state, which the homepage holds from the top.
  */
 
 export interface LabOption {
@@ -19,10 +20,28 @@ export interface LabOption {
 export interface LabSwitch {
 	key: string;
 	label: string;
+	/** Which part of the page it is about: the bar sets each group under its own heading. */
+	group: LabGroup['id'];
 	/** Where it shows, when that is not everywhere. */
 	scope?: string;
 	options: LabOption[];
 }
+
+export interface LabGroup {
+	id: 'top' | 'footage' | 'phone' | 'below';
+	label: string;
+}
+
+/** The bar's headings, top of the page to bottom. */
+export const GROUPS: LabGroup[] = [
+	{ id: 'top', label: 'Menu & headline' },
+	{ id: 'footage', label: 'Footage' },
+	{ id: 'phone', label: 'On a phone' },
+	{ id: 'below', label: 'Under the hero' },
+];
+
+/** Past this many options a switch is a dropdown rather than a row of buttons. */
+export const SEGMENTS_UP_TO = 3;
 
 export interface Footage {
 	id: string;
@@ -32,6 +51,8 @@ export interface Footage {
 	mp4?: string;
 	/** The still shown until the video plays, and instead of it on a phone. None means black. */
 	poster?: string;
+	/** Its shape as `width / height`, where it is not 16:9: Hero's `footageRatio`. */
+	ratio?: string;
 }
 
 /** A candidate is one entry here: it gets a button. The first is what ships. */
@@ -44,6 +65,7 @@ export const FOOTAGE: Footage[] = [
 		mp4: '/videos/horizontal-slider.mp4',
 		// Its exact first frame, 64 KB.
 		poster: '/images/hero/horizontal-slider.webp',
+		ratio: '1920 / 924',
 	},
 	{
 		id: 'cover2',
@@ -67,55 +89,103 @@ export const PASTED = 'url';
 
 export const SWITCHES: LabSwitch[] = [
 	{
+		key: 'menu',
+		label: 'Menu',
+		group: 'top',
+		options: [
+			{ value: 'white', label: 'White', note: 'As now: the white bar from the top, its scrolled state held' },
+			{ value: 'dark', label: 'Dark', note: 'The bar in 80% black over the hero, white once scrolled' },
+		],
+	},
+	{
 		key: 'brand',
 		label: 'Brand line',
+		group: 'top',
 		options: [
-			{ value: 'now', label: 'As now', note: '“ThingsBoard” at the headline’s size, in half white' },
+			{ value: 'now', label: 'As now', note: '“ThingsBoard” at the headline’s size' },
 			{ value: 'none', label: 'Removed', note: 'The headline alone' },
 			{ value: 'kicker', label: 'Kicker', note: '“ThingsBoard” as an eyebrow over the headline, still inside the H1' },
 		],
 	},
 	{
 		key: 'fill',
-		label: 'Headline',
+		label: 'Brand fill',
+		group: 'top',
 		options: [
-			{ value: 'flat', label: 'Flat', note: 'As now: no gradient' },
-			{ value: 'gradient', label: 'Gradient', note: 'White at the top, darker toward the bottom' },
+			{
+				value: 'gradient',
+				label: 'Gradient',
+				note: 'As now: “ThingsBoard” lighter at the top, darker toward the bottom, and the logo strip’s marks with it',
+			},
+			{ value: 'flat', label: 'Flat', note: '“ThingsBoard” and the logo strip’s marks in flat half white' },
+		],
+	},
+	{
+		key: 'footage',
+		label: 'Video',
+		group: 'footage',
+		options: [
+			...FOOTAGE.map((f) => ({ value: f.id, label: f.label, note: f.note })),
+			{ value: PASTED, label: 'Pasted address', note: 'The address in the field' },
+		],
+	},
+	{
+		key: 'colour',
+		label: 'Colour',
+		group: 'footage',
+		options: [
+			{ value: 'lift', label: 'Lift', note: 'As now: saturate(1.2), the charts a step richer, the dark UI as it is' },
+			{ value: 'shot', label: 'As shot', note: 'The footage as encoded' },
+			{ value: 'vivid', label: 'Vivid', note: 'saturate(1.35) contrast(1.06): punchier, the panels a touch deeper' },
 		],
 	},
 	{
 		key: 'fade',
 		label: 'Edge fade',
+		group: 'footage',
 		scope: 'side by side',
 		options: [
-			{ value: 'on', label: 'On', note: 'The footage reaches under the copy and fades in out of the black' },
+			{ value: 'smooth', label: 'Smooth, 240px', note: 'As now: smootherstep, no knee where it ends' },
+			{ value: 'long', label: 'Longer, a third', note: 'The same curve over a third of the panel: 240 to 360px' },
+			{
+				value: 'previous',
+				label: 'Previous',
+				note: 'The smoothstep before it, whose end showed as a line over white frames',
+			},
 			{ value: 'off', label: 'Off', note: 'The footage starts beside the copy, with a hard edge' },
 		],
 	},
 	{
-		key: 'footage',
-		label: 'Footage',
-		options: [
-			...FOOTAGE.map((f) => ({ value: f.id, label: f.label, note: f.note })),
-			{ value: PASTED, label: 'Pasted', note: 'The address in the field' },
-		],
-	},
-	{
 		key: 'phone',
-		label: 'Phone',
+		label: 'Layout',
+		group: 'phone',
 		scope: 'under 600px',
 		options: [
-			{ value: 'panel', label: 'Panel below', note: 'The footage under the copy' },
-			{ value: 'backdrop', label: 'Backdrop', note: 'The footage behind the copy, darkened, and the hero to the fold' },
+			{
+				value: 'backdrop',
+				label: 'Backdrop',
+				note: 'As now: the footage behind the copy, darkened, and the hero to the fold',
+			},
+			{ value: 'panel', label: 'Panel below', note: 'The footage in a strip under the copy' },
 		],
 	},
 	{
 		key: 'motion',
-		label: 'Phone video',
+		label: 'Video',
+		group: 'phone',
 		scope: 'under 768px',
 		options: [
+			{ value: 'video', label: 'Plays', note: 'As now: phones play the footage too' },
 			{ value: 'still', label: 'Still', note: 'Phones get the poster and never load the video' },
-			{ value: 'video', label: 'Video', note: 'Phones play the footage too' },
+		],
+	},
+	{
+		key: 'logos',
+		label: 'Logo strip',
+		group: 'below',
+		options: [
+			{ value: 'dark', label: 'Dark', note: 'As now: white marks on the hero’s black' },
+			{ value: 'light', label: 'Light', note: 'Grey marks on white, a subtle grey at the top easing into the page' },
 		],
 	},
 ];

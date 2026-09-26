@@ -921,9 +921,17 @@ const MEASURE_COPY = `(() => {
 				// the note on 0.9. It closes to solid black, where the logo strip carries on. The
 				// lede and the note also take the centred hero's soft halo for type over video,
 				// which darkens only the few pixels round each glyph.
+				//
+				// NOT STRETCHED TO THE FOLD (2026-09-27). It was `min-height: var(--hero-fold)`, the
+				// viewport less the banner and a 56px peek of the strip, which on a 375x812 phone made
+				// it 704 tall with the copy floating in 130px of slack, and the strip the only thing
+				// of the page beyond it on the first screen. The hero is now as tall as its copy and
+				// its padding — about 500 on a 375 phone — so the strip AND the top of the section
+				// under it are on the first screen from 667 up. The footage still fills the hero
+				// behind the copy; it is simply a shorter frame of it. The copy gets 24 over its
+				// headline rather than the trim's 16, and 24 under its note, since without the slack
+				// those are the only air it has.
 				@media #{$hero-stack-one} {
-					min-height: var(--hero-fold);
-
 					.video-cover {
 						grid-row: 1;
 						grid-column: 1;
@@ -949,10 +957,13 @@ const MEASURE_COPY = `(() => {
 					}
 
 					#hero-content {
+						--hero-top-gap: 24px;
+
 						grid-row: 1;
 						grid-column: 1;
 						position: relative;
 						z-index: 1;
+						padding-bottom: 24px;
 
 						.tb-sub-title,
 						:global(.hero-note) {
@@ -1220,9 +1231,11 @@ const MEASURE_COPY = `(() => {
 
 		// Arrow visibility — IntersectionObserver on a sentinel positioned 60px below #hero top.
 		// Avoids per-scroll getBoundingClientRect() reads that forced layout on first paint.
+		// Only where the arrow is rendered: the homepage turns it off, and an observer toggling a
+		// class nothing reads is work for nothing.
 		const heroContent = document.getElementById('hero-content');
 		const sentinel = document.querySelector<HTMLElement>('#hero .hero-scroll-sentinel');
-		if (heroContent && sentinel) {
+		if (heroContent && sentinel && heroContent.querySelector('.tb-arrow')) {
 			new IntersectionObserver(([entry]) => heroContent.classList.toggle('arrow-hidden', !entry.isIntersecting), {
 				threshold: 0,
 			}).observe(sentinel);
@@ -1246,6 +1259,10 @@ const MEASURE_COPY = `(() => {
 			window.innerWidth < 768 ||
 			/Android.*Mobile|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 		if (isPhone && !('videoPhones' in cover.dataset)) return;
+
+		// Reduced motion keeps the still: the footage is decoration that moves, and nothing on the
+		// page depends on it playing.
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
 		const conn = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
 		if (conn?.saveData) return;

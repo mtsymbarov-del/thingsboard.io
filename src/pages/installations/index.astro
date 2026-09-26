@@ -118,7 +118,12 @@ const nameParts = (name: string, highlight?: string) => {
 
 							{p.aside && (
 								<div class="install__options install__aside">
-									<h3 class="install__aside-title">{p.aside.title}</h3>
+									<div class="install__aside-head">
+										<span class="install__mark install__mark--small" aria-hidden="true">
+											<Icon name="tabler:cloud-lock" class="install__mark-glyph" />
+										</span>
+										<h3 class="install__aside-title">{p.aside.title}</h3>
+									</div>
 									<p class="install__text">{p.aside.text}</p>
 									<div class="install__actions">
 										<a class="install__link" href={p.aside.link.href}>
@@ -477,10 +482,38 @@ const nameParts = (name: string, highlight?: string) => {
 	}
 
 	// ── Private Cloud, beside Cloud's way in ──────────────────────────
+	// A panel on a subtle hairline, so the second offering reads as its own thing beside the way
+	// in rather than as more of the same column; its own mark, the section's at two thirds.
+	.install__aside {
+		padding: $spacing-5;
+		border: 1px solid rgba(23, 24, 28, 0.1);
+		border-radius: $radius-lg;
+	}
+
+	.install__aside-head {
+		display: flex;
+		align-items: center;
+		gap: $spacing-3;
+		margin-bottom: $spacing-3;
+	}
+
+	// The cloud with a lock, in white on the platform's fill: a dedicated cluster, yours alone.
+	.install__mark--small {
+		width: 48px;
+		height: 48px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+	}
+
+	.install__mark-glyph {
+		width: 28px;
+		height: 28px;
+		color: #fff;
+	}
+
 	.install__aside-title {
 		@include type-card;
 
-		margin: 0 0 $spacing-3;
+		margin: 0;
 		color: var(--color-text, #17181c);
 	}
 

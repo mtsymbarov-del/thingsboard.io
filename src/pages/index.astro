@@ -98,7 +98,10 @@ const HERO_FOOTAGE_RATIO = '1920 / 924';
 				ariaLabel: 'Try ThingsBoard Cloud for free',
 				attrs: { 'data-cloud-auth': 'signup' },
 			},
-			{ text: 'Install', icon: 'tabler:download', href: '/installations/', variant: 'outline' },
+			// The installation guide itself, not the installations hub (2026-09-27): the hero's second
+			// action is "put it on a machine", and the guide is the page that does that; the hub is the
+			// catalogue of every product, which the header's own button still reaches.
+			{ text: 'Install', icon: 'tabler:download', href: '/docs/installation/', variant: 'outline' },
 		]}
 		layout="split"
 		achievement={null}

@@ -1,308 +1,524 @@
 ---
+import { Icon } from 'astro-icon/components';
 import BaseLayout from '@layouts/BaseLayout.astro';
-import InnerNavigation from '../../components/Services/InnerNavigation.astro';
-import ProductSection from '../../components/Installations/ProductSection.astro';
-import { products, productTabs } from '~/data/installations';
+import SectionHeader from '@components/Landing/SectionHeader.astro';
+import SmartImage from '@components/SmartImage.astro';
+import { externalLinkAttrs } from '@util/external-links';
+import { installProducts } from '@data/installationsHub';
+
+/**
+ * The installations hub: every ThingsBoard product with something to install, or nothing to, one
+ * SECTION each, in the homepage's idiom (rebuilt 2026-09-27; the copy and the reasoning are in
+ * `@data/installationsHub`). A section is the product's mark on its squircle, its name and one
+ * line, then the way in on the left and the ways in on the right: Cloud's two regions as sign-up
+ * rows with a sign-in beside each, the others' installation guide with their options, each linking
+ * to its own guide, and pricing where there is a price.
+ *
+ * Only the two platforms carry a colour, on their squircle and their button; the ecosystem
+ * products keep their own mark on the light tile and a neutral button, as the homepage keeps them.
+ */
+
+/** The name with its distinguishing word tinted, as the homepage's product cards set theirs. */
+const nameParts = (name: string, highlight?: string) => {
+	if (!highlight) return [{ text: name, tint: false }];
+	const at = name.indexOf(highlight);
+	if (at === -1) throw new Error(`installations: no "${highlight}" in "${name}" to tint.`);
+	return [
+		{ text: name.slice(0, at), tint: false },
+		{ text: highlight, tint: true },
+		{ text: name.slice(at + highlight.length), tint: false },
+	].filter((part) => part.text);
+};
 ---
 
 <BaseLayout
 	headerVariant="solid-shadow"
 	forceLightTheme
-	title="ThingsBoard Installations"
-	description="Choose the best ThingsBoard installation method for your IoT project."
+	title="Install ThingsBoard"
+	description="Get ThingsBoard running: sign up for ThingsBoard Cloud in your region, or install ThingsBoard On-premises, Edge, Trendz and the IoT Gateway from their guides."
 >
-	<div class="install-header">
-		<InnerNavigation tabs={productTabs} paramName="product" />
-	</div>
+	<section id="installations" class="install">
+		<div class="main-div">
+			<SectionHeader
+				title="Get ThingsBoard running"
+				subtitle="Pick where it runs. Cloud needs nothing installed; everything else has a guide for every way it installs."
+				titleSize="title"
+				subtitleMeasure="copy"
+				level={1}
+			/>
 
-	{
-		products.map((product, i) => (
-			<div id={`tab-${product.id}`} class="tab-content install-content" style={i > 0 ? 'display:none' : undefined}>
-				<ProductSection data={product} />
-			</div>
-		))
-	}
+			{
+				installProducts.map((p) => (
+					<article
+						id={p.id}
+						class:list={['install__product', p.badgeFill && 'install__product--platform']}
+						style={`--accent: ${p.accent}${p.badgeFill ? `; --badge-fill: ${p.badgeFill}` : ''}`}
+					>
+						<div class="install__head">
+							<span class="install__mark" aria-hidden="true">
+								<SmartImage src={p.icon} alt="" class="install__icon" width="96" height="96" loading="lazy" />
+							</span>
+							<div>
+								<p class="install__label">{p.label}</p>
+								<h2 class="install__title">
+									{nameParts(p.name, p.nameHighlight).map((part) =>
+										part.tint ? <span class="install__title-accent">{part.text}</span> : part.text
+									)}
+								</h2>
+							</div>
+						</div>
+
+						<div class="install__grid">
+							<div class="install__copy">
+								<p class="install__text">{p.description}</p>
+
+								{p.regions && (
+									<ul class="install__regions">
+										{p.regions.map((region) => (
+											<li class="install__region" data-region={region.id}>
+												<a class="install__region-signup" href={region.signup} {...externalLinkAttrs(region.signup)}>
+													<span class="install__region-globe">
+														<Icon name="tabler:world" aria-hidden="true" />
+													</span>
+													<span class="install__region-name">
+														{region.name}
+														<small>{region.note}</small>
+													</span>
+													<span class="install__region-cta">
+														{p.cornerIcon && <Icon name={p.cornerIcon} aria-hidden="true" />}
+														Sign up
+														<span class="sr-only"> for ThingsBoard Cloud in {region.name}</span>
+													</span>
+												</a>
+												<a class="install__region-signin" href={region.signin} {...externalLinkAttrs(region.signin)}>
+													Sign in
+													<span class="sr-only"> to ThingsBoard Cloud in {region.name}</span>
+												</a>
+											</li>
+										))}
+									</ul>
+								)}
+
+								<div class="install__actions">
+									{p.primary && (
+										<a class="install__button" href={p.primary.href}>
+											{p.cornerIcon && <Icon name={p.cornerIcon} aria-hidden="true" />}
+											{p.primary.label}
+											<span class="sr-only"> — {p.name}</span>
+										</a>
+									)}
+									{p.links.map((link) => (
+										<a class="install__link" href={link.href}>
+											{link.label}
+											<span class="sr-only"> — {p.name}</span>
+											<Icon name="tabler:chevron-right" aria-hidden="true" />
+										</a>
+									))}
+								</div>
+							</div>
+
+							{p.options && (
+								<div class="install__options">
+									{p.options.map((group) => (
+										<div class="install__group">
+											<p class="install__group-title">{group.title}</p>
+											<ul class="install__chips">
+												{group.items.map((option) => (
+													<li>
+														<a class="install__chip" href={option.href}>
+															<SmartImage src={option.logo} alt="" width="90" height="18" loading="lazy" />
+															{option.label}
+														</a>
+													</li>
+												))}
+											</ul>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					</article>
+				))
+			}
+		</div>
+	</section>
 </BaseLayout>
 
 <style lang="scss">
 	@use '../../styles/variables' as *;
 
-	.install-header {
-		margin-bottom: 0;
-		max-width: 1400px;
-		width: 100%;
-		margin-left: auto;
-		margin-right: auto;
-		padding-left: 20px;
-		padding-right: 20px;
+	$mark: 72px;
 
-		// Override InnerNavigation defaults: bigger tabs, no icon space
-		:global(.inner-navigation .menu-item a) {
-			padding: 16px 28px;
+	// The homepage's ground and measure: a section on white, its content on the 960 the homepage's
+	// product grids sit on (`.main-div` at 1000 with 20 of padding).
+	.install {
+		padding: $spacing-12 0 $spacing-20;
+		background: var(--color-bg, #fff);
 
-			@media (max-width: 600px) {
-				padding: 8px 16px;
-			}
-
-			&::before {
-				display: none;
-			}
+		// Centred by hand: the homepage's `landing` sheet, which centres every section's
+		// `.main-div`, is not loaded on this page.
+		.main-div {
+			max-width: 1000px;
+			margin-inline: auto;
+			padding-inline: $spacing-5;
 		}
 	}
 
-	:global(.row) {
+	// ── One product, one section ──────────────────────────────────────
+	// Sections, not cards: full-width rows on a hairline, the way the page's own content runs.
+	.install__product {
+		padding: $spacing-10 0;
+		border-top: 1px solid var(--sl-color-hairline-light, #{$color-border});
+
+		&:first-of-type {
+			border-top: 0;
+			padding-top: $spacing-4;
+		}
+	}
+
+	.install__head {
+		display: flex;
+		align-items: center;
+		gap: $spacing-5;
+		margin-bottom: $spacing-5;
+	}
+
+	// The homepage's squircle, to the number: 72, the 24% rounding the product cards carry, the
+	// light tile with the page's 155deg run and a trace of the product's accent at its tail, and
+	// the shadow alone lifting it. The platforms fill it with their colour and knock the mark out
+	// white, exactly as the homepage's two product cards do; the others keep their own mark.
+	.install__mark {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: $mark;
+		height: $mark;
+		border-radius: 24%;
+		background-color: var(--color-bg-surface, #fff);
+		background-image: linear-gradient(
+			155deg,
+			var(--color-bg-surface, #fff) 40%,
+			color-mix(in srgb, var(--accent) 8%, var(--color-bg-surface, #fff)) 100%
+		);
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+	}
+
+	.install__icon {
+		width: 82%;
+		height: auto;
+	}
+
+	.install__product--platform {
+		.install__mark {
+			background-color: var(--badge-fill);
+			background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 62%);
+		}
+
+		.install__icon {
+			width: 60%;
+			filter: brightness(0) invert(1);
+		}
+	}
+
+	// The card's label and title, at the section's size: the eyebrow over a 28px name, the
+	// distinguishing word in the platform's colour and plain everywhere else.
+	.install__label {
+		@include type-eyebrow;
+
+		margin: 0 0 $spacing-1;
+		color: var(--color-text-secondary, #{$color-text-secondary});
+	}
+
+	.install__title {
+		@include type-subsection;
+
+		margin: 0;
+		color: var(--color-text, #17181c);
+	}
+
+	.install__title-accent {
+		color: var(--badge-fill, inherit);
+	}
+
+	// The way in on the left, the ways in on the right; one column once the row is too narrow for
+	// both to keep a reading width.
+	.install__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+		gap: $spacing-8 $spacing-10;
+		align-items: start;
+
+		@include media-down(md) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.install__text {
+		@include type-body;
+
+		margin: 0;
+		max-width: 46ch;
+		color: var(--color-text, #17181c);
+	}
+
+	// ── The way in ────────────────────────────────────────────────────
+	.install__actions {
 		display: flex;
 		flex-wrap: wrap;
-		margin-left: -15px;
-		margin-right: -15px;
+		align-items: center;
+		gap: $spacing-3 $spacing-6;
+		margin-top: $spacing-6;
 	}
 
-	:global(.col) {
-		flex: 1 0 0;
-		max-width: 100%;
-	}
+	// THE HOMEPAGE'S BUTTON, as the product cards draw theirs: the button label, 44 tall, the page's
+	// 6px corner. A platform's takes its colour; the others' is a neutral outline, so nothing but
+	// the two platforms carries a colour on this page.
+	.install__button {
+		@include type-button;
 
-	:global(.install-content) {
-		position: relative;
-		z-index: 4;
-		padding-top: 0;
-		background-color: #f4f8fe;
-		overflow: hidden;
+		display: inline-flex;
+		align-items: center;
+		gap: $spacing-2;
+		height: 44px;
+		padding: 0 $spacing-4;
+		border: 1px solid rgba(23, 24, 28, 0.18);
+		border-radius: $radius-md;
+		background-color: transparent;
+		color: var(--color-text, #17181c);
+		text-decoration: none;
 
-		:global(.install-content-header) {
-			flex-direction: row;
-			padding-top: 10px;
-
-			&:global(.margin-bottom) {
-				margin-bottom: 28px;
-			}
-
-			:global(h1),
-			:global(h2) {
-				font-size: 28px;
-				line-height: 44px;
-				font-weight: 500;
-				color: #202021;
-
-				@media (min-width: 1200px) {
-					font-size: 30px;
-					line-height: 46px;
-				}
-
-				@media (min-width: 1400px) {
-					font-size: 36px;
-					line-height: 54px;
-				}
-			}
-
-			:global(.install-content-description) {
-				position: relative;
-				width: 100%;
-				padding-top: 18px;
-				padding-right: 15px;
-				padding-left: 15px;
-
-				@include media-up(lg) {
-					flex: 0 0 calc(7 / 12 * 100%);
-					max-width: calc(7 / 12 * 100%);
-				}
-
-				@media (min-width: 992px) {
-					padding-top: 32px;
-				}
-
-				:global(a) {
-					color: $color-primary;
-					text-decoration: none;
-					transition: color $transition-base;
-
-					&:hover {
-						color: $color-primary;
-						text-decoration: underline;
-					}
-				}
-
-				:global(.button-container) {
-					margin: 32px 0 16px 0;
-					padding: 0;
-					justify-content: center;
-					align-items: center;
-					gap: 25px;
-
-					@media (min-width: 992px) {
-						margin-bottom: 90px;
-						justify-content: start;
-					}
-				}
-
-				:global(a.btn-blue),
-				:global(button.btn-blue) {
-					min-width: 200px;
-					padding: 10px 50px;
-					background-color: #2a7dec;
-					color: #fff;
-					text-align: center;
-					font-size: 18px;
-					font-weight: 500;
-					outline: none;
-					border-radius: 4px;
-					border: solid 1px #2a7dec;
-					line-height: 28px;
-					letter-spacing: -0.03em;
-					text-decoration: none;
-
-					&:hover {
-						filter: brightness(1.3);
-					}
-
-					&:global(.secondary) {
-						background-color: transparent;
-						color: #2a7dec;
-					}
-
-					@media (max-width: 600px) {
-						width: 100%;
-					}
-				}
-			}
-
-			:global(.install-content-image) {
-				display: flex;
-				flex: 1 0 0;
-				max-width: 100%;
-				align-items: center;
-				justify-content: center;
-				padding: 0 15px;
-				margin: 50px 0;
-			}
-
-			:global(.install-content-details) {
-				padding-top: 12px;
-				color: #3b3c3d;
-
-				:global(p) {
-					font-weight: 400;
-					font-size: 18px;
-					line-height: 30px;
-				}
-			}
-
-			:global(.image-content) {
-				position: relative;
-				width: 100%;
-
-				// On laptop/tablet the .col image area takes full width and the
-				// layered bg/main parallax (bg pinned right:0, main pinned
-				// left:0) doesn't have room — it reads as a left-shifted
-				// foreground with the faded bg cropped on the right. Show
-				// only the foreground image at full container width, centered,
-				// flowing in normal flow with its natural aspect ratio.
-				@media (max-width: 991px) {
-					display: flex;
-					justify-content: center;
-
-					:global(img.bg) {
-						display: none;
-					}
-
-					:global(img.main) {
-						position: static;
-						width: 100%;
-						max-width: 100%;
-						height: auto;
-					}
-				}
-
-				// Desktop (>=992px) keeps the original layered parallax.
-				@media (min-width: 992px) {
-					padding-top: 50%;
-
-					&:global(.width-85) {
-						width: 85%;
-					}
-
-					:global(img) {
-						width: 75%;
-						position: absolute;
-
-						&:global(.bg) {
-							top: 0;
-							right: 0;
-							z-index: 1;
-							opacity: 0.5;
-						}
-
-						&:global(.main) {
-							left: 0;
-							top: 3rem;
-							z-index: 2;
-						}
-					}
-				}
-
-				// Shared image styling that applies in both modes
-				:global(img) {
-					box-shadow: 0 18px 60px rgba(0, 0, 0, 0.127868);
-					border-radius: 4px;
-				}
-			}
+		:global(svg) {
+			width: 20px;
+			height: 20px;
 		}
 
-		:global(.feature) {
-			display: flex;
-			flex-direction: column;
-			gap: 28px;
-			margin-bottom: 100px;
+		&:hover {
+			background-color: rgba(23, 24, 28, 0.05);
+		}
 
-			@media (min-width: 992px) {
-				flex-direction: row;
-			}
+		&:focus-visible {
+			outline: 2px solid var(--color-text, #17181c);
+			outline-offset: 3px;
+		}
+	}
 
-			:global(.column) {
-				flex: 1;
+	.install__product--platform .install__button {
+		border-color: var(--badge-fill);
+		background-color: var(--badge-fill);
+		color: #fff;
 
-				:global(.item-row) {
-					display: flex;
-					padding-right: 0;
+		&:hover {
+			background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+		}
 
-					@media (min-width: 992px) {
-						padding-right: 70px;
-					}
+		&:focus-visible {
+			outline-color: var(--badge-fill);
+		}
+	}
 
-					&::before {
-						content: '•';
-						font-weight: 600;
-						font-size: 26px;
-						line-height: 30px;
-						margin-right: 22px;
-						color: #2a7dec;
-						display: inline-block;
-					}
+	// The quiet link beside it, the cards' own: medium, in the brand indigo the homepage points its
+	// links at, a chevron after.
+	.install__link {
+		@include type-link;
 
-					:global(.item-text) {
-						:global(.item-title) {
-							color: #2a7dec;
-							font-weight: 400;
-							font-size: 20px;
-							line-height: 32px;
-							margin-bottom: 2px;
-							text-decoration: none;
-							display: block;
-						}
+		display: inline-flex;
+		align-items: center;
+		gap: $spacing-1;
+		color: $color-brand;
+		text-decoration: none;
 
-						:global(p) {
-							font-size: 16px;
-							font-weight: 400;
-							line-height: 28px;
-							color: #202021;
-						}
-					}
+		:global(svg) {
+			width: 1.1em;
+			height: 1.1em;
+		}
 
-					&:not(:last-of-type) {
-						margin-bottom: 28px;
-					}
-				}
-			}
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	// ── Cloud's regions ───────────────────────────────────────────────
+	// The two regions as rows, each a sign-up with a sign-in beside it: the region dialog's cards,
+	// set on the page — a globe in a hue of its own, the region's name over where its data stays,
+	// and the action at the row's end.
+	.install__regions {
+		display: grid;
+		gap: $spacing-3;
+		max-width: 520px;
+		margin: $spacing-6 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.install__region {
+		display: flex;
+		align-items: center;
+		gap: $spacing-4;
+	}
+
+	.install__region-signup {
+		display: flex;
+		flex: 1 1 auto;
+		align-items: center;
+		gap: $spacing-3;
+		min-width: 0;
+		padding: $spacing-3 $spacing-4;
+		border-radius: $radius-lg;
+		background: var(--color-bg-surface, #fff);
+		box-shadow:
+			0 1px 2px rgba(23, 24, 28, 0.06),
+			0 6px 18px rgba(23, 24, 28, 0.06);
+		color: var(--color-text, #17181c);
+		text-decoration: none;
+
+		&:hover {
+			box-shadow:
+				0 1px 2px rgba(23, 24, 28, 0.08),
+				0 10px 24px rgba(23, 24, 28, 0.1);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--badge-fill);
+			outline-offset: 3px;
+		}
+	}
+
+	.install__region-globe {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--region-hue) 14%, #fff);
+		color: var(--region-hue);
+
+		:global(svg) {
+			width: 20px;
+			height: 20px;
+		}
+	}
+
+	// The dialog's two hues, decoration as they were in the header's old menu; the names carry
+	// the meaning.
+	.install__region[data-region='us'] {
+		--region-hue: #{$color-brand};
+	}
+
+	.install__region[data-region='eu'] {
+		--region-hue: #0f9b8e;
+	}
+
+	.install__region-name {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		min-width: 0;
+		font-weight: $font-weight-bold;
+		line-height: 1.3;
+
+		small {
+			@include type-small;
+
+			font-weight: $font-weight-normal;
+			color: var(--color-text-secondary, #{$color-text-secondary});
+		}
+	}
+
+	.install__region-cta {
+		@include type-small-strong;
+
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		gap: $spacing-1;
+		color: var(--badge-fill);
+		white-space: nowrap;
+
+		:global(svg) {
+			width: 18px;
+			height: 18px;
+		}
+	}
+
+	.install__region-signin {
+		@include type-small-strong;
+
+		flex: none;
+		color: var(--color-text-secondary, #{$color-text-secondary});
+		text-decoration: none;
+
+		&:hover {
+			color: var(--color-text, #17181c);
+			text-decoration: underline;
+		}
+	}
+
+	// ── The ways in ───────────────────────────────────────────────────
+	// The old page's deployment cards as chips: the wordmark and the name, each a link to its guide,
+	// under the group's own heading.
+	.install__group + .install__group {
+		margin-top: $spacing-5;
+	}
+
+	.install__group-title {
+		@include type-eyebrow;
+
+		margin: 0 0 $spacing-3;
+		color: var(--color-text-secondary, #{$color-text-secondary});
+	}
+
+	.install__chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: $spacing-2;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.install__chip {
+		@include type-small-strong;
+
+		display: inline-flex;
+		align-items: center;
+		gap: $spacing-2;
+		height: 36px;
+		padding: 0 $spacing-3 0 $spacing-3;
+		border: 1px solid rgba(23, 24, 28, 0.12);
+		border-radius: $radius-full;
+		background: var(--color-bg-surface, #fff);
+		color: var(--color-text, #17181c);
+		text-decoration: none;
+		white-space: nowrap;
+
+		:global(img) {
+			width: auto;
+			height: 16px;
+		}
+
+		&:hover {
+			border-color: rgba(23, 24, 28, 0.3);
+			background: rgba(23, 24, 28, 0.03);
+		}
+	}
+
+	// Stacked, the head's mark comes down a step and the regions take the width.
+	@include media-down(sm) {
+		.install__mark {
+			width: 56px;
+			height: 56px;
+		}
+
+		// The sign-in drops under its row on a phone, at the row's end rather than orphaned at its
+		// start.
+		.install__region {
+			flex-wrap: wrap;
+			row-gap: $spacing-1;
+		}
+
+		.install__region-signin {
+			margin-left: auto;
 		}
 	}
 </style>

@@ -50,6 +50,11 @@ interface Props {
 	 * because this header is.
 	 */
 	badge?: { icon: string; color: string };
+	/**
+	 * The title's heading level. 2 on a homepage section, which is what this was built for; 1 where
+	 * the header opens a page of its own and the title is the page's (the installations hub).
+	 */
+	level?: 1 | 2;
 	class?: string;
 }
 
@@ -62,8 +67,11 @@ const {
 	subtitleMeasure = 'wide',
 	titleMeasure,
 	badge,
+	level = 2,
 	class: className = '',
 } = Astro.props;
+
+const Title = level === 1 ? 'h1' : 'h2';
 
 // Resolved rather than defaulted in the destructure, because the default depends on `align`.
 // An explicit prop still wins either way.
@@ -88,7 +96,7 @@ const measure = titleMeasure ?? (align === 'center' ? 'headline' : 'full');
 			</span>
 		)
 	}
-	<h2 class="section-header__title">{title}</h2>
+	<Title class="section-header__title">{title}</Title>
 	{subtitle && <p class="section-header__subtitle">{subtitle}</p>}
 	<slot />
 </div>

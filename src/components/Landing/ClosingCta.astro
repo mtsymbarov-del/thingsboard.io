@@ -35,7 +35,8 @@ import PricingBackground from '@components/Pricing/PricingBackground.astro';
 		</p>
 
 		<div class="closing-cta__actions">
-			<a class="closing-cta__primary" href="https://thingsboard.cloud/signup">
+			{/* Opens the header's sign-up region dialog; the href is the no-script fallback. */}
+			<a class="closing-cta__primary" href="https://thingsboard.cloud/signup" data-cloud-auth="signup">
 				<Icon name="tabler:cloud-filled" aria-hidden="true" />
 				Start free on Cloud
 			</a>

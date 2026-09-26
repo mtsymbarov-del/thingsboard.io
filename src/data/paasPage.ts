@@ -803,9 +803,9 @@ export const paasOnPremises = {
  * `primary` does NOT keep develop's href. There it points at `/installations/`, the guide to
  * installing ThingsBoard on your own infrastructure — which is the opposite of what a "try the
  * managed cloud for free" button on the Cloud page should do, and looks like a copy-paste from a
- * self-hosted page rather than a decision. It points at the Cloud signup, which is where the
- * homepage's own "Try for free" goes. The EU region signs up at `eu.thingsboard.cloud/signup`; the
- * FAQ gives both, and this follows the homepage in offering the one.
+ * self-hosted page rather than a decision. It does what the homepage's own "Try for free" does:
+ * `attrs` opens the region dialog the header renders (`CloudRegionDialog`), which asks North
+ * America or Europe before leaving the site, and the href is the no-script fallback.
  */
 /**
  * The line under the hero's buttons: the two things a reader weighs before pressing "Try Cloud for
@@ -816,7 +816,11 @@ export const paasOnPremises = {
 export const paasHeroCaption = ['No credit card', 'Running in under 5 minutes'];
 
 export const paasCtas = {
-	primary: { text: 'Try Cloud for free', href: 'https://thingsboard.cloud/signup' },
+	primary: {
+		text: 'Try Cloud for free',
+		href: 'https://thingsboard.cloud/signup',
+		attrs: { 'data-cloud-auth': 'signup' } as Record<string, string>,
+	},
 	secondary: {
 		text: 'Talk to an expert',
 		href: '/contact-us/?subject=ThingsBoard%20Products&message=I%20have%20a%20question%20about%20ThingsBoard%20Cloud',

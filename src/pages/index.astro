@@ -83,9 +83,11 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 			{
 				text: 'Try for free',
 				icon: 'tabler:cloud-filled',
+				// The region dialog the header renders takes the click; the href is the no-script fallback.
 				href: 'https://thingsboard.cloud/signup',
 				variant: 'brand',
 				ariaLabel: 'Try ThingsBoard Cloud for free',
+				attrs: { 'data-cloud-auth': 'signup' },
 			},
 			{ text: 'Install', icon: 'tabler:download', href: '/installations/', variant: 'outline' },
 		]}
@@ -649,7 +651,7 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 
 	// Only `.n-button.price` gets an explicit white on the transparent header, so
 	// the Sign in secondary inherited dark text and vanished over the hero.
-	header.header .region-signin summary {
+	header.header .region-signin {
 		font-size: 15px;
 	}
 
@@ -670,15 +672,12 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 	// border and the Octicon follow without a rule of their own. Added as separate
 	// selectors rather than a `:is()` so each keeps the specificity the note above
 	// depends on.
-	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent'])
-		.region-signin
-		summary,
-	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent'])
-		.gh-button {
+	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent']) .region-signin,
+	header.header:not(.opened-burger):not([data-header-scrolled]):has([data-header-variant='transparent']) .gh-button {
 		color: #fff;
 	}
 
-	header.header[data-header-scrolled] .region-signin summary,
+	header.header[data-header-scrolled] .region-signin,
 	header.header[data-header-scrolled] .gh-button {
 		color: var(--color-text);
 	}
@@ -702,7 +701,7 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 	// GitHub's own palette (#21262d / #30363d / #e6edf3), which is a near-black
 	// pill: invisible over the dark hero and a hole on the light scrolled bar, so
 	// this block repainted it per state. It now takes its border, ink and hover
-	// from `currentColor` — the same contract `.region-signin summary` keeps — so
+	// from `currentColor` — the same contract `.region-signin` keeps — so
 	// it follows the bar through transparent, scrolled and drawer on its own, and
 	// there is no second palette to keep in sync. See GitHubButton.astro.
 

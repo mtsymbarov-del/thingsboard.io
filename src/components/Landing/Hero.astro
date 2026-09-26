@@ -19,6 +19,8 @@ interface HeroButton {
 	ariaLabel?: string;
 	srOnlySuffix?: string;
 	target?: string;
+	/** Extra attributes on the anchor, e.g. the `data-cloud-auth` hook that opens the region dialog. */
+	attrs?: Record<string, string>;
 }
 
 interface Achievement {
@@ -175,6 +177,7 @@ const titles = Array.isArray(title) ? title : [title];
 							aria-label={button.ariaLabel}
 							target={button.target}
 							{...relForTarget(button.target)}
+							{...button.attrs}
 						>
 							{button.icon && <Icon name={button.icon} size="18" aria-hidden="true" />}
 							{button.text}

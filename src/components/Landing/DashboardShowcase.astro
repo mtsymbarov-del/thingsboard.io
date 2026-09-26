@@ -8,9 +8,10 @@ import type { CarouselItem } from '@data/homeCarousel';
 // navigation — a reader picks the case that looks like theirs instead of
 // clicking blind dots — and the arrows step through the same set.
 //
-// Built as a tab set rather than a carousel: nothing slides, one of several
-// views is chosen, and the shared Carousel component is used by the blog and
-// use-case pages, so it stays as it is.
+// Built as a tab set rather than a carousel: the cases are not a strip that
+// scrolls, one of several views is chosen (`motion` decides how it arrives), and
+// the shared Carousel component is used by the blog and use-case pages, so it
+// stays as it is.
 //
 // Every case is server-rendered and inactive ones are `hidden`, so the section
 // is correct before its script runs and needs no layout measurement.
@@ -21,16 +22,39 @@ interface Props {
 	/** Milliseconds between automatic advances. Slow on purpose — a reader has to
 	 *  be able to finish a description before it moves. */
 	interval?: number;
+	/**
+	 * How one case gives way to the next.
+	 *
+	 *   cut      at once, as the handoff homepage shipped it.
+	 *   handoff  the page's own switch motion (the AI section's hand-off, the Automate switch's): the
+	 *            next shot fades in over the last from the side it comes from while the last drifts
+	 *            the other way under it, the card eases to the next shot's width, and the copy rises
+	 *            into place. 420ms for the board — a screenshot this size needs longer than a panel of
+	 *            text to read as moving rather than flashing — on the same curve.
+	 */
+	motion?: 'cut' | 'handoff';
+	/**
+	 * A glow in the section's `--row-hue` UNDER the board, so the product is the lit thing on the
+	 * band: an ellipse centred on the board, a third wider and nearly twice as tall, which the board
+	 * covers everywhere but its edges.
+	 */
+	glow?: boolean;
 }
 
-const { items, id = 'dashboards', interval = 12000 } = Astro.props;
+const { items, id = 'dashboards', interval = 12000, motion = 'cut', glow = false } = Astro.props;
 
 // Each shot's own aspect ratio, handed to the board so the card can take the
 // shape of whatever it is showing. See `--item-ratio` in the styles.
 const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height);
 ---
 
-<div class="dashshow" data-dashshow data-dashshow-interval={interval}>
+<div
+	class:list={['dashshow', glow && 'dashshow--glow', motion === 'handoff' && 'dashshow--handoff']}
+	data-dashshow
+	data-dashshow-interval={interval}
+	data-dashshow-motion={motion}
+>
+	{glow && <div class="dashshow__glow" aria-hidden="true" />}
 	<div class="dashshow__board" style={items.length ? `--item-ratio: ${ratioOf(items[0])}` : undefined}>
 		{
 			items.map((item, i) => (
@@ -127,9 +151,44 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 <style lang="scss">
 	@use '../../styles/variables' as *;
 
+	// The board's size lives here rather than on the board so the glow can centre on it. The values
+	// are the board's own and depend on nothing but the viewport, so moving them changed nothing.
 	.dashshow {
+		--board-w: min(1160px, calc(100vw - #{$spacing-10}));
+		// The height the eight 1920x866 shots produce at that width. Pinned, so
+		// nothing below the board can move when the tab changes.
+		--board-h: calc(var(--board-w) / (1920 / 866));
+
 		display: grid;
 		gap: $spacing-6;
+	}
+
+	// Under everything in the showcase, and over nothing outside it: `isolation` makes the showcase
+	// its own stacking context, so the glow's -1 is below the board and the copy but above the band.
+	.dashshow--glow {
+		position: relative;
+		isolation: isolate;
+	}
+
+	.dashshow__glow {
+		position: absolute;
+		z-index: -1;
+		top: calc(var(--board-h) / 2);
+		left: 50%;
+		width: calc(var(--board-w) * 1.3);
+		height: calc(var(--board-h) * 1.9);
+		transform: translate(-50%, -50%);
+		// Strong where the board covers it, so what shows past the board's edges is what counts: ~13%
+		// of the hue along its top and foot (half the ellipse's height out), ~5% at its sides — the
+		// strength the glow behind the heading had before it moved here.
+		background: radial-gradient(
+			closest-side,
+			color-mix(in srgb, var(--row-hue, var(--color-primary, #{$color-brand})) 24%, transparent) 0%,
+			color-mix(in srgb, var(--row-hue, var(--color-primary, #{$color-brand})) 13%, transparent) 50%,
+			color-mix(in srgb, var(--row-hue, var(--color-primary, #{$color-brand})) 4%, transparent) 78%,
+			transparent 100%
+		);
+		pointer-events: none;
 	}
 
 	// The board steps out of the 960 measure, but only as far as there is room.
@@ -150,11 +209,7 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 	// The nav and the copy under it stay on 960 — only the board leaves the line,
 	// which is what makes it read as deliberate rather than as a wider section.
 	.dashshow__board {
-		--board-w: min(1160px, calc(100vw - #{$spacing-10}));
-		// The height the eight 1920x866 shots produce at that width. Pinned, so
-		// nothing below the board can move when the tab changes.
-		--board-h: calc(var(--board-w) / (1920 / 866));
-		// ...and the width the CURRENT shot asks for at that height, never more
+		// The width the CURRENT shot asks for at the board's height, never more
 		// than the full width. Set per item from `data-ratio`.
 		--fit-w: min(var(--board-w), calc(var(--board-h) * var(--item-ratio, (1920 / 866))));
 
@@ -217,6 +272,28 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 	// under the slider — the component's own `cover` crops each to fill instead.
 	.dashshow__frame :global(.uc-img-overlay img) {
 		object-fit: contain;
+	}
+
+	// THE HAND-OFF'S STACK: every shot in the board's one cell, so the leaving one can stay under the
+	// arriving one while it drifts out. Only the two in play are shown; the rest keep `hidden`. The
+	// card's width follows the shot, eased, so a squarer shot is met rather than jumped to.
+	.dashshow--handoff .dashshow__board {
+		display: grid;
+		grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+		transition:
+			width 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+			margin-inline 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	.dashshow--handoff .dashshow__frame {
+		grid-area: 1 / 1;
+		z-index: 1;
+		min-width: 0;
+
+		&.is-leaving {
+			z-index: 0;
+			pointer-events: none;
+		}
 	}
 
 	// Over the board's corner rather than in the body, so the list below stays a
@@ -419,7 +496,8 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 
 	@media (prefers-reduced-motion: reduce) {
 		.dashshow__case,
-		.dashshow__arrow {
+		.dashshow__arrow,
+		.dashshow--handoff .dashshow__board {
 			transition: none;
 		}
 	}
@@ -461,7 +539,59 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 			rail.scrollBy({ left: t.left - r.left - (r.width - t.width) / 2, behavior: reduced ? 'auto' : 'smooth' });
 		};
 
-		const show = (next: number, focus = false) => {
+		// ── The hand-off ──────────────────────────────────────
+		// `motion="handoff"`: the arriving shot fades in over the leaving one from the side it comes
+		// from, the leaving one drifts the other way under it and is hidden once the arrival lands,
+		// and the copy rises into place. A change that lands mid-flight settles the last one first —
+		// every animation cancelled, every shot but the showing one hidden — so a fast reader never
+		// sees three boards at once.
+		const handoff = root.dataset.dashshowMotion === 'handoff' && !reduced;
+		const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+		const EASE_OUT = 'cubic-bezier(0.4, 0, 1, 1)';
+		let inFlight: Animation[] = [];
+
+		const settle = () => {
+			inFlight.forEach((a) => a.cancel());
+			inFlight = [];
+			frames.forEach((frame, i) => {
+				frame.classList.remove('is-leaving');
+				frame.hidden = i !== active;
+			});
+		};
+
+		const handOff = (from: HTMLElement, to: HTMLElement, panel: HTMLElement | undefined, dir: number) => {
+			settle();
+			from.hidden = false;
+			from.classList.add('is-leaving');
+			const out = from.animate(
+				[
+					{ transform: 'none', opacity: 1 },
+					{ transform: `translateX(${-dir * 20}px)`, opacity: 0.4 },
+				],
+				{ duration: 420, easing: EASE_OUT, fill: 'forwards' }
+			);
+			// One keyframe with `offset: 0` is a START: the element animates from it to its own style.
+			const arrive = to.animate([{ transform: `translateX(${dir * 28}px)`, opacity: 0, offset: 0 }], {
+				duration: 420,
+				easing: EASE,
+				fill: 'backwards',
+			});
+			inFlight = [out, arrive];
+			if (panel) {
+				inFlight.push(
+					panel.animate([{ transform: 'translateY(8px)', opacity: 0, offset: 0 }], {
+						duration: 300,
+						delay: 80,
+						easing: EASE,
+						fill: 'backwards',
+					})
+				);
+			}
+			arrive.finished.then(settle, () => {});
+		};
+
+		const show = (next: number, focus = false, dir?: number) => {
+			const previous = active;
 			active = (next + tabs.length) % tabs.length;
 
 			tabs.forEach((tab, i) => {
@@ -471,7 +601,13 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 				tab.tabIndex = on ? 0 : -1;
 			});
 			panels.forEach((panel, i) => (panel.hidden = i !== active));
-			frames.forEach((frame, i) => (frame.hidden = i !== active));
+			if (handoff && previous !== active) {
+				// The control says which way it went — next wraps from the last case to the first and is
+				// still "next" — and a pick from the list goes the way the list runs.
+				handOff(frames[previous], frames[active], panels[active], dir ?? (active > previous ? 1 : -1));
+			} else {
+				frames.forEach((frame, i) => (frame.hidden = i !== active));
+			}
 
 			// The card takes the shape of the shot it is showing.
 			const ratio = frames[active]?.dataset.ratio;
@@ -512,7 +648,7 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 			if (!onScreen || document.hidden) return;
 			if (root.matches(':hover') || root.contains(document.activeElement)) return;
 
-			show(active + 1);
+			show(active + 1, false, 1);
 		}, interval);
 
 		const stop = () => (stopped = true);
@@ -525,11 +661,11 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 		);
 
 		root.querySelector('[data-dashshow-prev]')?.addEventListener('click', () => {
-			show(active - 1);
+			show(active - 1, false, -1);
 			stop();
 		});
 		root.querySelector('[data-dashshow-next]')?.addEventListener('click', () => {
-			show(active + 1);
+			show(active + 1, false, 1);
 			stop();
 		});
 
@@ -565,7 +701,7 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 			// diagonal both fall through.
 			if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy)) return;
 
-			show(active + (dx < 0 ? 1 : -1));
+			show(active + (dx < 0 ? 1 : -1), false, dx < 0 ? 1 : -1);
 			stop();
 		});
 
@@ -637,7 +773,7 @@ const ratioOf = (item: CarouselItem) => Number(item.width) / Number(item.height)
 
 			if (step) {
 				event.preventDefault();
-				show(active + step, true);
+				show(active + step, true, step);
 			} else if (key === 'Home' || key === 'End') {
 				event.preventDefault();
 				show(key === 'Home' ? 0 : tabs.length - 1, true);

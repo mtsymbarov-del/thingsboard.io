@@ -1,0 +1,25 @@
+---
+import Home from '@root/pages/index.astro';
+import { HOME_COMPOSITIONS, type HomeComposition } from '@data/home-compositions';
+
+/**
+ * Homepages › one running order: the real homepage, with this order between its hero and its CTA.
+ *
+ * It renders `index.astro` itself, handed a different `composition`, rather than a copy of it. So
+ * each order is the homepage exactly — same hero, same stylesheet, same header — and the only thing
+ * that differs is the one thing being compared. `preview` marks the copy noindex and drops its
+ * canonical; the shipping order is also here, under its id, so a link to an order by name keeps
+ * working after the shipping flag moves.
+ */
+export function getStaticPaths() {
+	return HOME_COMPOSITIONS.map((composition) => ({ params: { id: composition.id }, props: { composition } }));
+}
+
+interface Props {
+	composition: HomeComposition;
+}
+
+const { composition } = Astro.props;
+---
+
+<Home composition={composition} preview />

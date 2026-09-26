@@ -175,13 +175,29 @@ gotchas (stale scoped-style HMR, the global `svg` reset, the missing 600 weight)
 hour to find.
 
 They are judged in context on the homepage itself, and one at a time under `/internal/` (all
-`noindex`). The floating island links the real Home, Cloud and On-premises pages and three areas:
-**Components** (every homepage section, the ecosystem cards included), **Flows** (Sign up, Sign in)
-and **Design system** (Type, UI). Every area opens on an overview of tiles, and its sticky top bar
-shows the overview as a grid icon and the pages as tabs, or as a grouped picker past five
-(`src/pages/internal/_areas.ts`). `/internal/components/` is the section overview, and
-`/internal/sections/<id>/` holds one visual's directions as tabs at known widths, the one in use
-flagged `shipping`; `/internal/flows/<id>/` holds the flows the same way. Never change a shipped visual to try an idea — add a candidate beside it.
+`noindex`). The floating island links the real Home, Cloud and On-premises pages and four areas:
+**Homepages** (the running orders, below), **Components** (every homepage section, the ecosystem
+cards included), **Flows** (Sign up, Sign in) and **Design system** (Type, UI). Every area opens on an
+overview of tiles, and its sticky top bar shows the overview as a grid icon and the pages as tabs, or
+as a grouped picker past five (`src/pages/internal/_areas.ts`). `/internal/components/` is the section
+overview, and `/internal/sections/<id>/` holds one visual's directions as tabs at known widths, the one
+in use flagged `shipping`; `/internal/flows/<id>/` holds the flows the same way. Never change a shipped
+visual to try an idea — add a candidate beside it.
+
+**Running orders.** Everything between the homepage's hero and its closing CTA is a running order in
+`src/data/home-compositions.ts`: which sections run, in what order, with which options, rendered by
+`src/components/Landing/HomeSections.astro`. `/` renders the shipping one (first in the list); every
+order also renders as the real homepage at `/internal/homepages/<id>/`, and `/internal/homepages/` sets
+them side by side. On any homepage the island grows a switch between the orders that keeps your place
+(`[` and `]` step, `O` outlines and numbers the sections). Add an order with one entry there. The
+`handoff` order is the reference and pins every option it depends on; rows take their sides and wash
+from their position, so reorder freely. An order's `hues` decides what colours the sections:
+`primary` is the handoff's one flat wash; `section` gives each alternating row a linear gradient and
+each centred section a glow behind its mark, both in the section's own badge colour, with the lines
+in its drawing in the same hue — while the two bands that run into a dark bookend (trust, voices)
+take the bookends' indigo. The AI section's mark (and its wash, where the
+order sets `wash: 'cycle'`) cycles through the badge colours of the sections that order actually
+renders (`aiBadgeCycleFor`), so an order without a section loses its colour from the cycle too.
 
 ### Use-Case Pages
 

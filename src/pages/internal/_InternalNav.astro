@@ -18,9 +18,42 @@
  * below, so a hidden island does not flash open on every navigation.
  *
  * Underscore-prefixed so Astro does not make it a route.
+ *
+ * ON A HOMEPAGE IT GROWS A SECOND PILL, the running-order switch, docked above the island and folding
+ * away with it. `homepage` is the order the page renders (`data/home-compositions.ts`); the switch
+ * lists every order, the shipping one first with its check, and:
+ *
+ * - KEEPS YOUR PLACE. Switching reads which section is under the reading line and how far through
+ *   it you are, and the next page scrolls the same section to the same point. A section the other
+ *   order does not run lands you where it would have been: the end of the nearest one above it that
+ *   both orders share. Carried in `sessionStorage`, read once, and dropped if it is stale.
+ * - STEPS WITH `[` AND `]`, with the same place-keeping, so two orders can be flicked between.
+ * - OUTLINES THE ORDER with `O` or its button: every section boxed and numbered with its name, the
+ *   way the overview names it, so a review can say "section 7" and mean one thing. Drawn in a layer
+ *   over the page, never inside a section, so it cannot move what it is measuring.
  */
 import { Icon } from 'astro-icon/components';
 import { AREAS, areaFor } from '@root/pages/internal/_areas';
+import { HOME_COMPOSITIONS, HOME_SECTIONS, compositionHref, isShipping } from '@data/home-compositions';
+
+interface Props {
+	/** The running order this page renders, when it is a homepage. Its presence is what shows the switch. */
+	homepage?: string;
+}
+
+const { homepage } = Astro.props;
+const order = homepage ? HOME_COMPOSITIONS.find((c) => c.id === homepage) : undefined;
+
+/** What the switch's script needs: every order's address, and this one's sections top to bottom. */
+const protoData = order && {
+	current: order.id,
+	orders: HOME_COMPOSITIONS.map((c) => ({ id: c.id, href: compositionHref(c) })),
+	sections: order.sections.map((s) => ({
+		anchor: HOME_SECTIONS[s.id].anchor,
+		label: HOME_SECTIONS[s.id].label,
+		hue: HOME_SECTIONS[s.id].hue,
+	})),
+};
 
 /**
  * The real pages first: Home, Cloud and On-premises, the three new pages. They are shown as they
@@ -64,6 +97,53 @@ const isPage = (href: string) => here === href;
 			}
 		})(document.currentScript.parentElement);
 	</script>
+
+	{
+		order && (
+			<div class="inav inav--proto" role="group" aria-label="Homepage running orders" data-home-proto>
+				<script is:inline type="application/json" data-home-proto-data set:html={JSON.stringify(protoData)} />
+				<span class="inav__caption" aria-hidden="true">
+					Homepage
+				</span>
+				<ul class="inav__list">
+					{HOME_COMPOSITIONS.map((c) => (
+						<li>
+							<a
+								href={compositionHref(c)}
+								data-home-switch={c.id}
+								title={`${c.label} · ${c.name}${isShipping(c) ? ' (ships)' : ''} — ${c.note}`}
+								aria-current={c.id === order.id ? 'page' : undefined}
+								class:list={['inav__link', c.id === order.id && 'is-here']}
+							>
+								{isShipping(c) && <Icon name="tabler:circle-check-filled" class="inav__ships" aria-hidden="true" />}
+								{c.label}
+								{isShipping(c) && <span class="inav__sr"> (ships)</span>}
+							</a>
+						</li>
+					))}
+				</ul>
+				<span class="inav__sep" aria-hidden="true" />
+				<button
+					class="inav__btn"
+					type="button"
+					data-home-outline
+					aria-pressed="false"
+					title="Outline the sections (O). [ and ] step between orders."
+					aria-label="Outline the sections"
+				>
+					<Icon name="tabler:list-numbers" aria-hidden="true" />
+				</button>
+				<a
+					class="inav__btn"
+					href="/internal/homepages/"
+					title="All running orders, side by side"
+					aria-label="All running orders"
+				>
+					<Icon name="tabler:layout-grid" aria-hidden="true" />
+				</a>
+			</div>
+		)
+	}
 
 	<nav class="inav" aria-label="Internal review pages" id="internal-nav">
 		<a
@@ -170,6 +250,211 @@ const isPage = (href: string) => here === href;
 
 		hide.addEventListener('click', () => set(false));
 		show.addEventListener('click', () => set(true));
+	}
+
+	// --- the running-order switch, on homepages only ---------------------------------------------
+
+	type ProtoData = {
+		current: string;
+		orders: { id: string; href: string }[];
+		sections: { anchor: string; label: string; hue: string }[];
+	};
+
+	/** Where a switch left off: the section under the reading line, how far through it, and what came before. */
+	type Place = { anchor: string; frac: number; before: string[]; t: number };
+
+	const proto = document.querySelector<HTMLElement>('[data-home-proto]');
+	const protoData = proto?.querySelector('[data-home-proto-data]')?.textContent;
+
+	if (proto && protoData) {
+		const data = JSON.parse(protoData) as ProtoData;
+		const PLACE = 'home-proto:place';
+		const OUTLINE = 'home-proto:outline';
+		// The line a reader's eye sits on, as a fraction of the viewport: a third of the way down, under
+		// the fixed header, rather than the top edge, which the header covers.
+		const READ = 0.33;
+		// A place older than this is from some earlier visit, not from the click that just happened.
+		const STALE_MS = 20000;
+
+		const sectionEl = (anchor: string) => document.getElementById(anchor);
+		const runs = (anchor: string) => data.sections.some((s) => s.anchor === anchor);
+
+		const placeNow = (): Place | null => {
+			const line = window.innerHeight * READ;
+			let above: { anchor: string; i: number } | null = null;
+			for (let i = 0; i < data.sections.length; i++) {
+				const el = sectionEl(data.sections[i].anchor);
+				if (!el) continue;
+				const r = el.getBoundingClientRect();
+				if (r.top > line) break;
+				if (r.bottom > line) return makePlace(i, (line - r.top) / r.height);
+				above = { anchor: data.sections[i].anchor, i };
+			}
+			// Between sections, or past the last: the end of the one above the line.
+			return above ? makePlace(above.i, 1) : null;
+		};
+
+		const makePlace = (i: number, frac: number): Place => ({
+			anchor: data.sections[i].anchor,
+			frac,
+			before: data.sections
+				.slice(0, i)
+				.map((s) => s.anchor)
+				.reverse(),
+			t: Date.now(),
+		});
+
+		const remember = () => {
+			const place = placeNow();
+			try {
+				if (place) sessionStorage.setItem(PLACE, JSON.stringify(place));
+				else sessionStorage.removeItem(PLACE);
+			} catch {
+				/* no session storage: the next order simply opens at its top */
+			}
+		};
+
+		const go = (href: string) => {
+			remember();
+			window.location.assign(href);
+		};
+
+		proto.querySelectorAll<HTMLAnchorElement>('[data-home-switch]').forEach((a) => {
+			a.addEventListener('click', (e) => {
+				// A modified click opens a tab; leave that to the browser, and keep no place for it.
+				if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+				e.preventDefault();
+				if (a.getAttribute('aria-current') !== 'page') go(a.href);
+			});
+		});
+
+		// Restore the place a switch on the previous page left.
+		const restore = () => {
+			let place: Place | null = null;
+			try {
+				place = JSON.parse(sessionStorage.getItem(PLACE) ?? 'null') as Place | null;
+				sessionStorage.removeItem(PLACE);
+			} catch {
+				place = null;
+			}
+			if (!place || Date.now() - place.t > STALE_MS) return;
+			const target = place;
+
+			const put = () => {
+				let anchor: string | undefined = runs(target.anchor) ? target.anchor : undefined;
+				let frac = target.frac;
+				if (!anchor) {
+					// This order does not run that section: land where it would have been, at the end of the
+					// nearest section above it that this order does run.
+					anchor = target.before.find(runs);
+					frac = 1;
+				}
+				const el = anchor ? sectionEl(anchor) : null;
+				if (!el) return;
+				const r = el.getBoundingClientRect();
+				const top = window.scrollY + r.top + r.height * frac - window.innerHeight * READ;
+				window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+			};
+
+			put();
+			// Images and web fonts can still move the page after this runs. Put it back once they have
+			// landed, unless the reader has already started moving it themselves.
+			if (document.readyState !== 'complete') {
+				let moved = false;
+				const mine = () => (moved = true);
+				(['wheel', 'touchstart', 'keydown', 'pointerdown'] as const).forEach((t) =>
+					window.addEventListener(t, mine, { once: true, passive: true })
+				);
+				window.addEventListener('load', () => !moved && put(), { once: true });
+			}
+		};
+		restore();
+
+		// --- the outline -------------------------------------------------------------------------
+
+		const outlineBtn = proto.querySelector<HTMLButtonElement>('[data-home-outline]');
+		let layer: HTMLElement | null = null;
+		let frame = 0;
+
+		const draw = () => {
+			if (!layer) return;
+			// Measured against the layer's own box, so a body with margins or a transform cannot put the
+			// boxes off their sections.
+			const origin = layer.getBoundingClientRect();
+			const boxes = data.sections.flatMap((s, i) => {
+				const el = sectionEl(s.anchor);
+				if (!el) return [];
+				const r = el.getBoundingClientRect();
+				const box = document.createElement('div');
+				box.className = 'home-outline__box';
+				box.style.cssText = `top:${r.top - origin.top}px;left:${r.left - origin.left}px;width:${r.width}px;height:${r.height}px;--hue:${s.hue}`;
+				const tag = document.createElement('span');
+				tag.className = 'home-outline__tag';
+				tag.textContent = `${String(i + 1).padStart(2, '0')} · ${s.label}`;
+				box.append(tag);
+				return [box];
+			});
+			layer.replaceChildren(...boxes);
+		};
+
+		const schedule = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(draw);
+		};
+		const watch = new ResizeObserver(schedule);
+
+		const setOutline = (on: boolean) => {
+			outlineBtn?.setAttribute('aria-pressed', String(on));
+			if (on && !layer) {
+				layer = document.createElement('div');
+				layer.className = 'home-outline';
+				layer.setAttribute('aria-hidden', 'true');
+				document.body.append(layer);
+				watch.observe(document.body);
+				window.addEventListener('resize', schedule);
+			} else if (!on && layer) {
+				layer.remove();
+				layer = null;
+				watch.disconnect();
+				window.removeEventListener('resize', schedule);
+			}
+			// Drawn now rather than on the next frame, so the toggle answers at once; what moves later
+			// (a resize, an image landing) redraws through `schedule`.
+			draw();
+			try {
+				sessionStorage.setItem(OUTLINE, String(on));
+			} catch {
+				/* the outline still toggles; it just will not follow to the next order */
+			}
+		};
+
+		outlineBtn?.addEventListener('click', () => setOutline(!layer));
+		try {
+			if (sessionStorage.getItem(OUTLINE) === 'true') setOutline(true);
+		} catch {
+			/* no session storage: the outline starts off */
+		}
+
+		// --- keys --------------------------------------------------------------------------------
+
+		document.addEventListener('keydown', (e) => {
+			if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+			const target = e.target as HTMLElement | null;
+			if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+
+			if (e.key === '[' || e.key === ']') {
+				const i = data.orders.findIndex((o) => o.id === data.current);
+				const n = data.orders.length;
+				const next = data.orders[(i + (e.key === ']' ? 1 : n - 1)) % n];
+				if (next && next.id !== data.current) {
+					e.preventDefault();
+					go(next.href);
+				}
+			} else if (e.key === 'o' || e.key === 'O') {
+				e.preventDefault();
+				setOutline(!layer);
+			}
+		});
 	}
 </script>
 
@@ -314,6 +599,40 @@ const isPage = (href: string) => here === href;
 		background: rgba(23, 28, 34, 0.12);
 	}
 
+	/* The running-order switch: the island's own surface, one island-height plus a gap above it, so the
+	   two read as a stack in the one corner and fold away together (it is an `.inav` too). */
+	.inav--proto {
+		bottom: calc(#{$spacing-3} + var(--inav-h) + #{$spacing-2});
+	}
+
+	.inav__caption {
+		flex: none;
+		padding: 0 6px 0 9px;
+		color: var(--inav-muted);
+	}
+
+	// The shipping order's check, in the green the sandbox marks its shipping direction with. White on
+	// the current order's accent, where green on indigo would not read.
+	.inav__link :global(.inav__ships) {
+		width: 14px;
+		height: 14px;
+		margin-right: 4px;
+		color: #0d7a5f;
+	}
+
+	.inav__link.is-here :global(.inav__ships) {
+		color: #fff;
+	}
+
+	.inav__sr {
+		@include visually-hidden;
+	}
+
+	.inav__btn[aria-pressed='true'] {
+		background: var(--inav-accent);
+		color: #fff;
+	}
+
 	/* Hidden: a tab docked flush to the left edge, square on that side, at the island's height and
 	   bottom, so the control that brings the island back sits where the island's own edge was. It
 	   never changes size — hover is colour only, because a tab that grows under the pointer is the
@@ -419,5 +738,48 @@ const isPage = (href: string) => here === href;
 			overflow-x: auto;
 			scrollbar-width: none;
 		}
+	}
+</style>
+
+{
+	/* The outline the switch draws. Global, because its boxes are made by the script at runtime and
+    never carry this component's scope. Prefixed `home-outline` so nothing else can match it. */
+}
+<style is:global lang="scss">
+	@use '../../styles/variables' as *;
+
+	.home-outline {
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 9990; // Under the island's 10000, over every section.
+		width: 0;
+		height: 0;
+		pointer-events: none;
+	}
+
+	.home-outline__box {
+		position: absolute;
+		box-sizing: border-box;
+		outline: 2px dashed color-mix(in srgb, var(--hue, #5b616e) 75%, transparent);
+		outline-offset: -2px;
+	}
+
+	// Sticky inside its box, so a tall section keeps its name in view under the header while it scrolls.
+	.home-outline__tag {
+		position: sticky;
+		top: calc(var(--home-header-h, 64px) + var(--promo-h, 0px) + 8px);
+		display: inline-block;
+		margin: 8px 0 0 8px;
+		padding: 4px 10px;
+		border-radius: 999px;
+		font-family: $font-family-base;
+		font-size: 12.5px;
+		font-weight: $font-weight-medium;
+		line-height: 1.2;
+		letter-spacing: 0;
+		color: #fff;
+		background: var(--hue, #5b616e);
+		box-shadow: 0 2px 8px rgba(23, 28, 34, 0.18);
 	}
 </style>

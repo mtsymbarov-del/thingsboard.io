@@ -2,34 +2,43 @@
 import VisualPage from '@root/pages/internal/_VisualPage.astro';
 import Variant from '@root/pages/internal/_Variant.astro';
 import NormalizeSeries from '@components/Landing/NormalizeSeries.astro';
+import AutomateSwitch from '@components/Landing/AutomateSwitch.astro';
 import { kv } from '@root/pages/internal/_key-visuals';
 
 /**
- * Normalize — the transform flow.
+ * Normalize — the transform flow, and since running order A the first of three.
  *
  * Its own route, so opening it compiles and renders this visual and nothing else. `_VisualPage`
  * carries what every visual's page shares: the strip of links between them and the promote/retire
  * control.
  *
- * First half of the design's "Turn IoT data into action" section. The second half — a rule chain
- * raising an alarm and notifying — is a separate argument and will be its own visual, so the copy
- * in this row still covers both and will need splitting with it.
+ * The design's "Turn IoT data into action" section made two arguments under one heading: normalize
+ * the data, then act on it. `AutomateSwitch` is the second argument drawn at last, in two steps —
+ * Filter and Notify — on this drawing's own skeleton, with a switch over the three. The row's copy
+ * already named all three steps, so it did not need splitting after all.
  */
 ---
 
 <VisualPage visual="normalize">
 	{
-		/* Two directions, and the difference between them is the whole question: whether the movement
-	    adds anything. That is only answerable against the same drawing holding still, which is why
-	    the still cut is a direction of its own rather than a probe under this one. */
+		/* The switch first: it is what `/` renders (running order A). Pulse is the handoff's, still on
+	    `/internal/homepages/handoff/`, and Still is what Pulse was judged against. */
 	}
+	<Variant
+		visual={kv('normalize')}
+		component={AutomateSwitch}
+		props={{ id: 'sandbox-automate' }}
+		shipping
+		name="Switch"
+		note="Normalize · Filter · Notify, one skeleton, a switch over the row’s media; the mark holds its place across all three, and no caption under the drawing (2026-09-26)"
+	/>
+
 	<Variant
 		visual={kv('normalize')}
 		component={NormalizeSeries}
 		props={{ motion: 'pulse' }}
-		shipping
 		name="Pulse"
-		note="One pip per device, in and out a transit later"
+		note="One pip per device, in and out a transit later — the handoff’s"
 	/>
 
 	<Variant

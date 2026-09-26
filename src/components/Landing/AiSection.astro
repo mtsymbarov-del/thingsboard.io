@@ -5,7 +5,11 @@ import CliTerminal from './CliTerminal.astro';
 import AgentTerminal from './AgentTerminal.astro';
 import SegmentedToggle from './SegmentedToggle.astro';
 import AiHandoff from './AiHandoff.astro';
+import NButton from '@components/Landing/NButton.astro';
+import { Icon } from 'astro-icon/components';
 import {
+	AI_ACTIONS,
+	AI_CTA_BAND,
 	AI_COPY,
 	AI_COLUMNS,
 	AI_COLUMNS_VALUE,
@@ -18,6 +22,13 @@ import {
 import type { AiColumn, AiChatScenario } from '@data/ai-visual';
 
 /**
+ * PROMOTED 2026-09-26, later: one call to action under the row (`cta="block"`), whose line, button
+ * and link follow the switch, and the wash that follows the mark (`wash="cycle"`), until then the
+ * sandbox's experiment. The morning's action at the end of each route's copy is `cta="route"`.
+ *
+ * PROMOTED 2026-09-26, with running order A: an action under each route's copy (`cta`), the handoff's
+ * section without them kept as `cta="none"`.
+ *
  * PROMOTED 2026-09-24, later the same day: the freezer-door chat (`chat`, the dew-point one kept as
  * `chat="dewPoint"`) and windows that fill their column like the key-visual rows (`fit`, the centred
  * 500px windows kept as `fit="inset"`).
@@ -112,12 +123,14 @@ interface Props {
 	 */
 	copy?: 'shipping' | 'value';
 	/**
-	 * EXPERIMENTAL, and only with the toggle layout (where the wash is one gradient on the wrapper).
+	 * Only with the toggle layout (where the wash is one gradient on the wrapper).
 	 *
-	 * `route` — the wash takes the showing route's hue: green for the chat, violet for the terminal.
-	 * `cycle` — the wash follows the MARK instead: the same colour sequence as the badge, on the same
-	 * 9s clock, paused and resumed with it, so the tile and the band change colour as one. The route no
-	 * longer colours the band — the switch's label and the terminal's prompt still carry it.
+	 * `cycle` — THE HOMEPAGE since 2026-09-26, and the default: the wash follows the MARK, the same
+	 * colour sequence as the badge — every other section's colour on the page — on the same clock,
+	 * paused and resumed with it, so the tile and the band change colour as one. The route no longer
+	 * colours the band; the switch's label and the terminal's prompt still carry it.
+	 * `route` — the handoff's: the wash takes the showing route's hue, green for the chat and violet
+	 * for the terminal.
 	 *
 	 * Meant for the copy WITHOUT kickers: a kicker is set in its route's hue, derived to read against
 	 * that hue's wash, and a wash moving through five other colours would leave it on the wrong one.
@@ -151,12 +164,56 @@ interface Props {
 	 * sandbox's reference and the way back.
 	 */
 	fit?: 'inset' | 'column';
+	/**
+	 * What the section asks the reader to do. In running order A it sits straight under the hero, so
+	 * it is the first thing on the page to act on.
+	 *
+	 * `block` — THE HOMEPAGE, and the default since 2026-09-26: one call to action under the row, on the
+	 * wash, as the running-order proposal sketched it (`AI_CTA_BAND`). A line, a button and a link, and all
+	 * three follow the switch: the button is the showing route's way in (Cloud sign-up for the
+	 * Assistant, the CLI guide for the agent), the link the other route's. Toggle layout only, since
+	 * it follows the switch; `bands` shows both routes at once and falls back to `route`.
+	 *
+	 * `route` — a button at the end of each route's copy (`AI_ACTIONS`), inside the band, so it follows
+	 * the switch with no rule of its own. `none` — no action: the handoff's section, which the sandbox's
+	 * previous-homepage references pin rather than inherit.
+	 */
+	cta?: 'block' | 'route' | 'none';
+	/**
+	 * The colours the mark cycles through, after its own: the badge colours of the OTHER sections on
+	 * the page. Defaults to `AI_BADGE_CYCLE`, all five that have one, which is right for the sandbox.
+	 * A running order passes `aiBadgeCycleFor` its own sections, so a section the page does not run has
+	 * no stop in its cycle — the claim the mark makes, "these are the colours this page is built out
+	 * of", is only true of the page it is on. From one to six.
+	 */
+	hues?: string[];
+	/**
+	 * The section's id, when the caller needs a fixed one. A homepage running order renders exactly one
+	 * AI section and wants it at `#ai` whatever its options, so `HomeSections` passes `ai`. Left unset,
+	 * the id follows the configuration (see `sectionId`), which is what keeps the sandbox's directions
+	 * apart.
+	 */
+	id?: string;
 }
 
-const { animate = true, layout = 'toggle', copy = 'shipping', wash = 'route', terminal = 'agent', chat = 'shipping', fit = 'column' } = Astro.props;
+const {
+	animate = true,
+	layout = 'toggle',
+	copy = 'shipping',
+	wash = 'cycle',
+	terminal = 'agent',
+	chat = 'shipping',
+	fit = 'column',
+	cta = 'block',
+	hues = AI_BADGE_CYCLE,
+	id: fixedId,
+} = Astro.props;
 const toggle = layout === 'toggle';
 const washCycle = toggle && wash === 'cycle';
 const COLS = copy === 'value' ? AI_COLUMNS_VALUE : AI_COLUMNS;
+// The block follows the switch, so without one (`bands`) each route carries its own action instead.
+const ctaBlock = cta === 'block' && toggle;
+const ctaRoute = cta === 'route' || (cta === 'block' && !toggle);
 
 /**
  * The line over a row's title. In `bands` it is the route ("From a prompt"). In `toggle` the route
@@ -170,16 +227,17 @@ const kicker = (col: AiColumn) => (toggle ? col.kicker : (col.kicker ?? col.eyeb
  * props rather than drawn at random, so a build is the same every time — no two directions on the
  * sandbox page share all three.
  */
-const uid = `${layout}-${copy}-${wash}${terminal === 'cli' ? '-cli' : ''}${chat === 'shipping' ? '' : `-${chat}`}${fit === 'column' ? '' : `-${fit}`}`;
+const uid = `${layout}-${copy}-${wash}${terminal === 'cli' ? '-cli' : ''}${chat === 'shipping' ? '' : `-${chat}`}${fit === 'column' ? '' : `-${fit}`}${cta === 'block' ? '' : `-cta-${cta}`}`;
 const PANELS = { assistant: `ai-${uid}-prompt`, cli: `ai-${uid}-cli` };
 
 /**
  * The section's own id, by the same rule. The default configuration — the one the homepage renders —
  * keeps `ai`, which the homepage's `/#ai` anchor and its scroll margin answer to; every other
  * configuration is suffixed, so the sandbox's stack of directions is not several elements sharing one
- * id, with `#ai` resolving to whichever came first.
+ * id, with `#ai` resolving to whichever came first. `id` overrides both, for a caller that knows it
+ * renders the only one on its page.
  */
-const sectionId = uid === 'toggle-shipping-route' ? 'ai' : `ai-${uid}`;
+const sectionId = fixedId ?? (uid === 'toggle-shipping-cycle' ? 'ai' : `ai-${uid}`);
 
 /** What a panel carries in toggle mode. Nothing at all in `bands`, so the homepage's markup is unchanged. */
 const panel = (id: string, shown: boolean) =>
@@ -192,13 +250,27 @@ const panel = (id: string, shown: boolean) =>
  * the other sections' data files and are imported from them — see `AI_BADGE_CYCLE`. A `@keyframes`
  * block cannot import anything, so this is how the palette reaches it.
  */
-const badgeHues = AI_BADGE_CYCLE.map((hue, i) => `--ai-hue-${i + 1}: ${hue}`).join('; ');
+const badgeHues = hues.map((hue, i) => `--ai-hue-${i + 1}: ${hue}`).join('; ');
+
+/**
+ * How many stops the cycle has, the mark's own included, and the keyframes written for that many
+ * (`ai-badge-hues-N` / `ai-wash-hues-N`, one pair per length, generated in the stylesheet). The
+ * count picks the pair, so every leg is the same length whatever the page's palette.
+ */
+const STOPS_MAX = 7;
+const stops = hues.length + 1;
+if (hues.length === 0 || stops > STOPS_MAX) {
+	throw new Error(`AiSection: the mark cycles through 1 to ${STOPS_MAX - 1} colours, not ${hues.length}`);
+}
+const cycleVars = `--ai-stops: ${stops}; --ai-badge-anim: ai-badge-hues-${stops}; --ai-wash-anim: ai-wash-hues-${stops}`;
 
 /**
  * Stop 0 of the cycle — the mark's own colour, where it rests. The badge reads it as its own
  * `--badge-color`; the wash has no badge to read it from, so `wash="cycle"` hands it over here.
  */
-const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.color}` : badgeHues;
+const sectionStyle = [badgeHues, cycleVars, washCycle && `--ai-hue-0: ${AI_COPY.badge.color}`]
+	.filter(Boolean)
+	.join('; ');
 ---
 
 <section
@@ -272,6 +344,15 @@ const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.colo
 					{kicker(COLS.assistant) && <p class="ai__eyebrow">{kicker(COLS.assistant)}</p>}
 					<h3 class="ai__row-title">{COLS.assistant.title}</h3>
 					<p class="ai__row-text">{COLS.assistant.body}</p>
+					{
+						ctaRoute && (
+							<div class="ai__action">
+								<NButton href={AI_ACTIONS.assistant.href} target="_self">
+									{AI_ACTIONS.assistant.text}
+								</NButton>
+							</div>
+						)
+					}
 				</div>
 			</div>
 		</div>
@@ -300,11 +381,50 @@ const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.colo
 					{kicker(COLS.cli) && <p class="ai__eyebrow">{kicker(COLS.cli)}</p>}
 					<h3 class="ai__row-title">{COLS.cli.title}</h3>
 					<p class="ai__row-text">{COLS.cli.body}</p>
+					{
+						ctaRoute && (
+							<div class="ai__action">
+								<NButton href={AI_ACTIONS.cli.href}>{AI_ACTIONS.cli.text}</NButton>
+							</div>
+						)
+					}
 				</div>
 			</div>
 		</div>
 	</div>
+
 	</div>{toggle && <AiHandoff />}
+
+	{
+		/* The call to action (`cta="block"`), a short band of its own under the moving wash. One line per
+		   route, stacked in one cell so the band is always the taller one's height and a switch never
+		   moves the page; which one shows is read off the bands (see `.ai__cta`), so it needs no script
+		   and holds before one runs. */
+		ctaBlock && (
+			<div class="ai__cta">
+				<div class="main-div">
+					<div class="ai__cta-stack">
+						{(['assistant', 'cli'] as const).map((route) => (
+							<div class={`ai__cta-route ai__cta-route--${route}`}>
+								<p class="ai__cta-line">
+									<strong>{AI_CTA_BAND[route].lead}</strong> {AI_CTA_BAND[route].line}
+								</p>
+								<div class="ai__cta-actions">
+									<NButton href={AI_CTA_BAND[route].primary.href} target="_self">
+										{AI_CTA_BAND[route].primary.text}
+									</NButton>
+									<a class="ai__cta-link" href={AI_CTA_BAND[route].secondary.href}>
+										{AI_CTA_BAND[route].secondary.text}
+										<Icon name="tabler:chevron-right" class="ai__cta-chevron" aria-hidden="true" />
+									</a>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			</div>
+		)
+	}
 
 </section>
 
@@ -604,8 +724,8 @@ const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.colo
 	// in words. The colours are the other sections' own badge colours, imported rather than retyped, so
 	// the cycle cannot drift out of step with the palette — see `AI_BADGE_CYCLE`.
 	//
-	// Six stops over 9s, a second and a half a leg, `linear` so no colour gets a longer turn than
-	// another. 3s a leg was the first pass and it was too slow to do its job: someone reading the
+	// A second and a half a leg — six stops over 9s on a page with all five other colours — and
+	// `linear`, so no colour gets a longer turn than another. 3s a leg was the first pass and it was too slow to do its job: someone reading the
 	// header is there for a few seconds and saw one hue change, which is a tile that happens to be
 	// fading rather than a tile showing a palette. At 1.5s a leg they see four or five. That is about
 	// as fast as this should go — a colour crossfade under a second stops reading as a transition and
@@ -619,8 +739,13 @@ const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.colo
 	// animation restarts it, so a mark scrolled past and returned to would jump back to indigo; pausing
 	// leaves it where it was. Paused at 0% is the badge's own colour, which is also exactly what a
 	// browser that never runs it shows.
+	.ai {
+		--ai-leg: 1.5s;
+		--ai-cycle: calc(var(--ai-leg) * var(--ai-stops, 6));
+	}
+
 	.ai :global(.section-header__badge) {
-		animation: ai-badge-hues var(--ai-cycle, 9s) linear infinite;
+		animation: var(--ai-badge-anim, none) var(--ai-cycle) linear infinite;
 		animation-play-state: paused;
 	}
 
@@ -628,29 +753,7 @@ const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.colo
 		animation-play-state: running;
 	}
 
-	@keyframes ai-badge-hues {
-		0%,
-		100% {
-			background-color: var(--badge-color);
-		}
-		16.67% {
-			background-color: var(--ai-hue-1);
-		}
-		33.33% {
-			background-color: var(--ai-hue-2);
-		}
-		50% {
-			background-color: var(--ai-hue-3);
-		}
-		66.67% {
-			background-color: var(--ai-hue-4);
-		}
-		83.33% {
-			background-color: var(--ai-hue-5);
-		}
-	}
-
-	// ── The wash follows the mark (experimental, `wash="cycle"`) ──────────────────────
+	// ── The wash follows the mark (`wash="cycle"`, the homepage's since 2026-09-26) ─────────────
 	// The SAME sequence as the tile, stop for stop — stop 0 is the mark's own colour, handed over as
 	// `--ai-hue-0` — driven into `--ai-wash`, the one gradient the hand-off layout paints. Same clock,
 	// same linear timing, same sRGB interpolation (the stops are hex, which interpolates in sRGB,
@@ -663,41 +766,59 @@ const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.colo
 	//
 	// An animation outranks the inline `--ai-wash` the hand-off sets on a switch, so the route no
 	// longer colours the band here; its transition simply has nothing to do.
-	// SLOWER HERE, 18s against the mark's usual 9 — 3s a colour. At 1.5s a leg a tile is a small thing
-	// changing briskly; a full-bleed band doing the same is the whole screen flickering through five
+	// SLOWER HERE, 3s a colour against the mark's usual 1.5. At 1.5s a leg a tile is a small thing
+	// changing briskly; a full-bleed band doing the same is the whole screen flickering through its
 	// colours. The tile slows with it (`--ai-cycle` feeds both), or the two would part.
 	.ai--wash-cycle {
-		--ai-cycle: 18s;
+		--ai-leg: 3s;
 	}
 
 	.ai--wash-cycle .ai__bands {
-		animation: ai-wash-hues var(--ai-cycle) linear infinite;
+		animation: var(--ai-wash-anim, none) var(--ai-cycle) linear infinite;
 		animation-play-state: paused;
+		// A GLOW, not the route layout's linear run: this is the centred section, lit where its row
+		// sits — the cycle's colour pooled behind the window and the copy, strongest low in the band
+		// and gone before the sides — rather than a floor of colour ending in a line on the call to
+		// action's band below.
+		background-image: radial-gradient(
+			ellipse 62% 78% at 50% 68%,
+			color-mix(in srgb, var(--ai-wash) 24%, transparent) 0%,
+			color-mix(in srgb, var(--ai-wash) 9%, transparent) 50%,
+			transparent 100%
+		);
 	}
 
 	.ai--wash-cycle.is-cycling .ai__bands {
 		animation-play-state: running;
 	}
 
-	@keyframes ai-wash-hues {
-		0%,
-		100% {
-			--ai-wash: var(--ai-hue-0);
+	// One pair of keyframes per cycle length, stops evenly spaced and the mark's own colour at 0 and
+	// 100%. Generated rather than written out, because the length is the page's: the sandbox's mark
+	// runs all five other colours (six stops), order A's four (five). `--ai-stops`, set on the section,
+	// picks the pair and sets the clock, so a leg is `--ai-leg` long however many there are.
+	@for $n from 2 through 7 {
+		@keyframes ai-badge-hues-#{$n} {
+			0%,
+			100% {
+				background-color: var(--badge-color);
+			}
+			@for $i from 1 through $n - 1 {
+				#{math.div($i * 100%, $n)} {
+					background-color: var(--ai-hue-#{$i});
+				}
+			}
 		}
-		16.67% {
-			--ai-wash: var(--ai-hue-1);
-		}
-		33.33% {
-			--ai-wash: var(--ai-hue-2);
-		}
-		50% {
-			--ai-wash: var(--ai-hue-3);
-		}
-		66.67% {
-			--ai-wash: var(--ai-hue-4);
-		}
-		83.33% {
-			--ai-wash: var(--ai-hue-5);
+
+		@keyframes ai-wash-hues-#{$n} {
+			0%,
+			100% {
+				--ai-wash: var(--ai-hue-0);
+			}
+			@for $i from 1 through $n - 1 {
+				#{math.div($i * 100%, $n)} {
+					--ai-wash: var(--ai-hue-#{$i});
+				}
+			}
 		}
 	}
 
@@ -1034,6 +1155,141 @@ const sectionStyle = washCycle ? `${badgeHues}; --ai-hue-0: ${AI_COPY.badge.colo
 
 		margin: 0;
 		color: var(--color-text, #17181c);
+	}
+
+	// `cta`: the route's one action. A button rather than the rows' text link, because in the running
+	// orders that turn this on it is the first thing to act on after the hero. 24 under the copy, one
+	// step past the 20 a row's link sits at (`_home-rows.scss`), since a filled button is a heavier
+	// object than a line of text.
+	.ai__action {
+		margin-top: $spacing-6;
+	}
+
+	// ── The call to action (`cta="block"`) ──────────────────────────────
+	// ITS OWN SHORT BAND, under the bands rather than on their wash. On the wash it was one more thing
+	// moving: the ground under the button changed colour every three seconds. Here the ground holds
+	// still — a subtle primary gradient, the mark's own indigo at rest and the button's colour, so
+	// the band reads as the section's action rather than as a new section. Not grey: grey is the trust
+	// band's ground further down, and the page keeps one meaning per ground.
+	//
+	// The bands above still end on full hue, so the seam between them is the design, as it always was.
+	.ai__cta {
+		padding-block: $spacing-10;
+		background: linear-gradient(
+			100deg,
+			color-mix(in srgb, var(--color-brand, #3d50f5) 10%, #fff) 0%,
+			color-mix(in srgb, var(--color-brand, #3d50f5) 3%, #fff) 100%
+		);
+	}
+
+	.ai__cta .main-div {
+		margin-top: 0;
+		margin-bottom: 0;
+	}
+
+	// Both routes' lines in one cell: the cell is the taller one's height, so switching never moves
+	// the page, and the two crossfade on the hand-off's clock.
+	.ai__cta-stack {
+		display: grid;
+	}
+
+	// One line on a desktop: the sentence, then the two actions beside it — a short band, not a block.
+	.ai__cta-route {
+		grid-area: 1 / 1;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: $spacing-4 $spacing-8;
+		transition:
+			opacity var(--ai-handoff-duration, 300ms) var(--ai-handoff-ease, ease-out),
+			visibility 0s;
+	}
+
+	// WHICH LINE SHOWS is read off the bands: the one whose band is on the page and not on its way
+	// out. `AiHandoff` unhides the incoming band and marks the outgoing one `is-leaving` in the same
+	// frame, so the line changes the moment the switch does rather than once the old band has gone.
+	// Visibility as well as opacity, so the hidden route's button is neither focusable nor read.
+	.ai:has(> .ai__bands > .ai__band--dock-bottom:not([hidden]):not(.is-leaving)) .ai__cta-route--assistant,
+	.ai:has(> .ai__bands > .ai__band--dock-top:not([hidden]):not(.is-leaving)) .ai__cta-route--cli {
+		opacity: 0;
+		visibility: hidden;
+		transition:
+			opacity calc(var(--ai-handoff-duration, 300ms) * 0.47) cubic-bezier(0.4, 0, 1, 1),
+			visibility 0s linear calc(var(--ai-handoff-duration, 300ms) * 0.47);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ai__cta-route {
+			transition: none;
+		}
+	}
+
+	// The copy's own size, so the line reads as the section's last sentence rather than as a caption.
+	.ai__cta-line {
+		@include text-m;
+		max-width: 60ch;
+		margin: 0;
+		text-wrap: balance;
+		color: var(--color-text-secondary, #{$color-text-secondary});
+	}
+
+	.ai__cta-line strong {
+		font-weight: $font-weight-bold;
+		color: var(--color-text, #17181c);
+	}
+
+	.ai__cta-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: $spacing-4 $spacing-6;
+	}
+
+	// The rows' link, as `_home-rows.scss` sets it: accent colour, medium weight, a chevron after.
+	.ai__cta-link {
+		@include type-link;
+		display: inline-flex;
+		align-items: center;
+		gap: $spacing-1;
+	}
+
+	.ai__cta-chevron {
+		width: 1.1em;
+		height: 1.1em;
+	}
+
+	// Stacked, the block joins the copy's column — the same cap, centred with it — and lines up on
+	// its left edge, so it reads as the paragraph's last line rather than as a centred sign-off under
+	// a left-aligned paragraph.
+	@include media-down(lg) {
+		.ai__cta-stack {
+			width: 100%;
+			max-width: var(--ai-fit-window, 544px);
+			margin-inline: auto;
+		}
+
+		.ai__cta-route {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: $spacing-4;
+			text-align: left;
+		}
+
+		.ai__cta-line {
+			text-wrap: pretty;
+		}
+
+		.ai__cta-actions {
+			justify-content: flex-start;
+		}
+	}
+
+	@media (max-width: 599px) {
+		.ai--fit-column .ai__cta-stack {
+			max-width: 365px;
+		}
 	}
 
 	// Stacked: the media on top in BOTH rows, so a phone reads picture-then-words twice rather than

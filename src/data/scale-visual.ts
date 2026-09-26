@@ -582,6 +582,20 @@ export const SCALE_CANDIDATE_COPY = {
 // time.
 // -------------------------------------------------------------------------------------------
 
+/**
+ * Chip label to mark, for `ScaleDuo` and the trust band's small copy of it (`TrustVisual`). Citus and
+ * Valkey are LOCAL files under `src/icons/`, because Simple Icons publishes neither — they were
+ * supplied as brand SVGs and redrawn in `currentColor`, so every mark in the row is the project's own
+ * rather than a stand-in.
+ */
+export const SCALE_LOGOS: Record<string, string> = {
+	PostgreSQL: 'simple-icons:postgresql',
+	Citus: 'citus',
+	Cassandra: 'simple-icons:apachecassandra',
+	Kafka: 'simple-icons:apachekafka',
+	Valkey: 'valkey',
+};
+
 export interface ScaleMode {
 	mode: string;
 	trait: string;

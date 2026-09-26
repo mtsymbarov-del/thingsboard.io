@@ -1,0 +1,124 @@
+---
+import { Icon } from 'astro-icon/components';
+import SectionHeader from '@components/Landing/SectionHeader.astro';
+import DashboardShowcase from '@components/Landing/DashboardShowcase.astro';
+import { homeCarouselItems } from '@data/homeCarousel';
+import { DASHBOARDS_BADGE, DASHBOARDS_BADGE_HANDOFF, DASHBOARDS_COPY } from '@data/home-dashboards';
+
+/**
+ * The use cases: the dashboards heading over `DashboardShowcase`, the board and the named cases.
+ *
+ * Its own component, out of `HomeSections` and `index.astro`, so the homepage and its sandbox page
+ * (`/internal/sections/dashboards/`) render the one section. Its rules came with it, keyed to the
+ * same id at the same specificity, so the page did not change by moving them.
+ *
+ * `hued` IS THE `hues: 'section'` ORDERS' SECTION: the berry mark, a glow in it UNDER THE BOARD
+ * rather than behind the heading — the product is the lit thing on the band — and the page's
+ * hand-off between cases. Without it, the handoff homepage's: the blue mark, the white ground, the
+ * cut.
+ */
+
+interface Props {
+	hued?: boolean;
+}
+
+const { hued = false } = Astro.props;
+
+// The use cases take their own berry where every section wears its own colour, and keep the blue
+// they shipped with in the handoff (see `@data/home-dashboards`).
+const badge = hued ? DASHBOARDS_BADGE : DASHBOARDS_BADGE_HANDOFF;
+---
+
+<section id="dashboard_description" class:list={[hued && 'home-hued']} style={`--row-hue: ${badge.color}`}>
+	<div class="main-div">
+		{
+			/* The glyph is `tabler:layout-dashboard`: the dashboard tiles the solution row already uses
+		   for its "Dashboards" screen — a board of widgets, which is what this section shows, where
+		   `chart-dots` (the platform's Operate stage) read as one chart. */
+		}
+		<SectionHeader
+			title={DASHBOARDS_COPY.title}
+			subtitle={DASHBOARDS_COPY.subtitle}
+			titleSize="section"
+			subtitleMeasure="copy"
+			badge={badge}
+		>
+			<div class="view-all-link">
+				<a href={DASHBOARDS_COPY.link.href}>
+					{DASHBOARDS_COPY.link.text}
+					<Icon name="tabler:chevron-right" aria-hidden="true" />
+				</a>
+			</div>
+		</SectionHeader>
+		<DashboardShowcase items={homeCarouselItems} interval={12000} glow={hued} motion={hued ? 'handoff' : 'cut'} />
+	</div>
+</section>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	#dashboard_description {
+		margin-top: $spacing-16;
+		margin-bottom: $spacing-16;
+
+		@include media-down(md) {
+			margin-top: $spacing-8;
+			margin-bottom: $spacing-8;
+		}
+
+		// The 960 measure this section wanted is now the page default in
+		// _sections-flat.scss — the ID-doubled override that used to be here was
+		// there to outrank `@layer landing`'s 1400, and it was itself being beaten
+		// by a `!important` in the flat layer. Both are gone.
+
+		:global(.section-header) {
+			margin-bottom: $spacing-8;
+		}
+
+		// Sits under the lede now, so it reads as part of the header rather than a
+		// footnote to the board.
+		.view-all-link {
+			margin-top: $spacing-4;
+
+			a {
+				@include type-action;
+				display: inline-flex;
+				align-items: center;
+				gap: 0;
+				color: var(--color-primary, #{$color-brand});
+
+				// Pulled in: the glyph's own side bearing is the gap.
+				:global([data-icon]) {
+					width: 22px;
+					height: 22px;
+					margin-left: -1px;
+				}
+
+				// `:focus-visible` alongside `:hover`, as the other outgoing links have
+				// it — on hover alone a keyboard reader reaching this link got colour
+				// and nothing else.
+				&:hover,
+				&:focus-visible {
+					text-decoration: underline;
+					// 3px, as every other outgoing link on this page underlines. Left
+					// unset it fell back to `auto`, which rides tight under the
+					// baseline — the same link treatment drawn two ways.
+					text-underline-offset: 3px;
+				}
+			}
+		}
+	}
+
+	// The margins become padding, so the section's box holds the glow under the board: it reaches
+	// under the heading above and the copy below, and a margin would leave it outside the section,
+	// painting over the row before. The id is for the score — the page flattens every section's
+	// background at (0,3,1), and the ground here is that same white.
+	#dashboard_description.home-hued {
+		margin-block: 0;
+		padding-block: $spacing-16;
+
+		@include media-down(md) {
+			padding-block: $spacing-8;
+		}
+	}
+</style>

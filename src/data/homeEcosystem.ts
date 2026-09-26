@@ -72,7 +72,7 @@ export const homeEcosystem: EcosystemItem[] = [
 		name: 'IoT Gateway',
 		label: 'Protocol bridge',
 		description:
-			'Brings legacy equipment online. Modbus, OPC UA, BACnet, SNMP, KNX and 25+ industrial protocols, translated to MQTT or HTTP. Open-source, runs on any hardware.',
+			'Brings legacy equipment online. Modbus, OPC UA, BACnet, SNMP, KNX and 25+ industrial protocols, translated to MQTT. Open-source, runs on a Raspberry Pi or industrial PC.',
 		icon: '/src/assets/images/landings/ce/gateway-icon.svg',
 		href: '/docs/iot-gateway/',
 		action: 'See supported protocols',
@@ -90,7 +90,7 @@ export const homeEcosystem: EcosystemItem[] = [
 		name: 'Edge',
 		label: 'Edge computing',
 		description:
-			'Processes locally and keeps working offline, syncing to the cloud when the connection returns. Manage every remote node from one console.',
+			'Processes and visualizes data locally at the network edge, enabling autonomous operation during connectivity outages. Manage every remote edge location from one platform.',
 		icon: '/src/assets/images/landings/ce/thingsboard-e-icon.svg',
 		href: '/products/thingsboard-edge/',
 		action: 'See how Edge works',
@@ -177,7 +177,7 @@ export const homeEcosystem: EcosystemItem[] = [
 		name: 'TBMQ',
 		label: 'Dedicated MQTT broker',
 		description:
-			"Picks up where ThingsBoard's MQTT transport stops. The transport collects telemetry; TBMQ routes messages between devices, at millions of concurrent connections.",
+			'Drop-in replacement for legacy brokers, built for millions of concurrent connections. Keep your existing clients and topics, and connect it to ThingsBoard when you need the platform too.',
 		icon: '/src/assets/images/landings/ce/tbmq-icon.svg',
 		href: TBMQ_SITE_URL,
 		action: 'Go to tbmq.io',

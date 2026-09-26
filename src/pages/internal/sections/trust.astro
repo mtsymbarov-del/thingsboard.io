@@ -1,0 +1,32 @@
+---
+import VisualPage from '@root/pages/internal/_VisualPage.astro';
+import Variant from '@root/pages/internal/_Variant.astro';
+import TrustBand from '@components/Landing/TrustBand.astro';
+import { kv } from '@root/pages/internal/_key-visuals';
+
+/**
+ * The trust band: three white cards between the use cases and Products — security, scale, openness
+ * — each opening on a small drawing (`TrustVisual`), on a ground that runs from white into the
+ * bookends' indigo.
+ *
+ * NEW WITH THE RUNNING ORDERS (2026-09-26, reworked 09-27): two ISO seals with SSO and 2FA, the
+ * monolith over the cluster in `ScaleDuo`'s squares and pulse, and the GitHub tile with the star
+ * count. One direction: the band is judged on the homepage in its order, and here at every width.
+ */
+---
+
+<VisualPage visual="trust">
+	<Variant
+		visual={kv('trust')}
+		component={TrustBand}
+		bleed
+		shipping
+		name="Three cards"
+		note="Shipping in A and B · ISO seals with SSO and 2FA, the monolith over the cluster with its pulse, the GitHub tile and its stars; white cards on a white-to-indigo ground"
+	/>
+</VisualPage>
+
+{/* The homepage's context the section is drawn against: `_bleed-context.scss`. */}
+<style lang="scss" is:global>
+	@use '../bleed-context';
+</style>

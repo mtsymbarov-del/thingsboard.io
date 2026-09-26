@@ -6,6 +6,7 @@ import { DIGITAL_TWIN_COPY } from './digital-twin-visual';
 import { NORMALIZE_COPY } from './normalize-visual';
 import { PLATFORM_COPY } from './platform-visual';
 import { SCALE_COPY } from './scale-visual';
+import { DASHBOARDS_BADGE } from './home-dashboards';
 
 /**
  * The AI section's copy, ported from the `tb-landing-prototype` repo (`src/sections/06-ai.html`).
@@ -57,6 +58,73 @@ export const AI_COPY = {
 	 * stays 2 and the mark thins out as it grows. The filled cut has no stroke to fall behind.
 	 */
 	badge: { icon: 'tabler:sparkles-filled', color: 'var(--color-brand)' },
+};
+
+/**
+ * Each route's action, for `AiSection`'s `cta`.
+ *
+ * NO "FREE" IN EITHER. The AI docs say the AI Solution Creator, the AI Assistant and the CLI need
+ * Professional Edition or Cloud (`_includes/docs/iot-solutions-with-ai.mdx`), which backs "on
+ * ThingsBoard Cloud" and nothing narrower: whether they run on Cloud's free tier is not stated
+ * anywhere in this repo. Say it once it is.
+ */
+export const AI_ACTIONS = {
+	assistant: { text: 'Try it on ThingsBoard Cloud', href: 'https://thingsboard.cloud/signup' },
+	cli: { text: 'Set up the ThingsBoard CLI', href: '/docs/pe/user-guide/cli/' },
+};
+
+/**
+ * The call to action under the rows, for `AiSection`'s `cta="block"` (`AI_CTA` below is `AiWide`'s,
+ * cut down from this one): one line and two actions per
+ * route, and the block shows the showing route's. The button is that route's way in; the link is the
+ * other route's, so a reader on the wrong tab is one click from the right one.
+ *
+ * "START FOR FREE" IS THE SIGN-UP'S LABEL, not a claim about the AI. It is the Cloud card's button in
+ * Products and on the Cloud page, and what it promises — a free account — is true of every plan
+ * choice. The AI docs go no further than PE and Cloud (4.3.1.2+); the nearest they come to the free
+ * plan is Solution Creator's troubleshooting, which has it hitting a free plan's device limit. So the
+ * line says what you do, and no copy here says the AI itself is free.
+ *
+ * The CLI's line does not name the agents: the row right above it already does ("Claude Code or
+ * Antigravity"), and the block is read straight after it.
+ */
+export const AI_CTA_BAND = {
+	assistant: {
+		lead: 'Try it on a real tenant.',
+		line: 'Sign up for ThingsBoard Cloud and describe your first solution. There is nothing to install.',
+		primary: { text: 'Start for free', href: 'https://thingsboard.cloud/signup' },
+		secondary: { text: 'Or set up the CLI', href: '/docs/pe/user-guide/cli/' },
+	},
+	cli: {
+		lead: 'Work from your own terminal.',
+		line: 'Install the ThingsBoard CLI, open a project folder, and hand your agent the first change.',
+		primary: { text: 'Set up the CLI', href: '/docs/pe/user-guide/cli/' },
+		secondary: { text: 'Or try it on Cloud', href: 'https://thingsboard.cloud/signup' },
+	},
+};
+
+/**
+ * The call to action at the end of each route's copy (`AiWide`, 2026-09-26): one button and a short
+ * line beside it, the route's own way in. The copy began as the home-compositions branch's band,
+ * `AI_CTA_BAND` above — a band of its own under the section, with a lead, a longer line and a second link to the other
+ * route — and was cut down the same day: the section holds it, the switch is the other route, and
+ * the line is one sentence small enough to sit beside the button.
+ *
+ * "TRY FOR FREE" IS THE SIGN-UP'S LABEL, with the cloud glyph saying where — "Start for free" until
+ * 2026-09-26, the Cloud card's button in Products and on the Cloud page. What it promises — a free
+ * account — is true of every plan choice. The AI docs go no further than PE and Cloud (4.3.1.2+); the
+ * nearest they come to the free plan is Solution Creator's troubleshooting, which has it hitting a
+ * free plan's device limit. So the line says what you do, and no copy here says the AI itself is free.
+ */
+export const AI_CTA = {
+	assistant: {
+		line: 'Sign up for ThingsBoard Cloud and describe your first solution — nothing to install.',
+		primary: { text: 'Try for free', href: 'https://thingsboard.cloud/signup', icon: 'tabler:cloud' },
+	},
+	cli: {
+		line: 'Install the CLI, open a project folder, and hand your agent the first change.',
+		primary: { text: 'Set up the CLI', href: '/docs/pe/user-guide/cli/' },
+	},
 };
 
 export interface AiColumn {
@@ -354,6 +422,12 @@ export const AI_ASSISTANT_LABEL_DEW_POINT =
 	'The ThingsBoard AI Assistant: asked to add a dew point calculated field to the thermostat profile, then asked in a follow-up to warn above 18 °C, creating an alarm rule from the field it just made.';
 
 /**
+ * The chat window's title, for a treatment that shows its bar as a plain label — `AiWide` — instead of
+ * the product's `New chat` picker.
+ */
+export const AI_ASSISTANT_TITLE = 'AI Assistant';
+
+/**
  * The chat scenarios by name, for `AiSection`'s `chat` prop. `shipping` is the homepage's; `dewPoint`
  * is the one it replaced on 2026-09-24.
  */
@@ -519,6 +593,39 @@ export const AI_AGENT_SESSION: AgentStep[] = [
 	{ role: 'user', suggested: true, pending: true, text: 'Easy!' },
 ];
 
+/**
+ * THE WORDMARK, for a window wide enough to print it (2026-09-26, `AiWide`): "ThingsBoard" in figlet's
+ * standard cut, six rows and 59 columns, across the whole line the way a CLI prints its logo. Assembled
+ * from the standard font's glyphs with figlet's own smushing rules, since no figlet is installed here;
+ * plain ASCII for the same fallback-face reason as the small mark.
+ *
+ * Too wide for a phone's log (~52 cells); `AiWide` shows the shipping banner's small mark there instead.
+ */
+export const AI_AGENT_WORDMARK = [
+	' _____ _     _                 ____                      _ ',
+	'|_   _| |__ (_)_ __   __ _ ___| __ )  ___   __ _ _ __ __| |',
+	"  | | | '_ \\| | '_ \\ / _` / __|  _ \\ / _ \\ / _` | '__/ _` |",
+	'  | | | | | | | | | | (_| \\__ \\ |_) | (_) | (_| | | | (_| |',
+	'  |_| |_| |_|_|_| |_|\\__, |___/____/ \\___/ \\__,_|_|  \\__,_|',
+	'                     |___/                                 ',
+];
+
+/**
+ * The shipping session opening on the wordmark: the mark alone across the row, then the status lines
+ * as a banner of their own so they print UNDER it rather than beside it (the banner model puts a line
+ * beside each row of art, so a second banner with blank art is how "below" is said), then the same
+ * turns. The one-line gap after each banner is the component's own.
+ */
+export const AI_AGENT_SESSION_WORDMARK: AgentStep[] = (() => {
+	const [banner, ...turns] = AI_AGENT_SESSION;
+	if (banner.role !== 'banner') return AI_AGENT_SESSION;
+	return [
+		{ role: 'banner', art: AI_AGENT_WORDMARK, lines: AI_AGENT_WORDMARK.map(() => []) },
+		{ role: 'banner', art: ['', '', ''], lines: banner.lines.slice(1) },
+		...turns,
+	];
+})();
+
 /** What the terminal is doing, for the `role="img"` label — it is a picture, not a live console. */
 export const AI_AGENT_LABEL =
 	'A coding agent in a terminal: asked in plain English to give each freezer its own alarm limit, it updates the solution, lists what changed, and the smart-retail solution is pushed to the dev profile.';
@@ -542,10 +649,50 @@ export const AI_AGENT_LABEL =
  * The first stop is NOT in this list: the cycle starts and ends at `AI_COPY.badge.color`, so the
  * mark is its own colour at rest and the animation is a departure that returns.
  */
-export const AI_BADGE_CYCLE = [
-	NORMALIZE_COPY.badge.color,
-	DIGITAL_TWIN_COPY.badge.color,
-	PLATFORM_COPY.badge.color,
-	CONNECT_COPY.badge.color,
-	SCALE_COPY.badge.color,
+interface CycleStop {
+	/** The section whose badge this is, as `home-compositions` names it. */
+	section: string;
+	color: string;
+	/** Only in orders with this `hues`: a section whose badge differs between the two. */
+	hues?: 'primary' | 'section';
+}
+
+export const AI_BADGE_CYCLE_BY_SECTION: CycleStop[] = [
+	{ section: 'normalize', color: NORMALIZE_COPY.badge.color },
+	// The use cases' berry (`hues: 'section'` orders only; the handoff's use cases wear the loop's
+	// blue, which is already a stop). Between the orange and the violet: the two legs pass through a
+	// red and a purple, both colours, where next to the teal or the green it would pass through grey.
+	{ section: 'dashboards', color: DASHBOARDS_BADGE.color, hues: 'section' },
+	{ section: 'twin', color: DIGITAL_TWIN_COPY.badge.color },
+	{ section: 'platform', color: PLATFORM_COPY.badge.color },
+	{ section: 'connect', color: CONNECT_COPY.badge.color },
+	{ section: 'scale', color: SCALE_COPY.badge.color },
 ];
+
+/**
+ * Every stop, for a page that carries all five sections — the sandbox, and the default.
+ *
+ * A running order passes its own subset (`aiBadgeCycleFor`), because "the colours this page is built
+ * out of" is only true of the page it is on: a section the order does not run has no stop in its
+ * cycle — order A has no Scale row, so no green.
+ */
+export const AI_BADGE_CYCLE: string[] = [...new Set(AI_BADGE_CYCLE_BY_SECTION.map((h) => h.color))];
+
+/**
+ * The cycle for a page that renders `sections`: the stops above whose section is on it, in the
+ * order above — the mud-avoiding one, not the page's. Dropping a stop joins its two neighbours
+ * directly, so check a new order's cycle for mud when it drops one.
+ */
+export const aiBadgeCycleFor = (sections: readonly string[], hues: 'primary' | 'section'): string[] => [
+	...new Set(
+		AI_BADGE_CYCLE_BY_SECTION.filter((h) => sections.includes(h.section) && (!h.hues || h.hues === hues)).map(
+			(h) => h.color
+		)
+	),
+];
+
+/**
+ * The handoff's cycle — its five badge colours, no berry — for the sandbox's previous-homepage
+ * references, which pin it rather than take the default above.
+ */
+export const AI_BADGE_CYCLE_HANDOFF = aiBadgeCycleFor(['normalize', 'twin', 'platform', 'connect', 'scale'], 'primary');

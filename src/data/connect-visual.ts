@@ -15,9 +15,10 @@ export const CONNECT_COPY = {
 	// became its own family in the visual after that sentence was written, and the copy should not
 	// describe less than the picture shows.
 	body: "Directly, through an IoT gateway, from a LoRaWAN or LPWAN network, or via a platform integration. Mix sensors, industrial machines, and any equipment you need in one solution. Browse pre-integrated devices from IoT Hub, or use emulators when hardware isn't ready.",
-	// The doc is titled "How to Connect IoT Devices", and its own description names the same routes
-	// this visual draws: direct MQTT/HTTP/CoAP, the IoT Gateway, and LoRaWAN or integrations.
-	link: { text: 'Connectivity guide', href: '/docs/user-guide/connectivity-guide/' },
+	// The PE "IoT Device Connectivity Guide", as thingsboard.one links it (2026-09-24): the homepage's
+	// doc links all go to the PE tree, and this one was the last on the CE page "How to Connect IoT
+	// Devices".
+	link: { text: 'Connectivity guide', href: '/docs/pe/connect-iot-devices/' },
 	/** The section's badge. Lives with the copy so every page that renders this row gets the same one. */
 	// #007c7b, not #0e7490. The old one was invented — Tailwind's cyan-700, in this repo only here and
 	// on two twin splines — where this is the Edge teal's hue at the badge set's own weight. Note it

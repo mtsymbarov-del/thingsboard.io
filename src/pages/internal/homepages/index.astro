@@ -1,0 +1,316 @@
+---
+import { Icon } from 'astro-icon/components';
+import PlaygroundLayout from '@layouts/PlaygroundLayout.astro';
+import {
+	HOME_COMPOSITIONS,
+	HOME_SECTIONS,
+	compositionHref,
+	isShipping,
+	type HomeComposition,
+	type HomeSection,
+} from '@data/home-compositions';
+
+/**
+ * Homepages › Overview: every running order the homepage can take, side by side, the shipping one
+ * first. Each column is the order top to bottom, with what it does differently from the handoff —
+ * the reference every other order is a change to — marked on the section where it happens.
+ *
+ * ADD an order: an entry in `data/home-compositions.ts`. It appears here, gets its own page at
+ * `/internal/homepages/<id>/`, and joins the island's switch, with no other edit.
+ */
+
+const REFERENCE = HOME_COMPOSITIONS.find((c) => c.id === 'handoff');
+
+/** What a section's options say, where they are not the handoff's. Nothing for a section without options. */
+function optionNote(s: HomeSection): string | undefined {
+	switch (s.id) {
+		case 'platform':
+			return s.heading === 'loop' ? 'the loop’s own heading' : undefined;
+		case 'ai': {
+			const cta = s.cta === 'block' ? 'a call to action under it' : s.cta === 'route' ? 'an action per route' : '';
+			const wash = s.wash === 'cycle' ? 'the wash follows the mark' : '';
+			return [cta, wash].filter(Boolean).join(' · ') || undefined;
+		}
+		case 'normalize':
+			return s.media === 'switch' ? 'Normalize · Filter · Notify switch' : undefined;
+		case 'features':
+			return s.heading === 'value' ? 'under a value heading' : undefined;
+		default:
+			return undefined;
+	}
+}
+
+/**
+ * What an order adds, moves and drops against the handoff.
+ *
+ * MOVED IS THE FEWEST SECTIONS THAT HAD TO MOVE, not every section whose index changed. Lifting AI
+ * above the loop shifts everything it passes down by one; calling all of those moved would say
+ * nothing. So the sections the two orders share keep the longest run that is still in the handoff's
+ * order, and only the ones outside that run are marked.
+ */
+function diff(c: HomeComposition) {
+	const refIds = REFERENCE?.sections.map((s) => s.id) ?? [];
+	const mine = new Set(c.sections.map((s) => s.id));
+	const shared = c.sections.filter((s) => refIds.includes(s.id)).map((s) => s.id);
+	const at = shared.map((id) => refIds.indexOf(id));
+
+	// Longest increasing run of handoff positions, O(n²) — a dozen sections.
+	const len = at.map(() => 1);
+	const prev = at.map(() => -1);
+	at.forEach((v, i) => {
+		for (let j = 0; j < i; j++) {
+			if (at[j] < v && len[j] + 1 > len[i]) {
+				len[i] = len[j] + 1;
+				prev[i] = j;
+			}
+		}
+	});
+	const kept = new Set<string>();
+	for (let i = len.indexOf(Math.max(0, ...len)); i >= 0; i = prev[i]) kept.add(shared[i]);
+
+	return {
+		added: (s: HomeSection) => !refIds.includes(s.id),
+		moved: (s: HomeSection) => refIds.includes(s.id) && !kept.has(s.id),
+		gone: (REFERENCE?.sections ?? []).filter((s) => !mine.has(s.id)).map((s) => HOME_SECTIONS[s.id].label),
+	};
+}
+---
+
+<PlaygroundLayout
+	title="Homepages"
+	description="Every running order the homepage can take. The first ships at /; each opens as the real page, and the island’s switch moves between them without losing your place."
+>
+	<ul class="orders" role="list">
+		{
+			HOME_COMPOSITIONS.map((c) => {
+				const d = diff(c);
+				return (
+					<li class:list={['order', isShipping(c) && 'is-shipping']}>
+						<div class="order__top">
+							<span class="order__label">{c.label}</span>
+							{isShipping(c) ? (
+								<span class="order__ships">
+									<Icon name="tabler:circle-check-filled" aria-hidden="true" />
+									Ships at /
+								</span>
+							) : c.id === REFERENCE?.id ? (
+								<span class="order__ref">Reference</span>
+							) : null}
+						</div>
+						<h2 class="order__name">
+							<a href={compositionHref(c)}>{c.name}</a>
+						</h2>
+						<p class="order__note">{c.note}</p>
+
+						<ol class="order__run">
+							{c.sections.map((s, i) => {
+								const meta = HOME_SECTIONS[s.id];
+								const note = optionNote(s);
+								const tag = d.added(s) ? 'new' : d.moved(s) ? 'moved' : note ? 'changed' : undefined;
+								return (
+									<li style={`--hue: ${meta.hue}`}>
+										<span class="order__n">{String(i + 1).padStart(2, '0')}</span>
+										<span class="order__dot" aria-hidden="true" />
+										<span class="order__sec">
+											{meta.label}
+											{note && <span class="order__opt">{note}</span>}
+										</span>
+										{tag && <span class:list={['order__tag', `order__tag--${tag}`]}>{tag}</span>}
+									</li>
+								);
+							})}
+						</ol>
+
+						{d.gone.length > 0 && (
+							<p class="order__gone">
+								<span>Leaves:</span> {d.gone.join(', ')}
+							</p>
+						)}
+					</li>
+				);
+			})
+		}
+	</ul>
+</PlaygroundLayout>
+
+<style lang="scss">
+	@use '../../../styles/variables' as *;
+
+	.orders {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		gap: $spacing-5;
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 0;
+		list-style: none;
+	}
+
+	.order {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		padding: $spacing-5;
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: $radius-lg;
+		background: var(--color-bg-surface, #fff);
+		transition: box-shadow 0.15s ease;
+
+		&:hover {
+			box-shadow: 0 8px 24px -8px rgba(23, 24, 28, 0.18);
+		}
+
+		&.is-shipping {
+			border-color: color-mix(in srgb, #0d7a5f 45%, transparent);
+		}
+	}
+
+	.order__top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: $spacing-3;
+	}
+
+	.order__label {
+		@include card-title-sm;
+		min-width: 40px;
+		padding: 4px 10px;
+		border-radius: 999px;
+		background: var(--sl-color-gray-6, #f2f3f7);
+		text-align: center;
+		color: var(--color-text, #17181c);
+	}
+
+	.is-shipping .order__label {
+		background: #0d7a5f;
+		color: #fff;
+	}
+
+	.order__ships,
+	.order__ref {
+		@include text-xs;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-weight: $font-weight-medium;
+		color: var(--color-text-secondary, #5b616e);
+
+		:global([data-icon]) {
+			width: 16px;
+			height: 16px;
+		}
+	}
+
+	.order__ships {
+		color: #0d7a5f;
+	}
+
+	.order__name {
+		@include card-title;
+		margin: $spacing-4 0 $spacing-2;
+
+		a {
+			color: var(--color-text, #17181c);
+			text-decoration: none;
+
+			// The whole card opens the order.
+			&::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				border-radius: inherit;
+			}
+
+			&:focus-visible {
+				outline: none;
+			}
+		}
+	}
+
+	.order:has(.order__name a:focus-visible) {
+		outline: 2px solid var(--color-primary, #3d50f5);
+		outline-offset: 2px;
+	}
+
+	.order__note {
+		@include text-s;
+		margin: 0;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.order__run {
+		display: flex;
+		flex-direction: column;
+		margin: $spacing-5 0 0;
+		padding: 0;
+		list-style: none;
+		border-top: 1px solid var(--sl-color-hairline-light);
+
+		li {
+			display: grid;
+			grid-template-columns: 22px 10px minmax(0, 1fr) auto;
+			align-items: baseline;
+			gap: $spacing-2;
+			padding: 7px 0;
+			border-bottom: 1px solid var(--sl-color-hairline-light);
+		}
+	}
+
+	.order__n {
+		@include text-xs;
+		font-family: $font-family-mono;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.order__dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 3px;
+		background: var(--hue, #5b616e);
+		transform: translateY(-1px);
+	}
+
+	.order__sec {
+		@include text-s;
+		font-weight: $font-weight-medium;
+		color: var(--color-text, #17181c);
+	}
+
+	.order__opt {
+		display: block;
+		font-weight: $font-weight-normal;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.order__tag {
+		@include text-xs;
+		padding: 0 6px;
+		border-radius: 999px;
+		border: 1px solid currentColor;
+		font-weight: $font-weight-medium;
+	}
+
+	.order__tag--new {
+		color: #0d7a5f;
+	}
+
+	.order__tag--moved {
+		color: var(--color-primary, #3d50f5);
+	}
+
+	.order__tag--changed {
+		color: #b44100;
+	}
+
+	.order__gone {
+		@include text-s;
+		margin: $spacing-4 0 0;
+		color: var(--color-text-secondary, #5b616e);
+
+		span {
+			font-weight: $font-weight-medium;
+			color: var(--color-text, #17181c);
+		}
+	}
+</style>

@@ -119,7 +119,15 @@ const hasPseudoBg = dark && !bgId;
 const HeadingTag = `h${headingLevel}` as 'h3' | 'h4';
 ---
 
-<section class:list={['feature-block-section', { dark, 'has-pseudo-bg': hasPseudoBg }]} {id}>
+{
+	/* `--row-hue` is the badge's colour, handed to the section so a page can colour the row's ground
+	   and its drawing's lines from it (the homepage's `hues: 'section'` orders do). Unused otherwise. */
+}
+<section
+	class:list={['feature-block-section', { dark, 'has-pseudo-bg': hasPseudoBg }]}
+	{id}
+	style={badge ? `--row-hue: ${badge.color}` : undefined}
+>
 	{
 		listIconSrc && (
 			<div class="list-icon" style={`--icon-left:${listIconLeft}px;--icon-top:${listIconTop}px;`}>

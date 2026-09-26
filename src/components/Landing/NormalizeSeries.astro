@@ -231,15 +231,15 @@ const plots = NORMALIZE_CASES.map((c, i) => {
 			set:html={JSON.stringify(plots.map((p) => ({ series: p.series.map((v) => +v.toFixed(3)), domain: p.domain })))}
 		/>
 
-		<p class="norm__label norm__label--in">{NORMALIZE_STAGES.in}</p>
-		<p class="norm__label norm__label--out">{NORMALIZE_STAGES.out}</p>
+		<p class="norm__label norm__label--in" data-flow="label">{NORMALIZE_STAGES.in}</p>
+		<p class="norm__label norm__label--out" data-flow="label">{NORMALIZE_STAGES.out}</p>
 
 		{
 			/* --- what arrives ---------------------------------------------------------------------
 		    Mono, because these are payloads rather than prose. The wording differs; the outline does
 		    not, which puts the difference where it belongs. */
 		}
-		<ul class="norm__payloads" role="list">
+		<ul class="norm__payloads" role="list" data-flow="in">
 			{
 				NORMALIZE_CASES.map((c, i) => (
 					<li title={c.note}>
@@ -257,7 +257,7 @@ const plots = NORMALIZE_CASES.map((c, i) => {
 			/* Under the cards on either side, so each join is a card edge over a line and cannot show
 		    a seam at any scale — the same order the twin's connectors use. */
 		}
-		<svg class="norm__gut norm__gut--in" viewBox={`0 0 ${COL.gut} ${BODY_H}`} aria-hidden="true">
+		<svg class="norm__gut norm__gut--in" data-flow="gut" viewBox={`0 0 ${COL.gut} ${BODY_H}`} aria-hidden="true">
 			{converge.map((d) => <path class="norm__curve" d={d} />)}
 			{
 				/* Same `d` as the rail beneath it, so the pip cannot travel anywhere the connector does
@@ -279,12 +279,12 @@ const plots = NORMALIZE_CASES.map((c, i) => {
 		    middle and left the arrows pointing at a spot below its centre. Out of flow, the node IS
 		    the badge, and centring the node centres it on the line the curves converge on. */
 		}
-		<div class="norm__node">
+		<div class="norm__node" data-flow="node">
 			<span class="norm__badge" aria-hidden="true" set:html={inkedMark()} />
 			<span class:list={['norm__node-label', !nodeLabel && 'is-hidden']}>{NORMALIZE_NODE.label}</span>
 		</div>
 
-		<svg class="norm__gut norm__gut--out" viewBox={`0 0 ${COL.gut} ${BODY_H}`} aria-hidden="true">
+		<svg class="norm__gut norm__gut--out" data-flow="gut" viewBox={`0 0 ${COL.gut} ${BODY_H}`} aria-hidden="true">
 			{diverge.map((d) => <path class="norm__curve" d={d} />)}
 			{
 				/* A transit behind its own device's incoming pip, so what leaves the node for row `i` is
@@ -303,7 +303,7 @@ const plots = NORMALIZE_CASES.map((c, i) => {
 		    anywhere — the stage label over the card says what the card is, and the argument is
 		    carried by the rows being identical in shape and by every one of them ending in °C. */
 		}
-		<div class="norm__model">
+		<div class="norm__model" data-flow="out">
 			<ul class="norm__rows" role="list">
 				{
 					NORMALIZE_CASES.map((c, i) => (
@@ -633,7 +633,7 @@ const plots = NORMALIZE_CASES.map((c, i) => {
 		// lighter than the line it runs on and plainly not a hole in it.
 		//
 		// This is the knob if the signal wants to be hotter or cooler; nothing else depends on it.
-		--norm-signal-color: color-mix(in srgb, var(--color-primary, #3d50f5) 28%, #fff);
+		--norm-signal-color: color-mix(in srgb, var(--flow-rail, var(--color-primary, #3d50f5)) 28%, #fff);
 
 		// A syntax ramp of this visual's own, rather than borrowed tokens, and tuned for the dark
 		// chip the payloads sit on. See `NormalizeFlow` for why the palette's own hues are all
@@ -973,8 +973,20 @@ const plots = NORMALIZE_CASES.map((c, i) => {
 	// Scoped to `pulse` on purpose: the still stage beside it is the committed candidate and is what
 	// this is being judged against, so it keeps its grey rails. Lifting this one declaration out of
 	// the block makes it the composition's default, if that is the answer.
+	//
+	// `--flow-rail` first: a homepage order that colours each section by its badge (`hues: 'section'`)
+	// sets it on the row, and the lines coming IN — from the mixed payloads to the mark — take the
+	// row's hue. What goes OUT is the platform's own: the lines to the model, their signals, the
+	// sparklines and the live readings stay the brand, so the drawing reads as raw data in the
+	// section's colour becoming the platform's. Unset — the handoff, the sandbox — all of it is the
+	// brand, as before.
 	.norm[data-motion='pulse'] {
+		--norm-rail-color: var(--flow-rail, var(--color-primary, #3d50f5));
+	}
+
+	.norm[data-motion='pulse'] .norm__gut--out {
 		--norm-rail-color: var(--color-primary, #3d50f5);
+		--norm-signal-color: color-mix(in srgb, var(--color-primary, #3d50f5) 28%, #fff);
 	}
 
 	// What a row does when its signal lands.

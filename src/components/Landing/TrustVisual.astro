@@ -1,0 +1,564 @@
+---
+import { Icon } from 'astro-icon/components';
+import { TRUST_ACCESS, TRUST_CERTS, TRUST_REPO, TRUST_VISUAL_LABELS, type TrustKind } from '@data/home-trust';
+import { GITHUB_STARS } from '@data/github-stars';
+import { SCALE_LOGOS, SCALE_MODES } from '@data/scale-visual';
+
+/**
+ * The trust band's three small drawings, one opening each card in `TrustBand`.
+ *
+ *   security  two certification seals, then SSO and 2FA, a row each
+ *   scale     the monolith over the cluster, one row of squares each, and one row of their stores
+ *   open      the GitHub tile and the repo's star count — one link to the repo
+ *
+ * FEW THINGS, SET LARGE, AND ONLY WHAT THE CARD SAYS. Each drawing carries two or three words at 16
+ * to 32 units, where they used to carry three rows each at 14; every one of them is in the card's
+ * own text, so the eye goes from the drawing to the paragraph and finds it there.
+ *
+ * THE SEALS AND THE TILE ARE 72, on one top line with the scale strips, so the three drawings start
+ * together and weigh the same across the band. The seals are drawn here, not ISO's (see
+ * `TRUST_CERTS`); GitHub's tile is its app icon, black with the white mark filling it.
+ *
+ * THE SCALE CARD IS `ScaleDuo`'S SQUARES AND `ScaleDuo`'S PULSE. Each mode is a strip of four of that
+ * visual's cells in its own hue — the brand, then the gateway violet — with one row of the stores'
+ * marks under both (`SCALE_LOGOS`). Both modes work on the same 2s beat: every lit cell rings, the
+ * way `ScaleDuo`'s do as data arrives, one 100ms hop later per cell away from the first. The
+ * monolith rings alone, with nowhere to pass it; the cluster passes it along, and between beats it
+ * grows — a bridge reaches out, a node pops in at its end — to three of the four, holds, and lets
+ * them go in reverse order. Sideways only: scaling out is what a cluster does. Without motion the
+ * cluster simply shows its three.
+ *
+ * 260 units wide and 112 tall. Type floor 14 units (the seals' "ISO"), so R = 260 / 14 ≈ 19: about
+ * 16px on a phone. The unit is capped at 1.15px like the family's, so on a wide stacked card the
+ * drawing stops at 299px.
+ */
+
+interface Props {
+	kind: TrustKind;
+}
+
+const { kind } = Astro.props;
+
+const NATIVE = 260;
+const BODY_H = 112;
+
+// --- the block all three share ---------------------------------------------------------------
+// The seals and the tile are one size, and all three drawings start on one top line.
+const BLOCK = 72;
+const Y0 = 6;
+
+// --- openness: the tile and the count ---------------------------------------------------------
+// The header button's own rounding: down to the hundred and written short, so it can only read low.
+const stars = GITHUB_STARS[TRUST_REPO];
+const starsShort = stars === undefined ? undefined : `${Math.floor(stars / 100) / 10}k`;
+const repoHref = `https://github.com/${TRUST_REPO}`;
+
+// --- scale: `ScaleDuo`'s cells, one row per mode --------------------------------------------------
+// A name column ("Monolith" sets 68 at 16), then a strip of four 24-unit cells at `ScaleDuo`'s 5:1
+// cell-to-gap ratio, 110.4 long. The two strips sit 8 apart and the marks 16 under them:
+// 6 + 24 + 8 + 24 + 16 + 32 = 110 of the 112.
+const NAME_W = 72;
+const NAME_GAP = 12;
+const CELLS = 4;
+const S = 24;
+const G = S / 5;
+const STRIP_W = CELLS * S + (CELLS - 1) * G;
+const r2 = (v: number) => +v.toFixed(2);
+const at = (n: number) => r2(n * (S + G));
+// How many cells each mode lights: the monolith one, the cluster up to three — the first always, the
+// next two in turn, left to right.
+const LIT = [1, 3];
+const HUES = ['var(--color-primary, #3d50f5)', 'var(--color-product-gw, #6d28d9)'];
+// A bar across each gap between lit neighbours — a third of the cell tall, buried a fifteenth of the
+// cell in each end, drawn under the cells — which reaches out before the node at its end appears.
+const T = S / 3;
+const BLEED = S / 15;
+// One row of marks for both: the cluster's stores, which include the monolith's.
+const STORES = SCALE_MODES[SCALE_MODES.length - 1].stack;
+
+const unitStyle = [
+	`--trv-u: min(1.15px, calc(100cqw / ${NATIVE}))`,
+	`--trv-native: ${NATIVE}`,
+	`--trv-body-h: ${BODY_H}`,
+	`--trv-block: ${BLOCK}`,
+	`--trv-top: ${Y0}`,
+	`--trv-name-w: ${NAME_W}`,
+	`--trv-name-gap: ${NAME_GAP}`,
+	`--trv-strip-w: ${r2(STRIP_W)}`,
+].join('; ');
+---
+
+<div class="trv-fit">
+	{
+		kind === 'open' ? (
+			<div class="trv trv--open" style={unitStyle}>
+				<a
+					class="trv__repo"
+					href={repoHref}
+					aria-label={`ThingsBoard on GitHub${starsShort ? `, ${starsShort} stars` : ''}`}
+				>
+					<span class="trv__tile" aria-hidden="true">
+						<Icon name="simple-icons:github" />
+					</span>
+					<span class="trv__stat" aria-hidden="true">
+						{starsShort && (
+							<span class="trv__count">
+								<Icon name="tabler:star-filled" class="trv__star" />
+								{starsShort}
+							</span>
+						)}
+						<span class="trv__count-label">{starsShort ? 'stars on GitHub' : 'Source on GitHub'}</span>
+					</span>
+				</a>
+			</div>
+		) : (
+			<div class:list={['trv', `trv--${kind}`]} role="img" aria-label={TRUST_VISUAL_LABELS[kind]} style={unitStyle}>
+				{kind === 'scale' ? (
+					<div class="trv__modes" aria-hidden="true">
+						{SCALE_MODES.map((m, i) => (
+							<>
+								<p class="trv__mode-name" style={`--trv-mode-hue: ${HUES[i]}`}>
+									{m.mode}
+								</p>
+								<svg
+									class:list={['trv__strip', i === 1 && 'trv__strip--cluster']}
+									viewBox={`0 0 ${r2(STRIP_W)} ${r2(S)}`}
+									style={`--trv-mode-hue: ${HUES[i]}`}
+								>
+									{Array.from({ length: CELLS }, (_, n) => (
+										<rect class="trv__cell" x={at(n)} y={0} width={r2(S)} height={r2(S)} rx={r2(S / 3)} />
+									))}
+									{Array.from({ length: LIT[i] - 1 }, (_, n) => (
+										<rect
+											class={`trv__link trv__join-${n + 1}`}
+											x={r2(at(n) + S - BLEED)}
+											y={r2((S - T) / 2)}
+											width={r2(G + BLEED * 2)}
+											height={r2(T)}
+										/>
+									))}
+									{Array.from({ length: LIT[i] }, (_, n) => (
+										<g class:list={['trv__node', n > 0 && `trv__join-${n}`]} style={`--trv-hop: ${n}`}>
+											<rect class="trv__ping" x={at(n)} y={0} width={r2(S)} height={r2(S)} rx={r2(S / 3)} />
+											<rect class="trv__lit" x={at(n)} y={0} width={r2(S)} height={r2(S)} rx={r2(S / 3)} />
+										</g>
+									))}
+								</svg>
+							</>
+						))}
+						<ul class="trv__stack" role="list">
+							{STORES.map((store) => (
+								<li class:list={[store === 'Cassandra' && 'is-lens']}>
+									<Icon name={SCALE_LOGOS[store]} />
+								</li>
+							))}
+						</ul>
+					</div>
+				) : (
+					<div class="trv__pair">
+						<ul class="trv__seals" role="list">
+							{TRUST_CERTS.map((number) => (
+								<li class="trv__seal">
+									<span class="trv__seal-body">ISO</span>
+									<span class="trv__seal-number">{number}</span>
+								</li>
+							))}
+						</ul>
+						<ul class="trv__access" role="list">
+							{TRUST_ACCESS.map((row) => (
+								<li class="trv__access-row">
+									<Icon name="tabler:circle-check-filled" class="trv__check" aria-hidden="true" />
+									{row}
+								</li>
+							))}
+						</ul>
+					</div>
+				)}
+			</div>
+		)
+	}
+</div>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	@function u($n) {
+		@return calc(#{$n} * var(--u));
+	}
+
+	.trv-fit {
+		container-type: inline-size;
+	}
+
+	.trv {
+		--u: var(--trv-u);
+		--trv-hue: var(--color-brand, #3d50f5);
+		// The tiles' lift, shared by the seals and the GitHub tile.
+		--trv-tile-shadow:
+			0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.14),
+			0 #{u(8)} #{u(16)} #{u(-6)} rgba(var(--color-shadow-ui-rgb), 0.38);
+
+		width: 100%;
+		max-width: u(var(--trv-native));
+		height: u(var(--trv-body-h));
+	}
+
+	// --- security: two seals, then SSO and 2FA -------------------------------------------------
+
+	.trv__pair {
+		display: flex;
+		align-items: center;
+		gap: u(18);
+		height: u(var(--trv-block));
+		margin-top: u(var(--trv-top));
+	}
+
+	.trv__seals {
+		display: flex;
+		flex: none;
+		gap: u(10);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	// A seal: the green disc the shield tile was, lit from the top as that tile's surface is, with a
+	// ring inside its edge and the standard's number across it. The white holds 3.4:1 at the disc's
+	// lightest and 5:1 at its foot, over the 3:1 a graphic needs.
+	.trv__seal {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: u(var(--trv-block));
+		height: u(var(--trv-block));
+		margin: 0;
+		border-radius: 50%;
+		color: #fff;
+		background: linear-gradient(180deg, #25a05f 0%, #16804a 100%);
+		box-shadow: var(--trv-tile-shadow);
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset: u(4);
+			border: max(1px, #{u(1.5)}) solid rgba(255, 255, 255, 0.42);
+			border-radius: 50%;
+		}
+	}
+
+	// Tracked, and pulled left by its own tracking, which would otherwise hang off the last letter and
+	// push the word off the disc's centre.
+	.trv__seal-body {
+		margin-right: -0.14em;
+		font-size: u(14);
+		font-weight: $font-weight-medium;
+		line-height: u(16);
+		letter-spacing: 0.14em;
+		opacity: 0.88;
+	}
+
+	.trv__seal-number {
+		font-size: u(18);
+		font-weight: $font-weight-bold;
+		line-height: u(22);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.trv__access {
+		display: flex;
+		flex-direction: column;
+		gap: u(12);
+		min-width: 0;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.trv__access-row {
+		display: flex;
+		align-items: center;
+		gap: u(8);
+		margin: 0;
+		font-size: u(18);
+		font-weight: $font-weight-medium;
+		line-height: u(22);
+		white-space: nowrap;
+		color: var(--color-text);
+	}
+
+	.trv__check {
+		flex: none;
+		width: u(20);
+		height: u(20);
+		color: var(--color-accent-green, #1f9d55);
+	}
+
+	// --- openness: the tile and the star count, one link ------------------------------------------
+
+	// Only the tile and the count are the link, not the drawing's whole box, so the empty space beside
+	// them is not a target. The page's `#overflow li a` sets every list link's colour to the brand, so
+	// each part below names its own.
+	.trv__repo {
+		display: inline-flex;
+		align-items: center;
+		gap: u(16);
+		margin-top: u(var(--trv-top));
+		border-radius: u(16);
+		text-decoration: none;
+
+		&:focus-visible {
+			outline: 2px solid var(--color-primary, #3d50f5);
+			outline-offset: 3px;
+		}
+	}
+
+	// GITHUB'S APP ICON, the way the phone shows it: its own near-black (#1f2328, its text colour) at the
+	// corner an app icon has (23%, against the page's 32% squircle for section marks), the white mark
+	// filling 62% of it as its own app sets it.
+	.trv__tile {
+		display: flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: u(var(--trv-block));
+		height: u(var(--trv-block));
+		border-radius: 23%;
+		color: #fff;
+		background: #1f2328;
+		box-shadow: var(--trv-tile-shadow);
+		transition: transform 150ms ease-out;
+
+		:global([data-icon]) {
+			width: u(44);
+			height: u(44);
+		}
+	}
+
+	.trv__repo:hover .trv__tile {
+		transform: translateY(#{u(-2)});
+	}
+
+	.trv__stat {
+		display: flex;
+		flex-direction: column;
+		gap: u(2);
+	}
+
+	.trv__count {
+		display: flex;
+		align-items: center;
+		gap: u(6);
+		font-size: u(32);
+		font-weight: $font-weight-bold;
+		line-height: u(36);
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text);
+	}
+
+	// GitHub's own star yellow, as its star button draws it.
+	.trv__star {
+		flex: none;
+		width: u(28);
+		height: u(28);
+		color: #e3b341;
+	}
+
+	.trv__count-label {
+		font-size: u(16);
+		font-weight: $font-weight-medium;
+		line-height: u(20);
+		white-space: nowrap;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	// --- scale: `ScaleDuo`'s cells, one row per mode ----------------------------------------------
+
+	// The names in a column, the strips beside them, the marks across both; on the tiles' top line.
+	.trv__modes {
+		display: grid;
+		grid-template-columns: u(var(--trv-name-w)) u(var(--trv-strip-w));
+		column-gap: u(var(--trv-name-gap));
+		row-gap: u(8);
+		align-items: center;
+		padding-top: u(var(--trv-top));
+	}
+
+	// Not optional: a global reset gives every svg `max-width: 100%`, which is fine here only because
+	// the box is exactly the strip's width — say so rather than lean on it.
+	.trv__strip {
+		display: block;
+		width: 100%;
+		max-width: none;
+		height: auto;
+		overflow: visible;
+	}
+
+	// `ScaleDuo`'s `field` treatment, value for value: the empty cells carry 14% of the mode's hue, the
+	// lit ones all of it, the bridges 45% of it.
+	.trv__cell {
+		fill: color-mix(in srgb, var(--trv-mode-hue) 14%, #fff);
+	}
+
+	.trv__lit {
+		fill: var(--trv-mode-hue);
+	}
+
+	.trv__link {
+		fill: var(--trv-mode-hue);
+		fill-opacity: 0.45;
+		// Grows out of the cell on its left, and goes back into it.
+		transform-box: fill-box;
+		transform-origin: left center;
+	}
+
+	.trv__node {
+		transform-box: fill-box;
+		transform-origin: center;
+	}
+
+	// `ScaleDuo`'s ring: a copy of the cell under it, which grows and fades. At rest it is not there.
+	.trv__ping {
+		opacity: 0;
+		fill: var(--trv-mode-hue);
+		transform-box: fill-box;
+		transform-origin: center;
+	}
+
+	// The mode's name in its own hue, so each row reads as one thing: its name and its cells. Set as
+	// `ScaleDuo` sets its names, in sentence case: at 16 an all-caps label shouts, and runs a third wider.
+	// Medium, not the section's semibold, which is bold here and would outweigh the card's title.
+	.trv__mode-name {
+		margin: 0;
+		font-size: u(16);
+		font-weight: $font-weight-medium;
+		line-height: u(20);
+		white-space: nowrap;
+		color: var(--trv-mode-hue);
+	}
+
+	// One row of the stores, across both, in the page's secondary grey: they belong to neither mode
+	// alone. Spread to the strips' length, so the row starts under the names and ends under the last
+	// cell rather than stopping short of it.
+	.trv__stack {
+		grid-column: 1 / -1;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin: u(8) 0 0;
+		padding: 0;
+		list-style: none;
+
+		li {
+			display: flex;
+			margin: 0;
+		}
+
+		:global([data-icon]) {
+			width: u(32);
+			height: u(32);
+			color: var(--color-text-secondary, #5b616e);
+		}
+
+		// The Cassandra mark is a lens, half its box's height: `ScaleDuo` runs it 18% larger to weigh the
+		// same as its neighbours, and so does this — by transform, so its box, and the row, stay 32 tall.
+		.is-lens :global([data-icon]) {
+			transform: scale(1.18);
+		}
+	}
+
+	// --- the motion -----------------------------------------------------------------------------
+	//
+	// ONE 6s LOOP, THREE 2s BEATS. On each beat every lit cell rings, 100ms later per cell from the
+	// first, as `ScaleDuo`'s field does. Between the beats the cluster grows: at 0.7s a bridge reaches
+	// out and a second node pops in at its end, at 2.5s a third, so the beat at 2s hops across two
+	// cells and the one at 4s across three. From 4.8s they go, last one first, and the loop starts
+	// again on one — the monolith's size, which is where every cluster starts.
+	//
+	// A NODE THAT IS NOT THERE CANNOT RING: each ring sits inside its node's group, and a hidden group
+	// hides it, so the 2s ring can run without knowing the 6s loop. The monolith rings on the same
+	// beat, alone.
+	@media (prefers-reduced-motion: no-preference) {
+		.trv__ping {
+			animation: trv-ping 2s ease-out infinite;
+			animation-delay: calc(var(--trv-hop, 0) * 100ms);
+		}
+
+		@for $n from 1 through 2 {
+			.trv__strip--cluster .trv__node.trv__join-#{$n} {
+				animation: trv-join-#{$n} 6s infinite;
+			}
+
+			.trv__strip--cluster .trv__link.trv__join-#{$n} {
+				animation: trv-bridge-#{$n} 6s infinite;
+			}
+		}
+	}
+
+	// `ScaleDuo`'s: a quick ring and a long rest. The rest is what lets it sit beside a paragraph. To
+	// 1.45, not its 1.6: the two strips are 8 apart, and at 1.6 the monolith's ring met the cluster's.
+	@keyframes trv-ping {
+		0% {
+			opacity: 0.5;
+			transform: scale(1);
+		}
+		16%,
+		100% {
+			opacity: 0;
+			transform: scale(1.45);
+		}
+	}
+
+	// The AI section's hand-off curves: in on its snappy ease-out, out on an ease-in.
+	$trv-in: cubic-bezier(0.2, 0.8, 0.2, 1);
+	$trv-out: cubic-bezier(0.4, 0, 1, 1);
+
+	// Node $n: its bridge reaches out at $at, the node pops in as the bridge lands, past full size and
+	// back, and at $leave it goes, with its bridge after it.
+	@mixin trv-join($n, $at, $leave) {
+		@keyframes trv-bridge-#{$n} {
+			0%,
+			#{$at} {
+				transform: scaleX(0);
+				animation-timing-function: $trv-in;
+			}
+			#{$at + 4%},
+			#{$leave + 3%} {
+				transform: scaleX(1);
+				animation-timing-function: $trv-out;
+			}
+			#{$leave + 6%},
+			100% {
+				transform: scaleX(0);
+			}
+		}
+
+		@keyframes trv-join-#{$n} {
+			0%,
+			#{$at + 3%} {
+				opacity: 0;
+				transform: scale(0.4);
+				animation-timing-function: $trv-in;
+			}
+			#{$at + 7%} {
+				opacity: 1;
+				transform: scale(1.08);
+			}
+			#{$at + 9%},
+			#{$leave} {
+				opacity: 1;
+				transform: scale(1);
+				animation-timing-function: $trv-out;
+			}
+			#{$leave + 4%},
+			100% {
+				opacity: 0;
+				transform: scale(0.6);
+			}
+		}
+	}
+
+	@include trv-join(1, 11%, 87%);
+	@include trv-join(2, 41%, 80%);
+</style>

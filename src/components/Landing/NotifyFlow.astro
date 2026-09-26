@@ -1,0 +1,520 @@
+---
+import { Icon } from 'astro-icon/components';
+import {
+	NOTIFY_NODE,
+	NOTIFY_STAGES,
+	NOTIFY_MESSAGES,
+	FREEZER_ALARM,
+	DOOR_OPENINGS,
+	openFor,
+	passes,
+} from '@data/automate-visual';
+import { inkedMark } from '@util/tb-mark';
+
+/**
+ * Notify: the one alarm Filter let through, and everyone it reaches.
+ *
+ * The third of the Automate switch's drawings, on `NormalizeSeries`' frame: 574 units wide, a label
+ * row and a 224-unit body, so all three are one size and the switch never moves the row.
+ *
+ * THE MARK DOES NOT MOVE. Switching tabs changes everything around the node and nothing about where
+ * it is: its column starts at 214 in all three drawings, so the squircle is centred on 266 whichever
+ * panel shows. That fixes the left block at 214 and the right at 256, and this drawing splits them
+ * 186 + 28 and 56 + 200. The left is the alarm at exactly the 186 Filter gives it — the same card at
+ * the same size in both, one line per field; its name measures 141 units, and at 170 it wrapped —
+ * which leaves the one straight line into the node 28. The right gives the messages 200, which their
+ * two lines need, and the four curves 56. It was 186 / 52 / 104 / 52 / 180, with the node on 290:
+ * switching from Filter moved it 24 units right.
+ *
+ * THE ALARM ON THE LEFT IS FILTER'S OUTPUT, the same card at the same size, so going Filter → Notify
+ * reads as the alarm moving one step down the line; the line out of it is the alarm's red, as the
+ * line into it is on Filter. On the right it arrives as four MESSAGES — the
+ * email's subject, the text, the Slack post, the CRM ticket — each a small card with the channel's
+ * mark, what it says, and who it reached, and a line into each (`NOTIFY_MESSAGES`).
+ *
+ * Type floor: 15 units, R = 38, the family's.
+ */
+
+interface Props {
+	/**
+	 * `pulse` — the alarm travels into the node, and one pip leaves for each recipient in turn; each
+	 * row answers as its pip lands. `still` — the drawing at rest.
+	 */
+	motion?: 'still' | 'pulse';
+}
+
+const { motion = 'pulse' } = Astro.props;
+
+const BADGE = 104;
+const COL = { in: 186, gutIn: 28, node: BADGE, gutOut: 56, out: 200 };
+const NATIVE = COL.in + COL.gutIn + COL.node + COL.gutOut + COL.out;
+// The node's column starts here in `NormalizeSeries` and `FilterFlow` (144 + 70). Checked at build,
+// so a re-split that moves the mark between tabs fails here instead of on the page.
+const NODE_START = 214;
+if (COL.in + COL.gutIn !== NODE_START || NATIVE !== 574) {
+	throw new Error(
+		`NotifyFlow: the node starts at ${COL.in + COL.gutIn} of ${NATIVE}; the other two tabs put it at ${NODE_START} of 574`
+	);
+}
+
+// Four message cards, 50 tall and 8 apart: 224, the family's body.
+const MSG = { h: 50, gap: 8 };
+const BODY_H = NOTIFY_MESSAGES.length * MSG.h + (NOTIFY_MESSAGES.length - 1) * MSG.gap;
+if (BODY_H !== 224) {
+	throw new Error(`NotifyFlow: the messages stack to ${BODY_H}, and the switch holds all three drawings at 224`);
+}
+const MID = BODY_H / 2;
+const rowCy = NOTIFY_MESSAGES.map((_, i) => MSG.h / 2 + i * (MSG.h + MSG.gap));
+
+// Normalize's connector, on Normalize's gutter.
+const LEAD = 12;
+const span = COL.gutOut - LEAD * 2;
+const bend = LEAD + span / 2;
+const diverge = rowCy.map(
+	(cy) =>
+		`M 0,${MID} L ${LEAD},${MID} C ${bend},${MID} ${COL.gutOut - bend},${cy} ${COL.gutOut - LEAD},${cy} L ${COL.gutOut},${cy}`
+);
+const straight = `M 0,${MID} L ${COL.gutIn},${MID}`;
+const head = (gut: number, y: number) => `M ${gut - 6},${y - 4} L ${gut},${y} L ${gut - 6},${y + 4}`;
+
+// Filter's survivor, so the card here cannot say an open time that one did not.
+const kept = DOOR_OPENINGS.find(passes);
+if (kept === undefined) {
+	throw new Error('NotifyFlow: no door opening passes the rule, so there is no alarm to deliver');
+}
+
+const BEAT_MS = 3200;
+// Between one recipient's pip and the next. Small enough that four deliveries read as one send.
+const STAGGER_MS = 110;
+---
+
+<div class="ntfy-fit">
+	<div
+		class="ntfy"
+		data-motion={motion}
+		style={[
+			`--ntfy-u: min(1.15px, calc(100cqw / ${NATIVE}))`,
+			`--ntfy-native: ${NATIVE}`,
+			`--ntfy-col-in: ${COL.in}`,
+			`--ntfy-col-gut-in: ${COL.gutIn}`,
+			`--ntfy-col-gut-out: ${COL.gutOut}`,
+			`--ntfy-col-node: ${COL.node}`,
+			`--ntfy-badge: ${BADGE}`,
+			`--ntfy-col-out: ${COL.out}`,
+			`--ntfy-body-h: ${BODY_H}`,
+			`--ntfy-msg-h: ${MSG.h}`,
+			`--ntfy-msg-gap: ${MSG.gap}`,
+			`--ntfy-beat: ${BEAT_MS}ms`,
+			`--ntfy-stagger: ${STAGGER_MS}ms`,
+		].join('; ')}
+	>
+		<p class="ntfy__label ntfy__label--in" data-flow="label">{NOTIFY_STAGES.in}</p>
+		<p class="ntfy__label ntfy__label--out" data-flow="label">{NOTIFY_STAGES.out}</p>
+
+		<div class="ntfy__in">
+			<div class="ntfy__alarm" data-flow="in">
+				<span class="ntfy__alarm-head">
+					<Icon name="tabler:alert-triangle-filled" class="ntfy__alarm-icon" aria-hidden="true" />
+					<span class="ntfy__sev">{FREEZER_ALARM.severity}</span>
+				</span>
+				<span class="ntfy__name">{FREEZER_ALARM.name}</span>
+				<span class="ntfy__meta">{`${FREEZER_ALARM.source} · open ${openFor(kept)}`}</span>
+			</div>
+		</div>
+
+		<svg class="ntfy__gut ntfy__gut--in" data-flow="gut" viewBox={`0 0 ${COL.gutIn} ${BODY_H}`} aria-hidden="true">
+			<path class="ntfy__curve" d={straight}></path>
+			{motion === 'pulse' && <path class="ntfy__pip ntfy__pip--in" d={straight} pathLength="100" />}
+			<path class="ntfy__head" d={head(COL.gutIn, MID)}></path>
+		</svg>
+
+		<div class="ntfy__node" data-flow="node">
+			<span class="ntfy__badge" aria-hidden="true" set:html={inkedMark()} />
+			<span class="ntfy__node-label">{NOTIFY_NODE.label}</span>
+		</div>
+
+		<svg class="ntfy__gut ntfy__gut--out" data-flow="gut" viewBox={`0 0 ${COL.gutOut} ${BODY_H}`} aria-hidden="true">
+			{diverge.map((d) => <path class="ntfy__curve" d={d} />)}
+			{
+				motion === 'pulse' &&
+					diverge.map((d, i) => <path class="ntfy__pip ntfy__pip--out" d={d} pathLength="100" style={`--i: ${i}`} />)
+			}
+			{rowCy.map((cy) => <path class="ntfy__head" d={head(COL.gutOut, cy)} />)}
+		</svg>
+
+		<div class="ntfy__out">
+			<ul class="ntfy__msgs" role="list" data-flow="out">
+				{
+					NOTIFY_MESSAGES.map((m, i) => (
+						<li class="ntfy__msg" style={`--i: ${i}`}>
+							<span class="ntfy__marks" aria-hidden="true">
+								{m.icons.map((icon) => (
+									<Icon name={icon} class="ntfy__icon" />
+								))}
+							</span>
+							<span class="ntfy__msg-text">
+								<span class="ntfy__sr">{m.channel}: </span>
+								<span class="ntfy__what">{m.text}</span>
+								<span class="ntfy__to">{m.to}</span>
+							</span>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+	</div>
+</div>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	@function u($n) {
+		@return calc(#{$n} * var(--u));
+	}
+
+	.ntfy-fit {
+		container-type: inline-size;
+	}
+
+	.ntfy {
+		--u: var(--ntfy-u);
+		// The rail's colour is set per side below: the line out of the alarm in the alarm's red, as
+		// Filter draws the line into it, and the lines to the messages in the brand.
+		--ntfy-rail: var(--color-primary, #3d50f5);
+		--ntfy-rail-w: max(1px, #{u(2)});
+		--ntfy-alarm: var(--color-accent-red, #b23c33);
+
+		display: grid;
+		grid-template-columns:
+			u(var(--ntfy-col-in))
+			u(var(--ntfy-col-gut-in))
+			u(var(--ntfy-col-node))
+			u(var(--ntfy-col-gut-out))
+			u(var(--ntfy-col-out));
+		grid-template-rows: auto u(var(--ntfy-body-h));
+		grid-template-areas:
+			'label-in .      .    .       label-out'
+			'in       gut-in node gut-out out';
+		align-items: center;
+		max-width: u(var(--ntfy-native));
+		margin: 0 auto;
+	}
+
+	.ntfy__label {
+		min-height: u(24);
+		margin: 0 0 u(8);
+		font-size: u(15);
+		line-height: u(24);
+		text-align: center;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		white-space: nowrap;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.ntfy__label--in {
+		grid-area: label-in;
+	}
+
+	.ntfy__label--out {
+		grid-area: label-out;
+	}
+
+	.ntfy__in {
+		grid-area: in;
+		position: relative;
+		z-index: 1;
+	}
+
+	// Filter's alarm card, declared again rather than shared: each drawing is one file, and a
+	// candidate should not reach into its sibling's stylesheet.
+	.ntfy__alarm {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: u(6);
+		padding: u(14) u(16);
+		border: 1px solid var(--color-border, #ebebeb);
+		border-radius: u(var(--flow-radius, 8));
+		background: var(--color-bg-surface, #fff);
+		box-shadow: 0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.06);
+	}
+
+	// The warning sign first, the way each message opens on its channel's mark.
+	.ntfy__alarm-head {
+		display: flex;
+		align-items: center;
+		gap: u(6);
+	}
+
+	.ntfy__alarm-icon {
+		flex: none;
+		width: u(22);
+		height: u(22);
+		color: var(--ntfy-alarm);
+	}
+
+	.ntfy__sev {
+		padding: u(2) u(8);
+		border-radius: u(5);
+		font-family: $font-family-mono;
+		font-size: u(15);
+		font-weight: $font-weight-bold;
+		line-height: u(20);
+		letter-spacing: 0.04em;
+		color: #fff;
+		background: var(--ntfy-alarm);
+	}
+
+	.ntfy__name {
+		font-size: u(16);
+		font-weight: $font-weight-medium;
+		line-height: u(21);
+		color: var(--color-text);
+	}
+
+	.ntfy__meta {
+		font-size: u(15);
+		line-height: u(20);
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.ntfy__gut {
+		width: 100%;
+		height: 100%;
+		overflow: visible;
+	}
+
+	.ntfy__gut--in {
+		grid-area: gut-in;
+	}
+
+	.ntfy__gut--out {
+		grid-area: gut-out;
+	}
+
+	.ntfy__curve,
+	.ntfy__head {
+		fill: none;
+		stroke: var(--ntfy-rail);
+		stroke-width: var(--ntfy-rail-w);
+		vector-effect: non-scaling-stroke;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.ntfy__node {
+		grid-area: node;
+		position: relative;
+		z-index: 1;
+		display: flex;
+		justify-content: center;
+		height: u(var(--ntfy-badge));
+	}
+
+	.ntfy__badge {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: u(var(--ntfy-badge));
+		height: u(var(--ntfy-badge));
+		padding: u(16);
+		border-radius: 32%;
+		color: #000;
+		background: linear-gradient(155deg, #fff 35%, color-mix(in srgb, var(--color-primary, #3d50f5) 5%, #fff) 100%);
+		box-shadow: var(
+			--flow-shadow-badge,
+			0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.06),
+			0 #{u(7)} #{u(16)} #{u(-5)} rgba(var(--color-shadow-ui-rgb), 0.22)
+		);
+	}
+
+	// Hidden to the eye, as Normalize's is: the switch above now names this step "Notify", and the
+	// same word again under the mark said it twice. Still read aloud, since the mark is decorative.
+	.ntfy__node-label {
+		@include visually-hidden;
+	}
+
+	// The messages: four small cards, one per channel, each where its curve lands — the same white
+	// card as the alarm opposite, at a message's size.
+	.ntfy__out {
+		grid-area: out;
+		position: relative;
+		z-index: 1;
+		align-self: stretch;
+	}
+
+	.ntfy__msgs {
+		display: flex;
+		flex-direction: column;
+		gap: u(var(--ntfy-msg-gap));
+		height: 100%;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	// 11 and 8 rather than 12 and 10: the SMS's "Freezer 3 · open 7:30" measures 143.1 units, and at
+	// 12 and 10 its column was 142.8 — an ellipsis on the one line that quotes the open time.
+	.ntfy__msg {
+		display: flex;
+		align-items: center;
+		gap: u(8);
+		height: u(var(--ntfy-msg-h));
+		margin: 0;
+		padding: 0 u(11);
+		border: 1px solid var(--color-border, #ebebeb);
+		border-radius: u(var(--flow-radius, 8));
+		background: var(--color-bg-surface, #fff);
+		box-shadow: 0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.06);
+	}
+
+	.ntfy__marks {
+		display: flex;
+		flex: none;
+		gap: u(4);
+	}
+
+	.ntfy__icon {
+		flex: none;
+		width: u(20);
+		height: u(20);
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.ntfy__msg-text {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	// What arrived, then who it reached: the message in the ink, its recipient under it in the grey.
+	.ntfy__what,
+	.ntfy__to {
+		overflow: hidden;
+		font-size: u(15);
+		line-height: u(18);
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.ntfy__what {
+		font-weight: $font-weight-medium;
+		color: var(--color-text);
+	}
+
+	.ntfy__to {
+		color: var(--color-text-secondary, #5b616e);
+	}
+
+	.ntfy__sr {
+		@include visually-hidden;
+	}
+
+	// --- the pulse ---------------------------------------------------------------------------
+
+	.ntfy__pip {
+		fill: none;
+		stroke: color-mix(in srgb, var(--ntfy-rail) 28%, #fff);
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-dasharray: 8 200;
+		stroke-dashoffset: 8;
+		animation: var(--ntfy-beat) linear infinite;
+		animation-play-state: var(--flow-play, running);
+	}
+
+	.ntfy__pip--in {
+		animation-name: ntfy-pip-in;
+	}
+
+	// One per recipient, a stagger apart, so four sends read as one gesture fanning out.
+	.ntfy__pip--out {
+		animation-name: ntfy-pip-out;
+		animation-delay: calc(var(--i) * var(--ntfy-stagger));
+	}
+
+	// Each message answers when its own pip lands: its channel lights in the rail's colour and the
+	// card takes a tint, then both settle.
+	.ntfy[data-motion='pulse'] .ntfy__msg {
+		animation: ntfy-answer var(--ntfy-beat) ease-out infinite;
+		animation-delay: calc(var(--i) * var(--ntfy-stagger));
+		animation-play-state: var(--flow-play, running);
+	}
+
+	.ntfy[data-motion='pulse'] .ntfy__icon {
+		animation: ntfy-answer-icon var(--ntfy-beat) ease-out infinite;
+		animation-delay: inherit;
+		animation-play-state: var(--flow-play, running);
+	}
+
+	@keyframes ntfy-pip-in {
+		0% {
+			stroke-dashoffset: 8;
+		}
+		14%,
+		100% {
+			stroke-dashoffset: -100;
+		}
+	}
+
+	@keyframes ntfy-pip-out {
+		0%,
+		16% {
+			stroke-dashoffset: 8;
+		}
+		34%,
+		100% {
+			stroke-dashoffset: -100;
+		}
+	}
+
+	// From the card's own white, not from transparent: each message is its own card now, and a
+	// transparent frame would let the row's ground show through it between beats.
+	@keyframes ntfy-answer {
+		0%,
+		34% {
+			background-color: var(--color-bg-surface, #fff);
+		}
+		38% {
+			background-color: color-mix(in srgb, var(--ntfy-rail) 7%, var(--color-bg-surface, #fff));
+		}
+		70%,
+		100% {
+			background-color: var(--color-bg-surface, #fff);
+		}
+	}
+
+	@keyframes ntfy-answer-icon {
+		0%,
+		34% {
+			color: var(--color-text-secondary, #5b616e);
+		}
+		38%,
+		56% {
+			color: var(--ntfy-rail);
+		}
+		80%,
+		100% {
+			color: var(--color-text-secondary, #5b616e);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ntfy__pip {
+			display: none;
+		}
+
+		.ntfy[data-motion='pulse'] :is(.ntfy__msg, .ntfy__icon) {
+			animation: none;
+		}
+	}
+
+	// The alarm's path, in the alarm's red whatever the row's hue: the line out of the card and its pip.
+	// The four lines out of the mark, their signals and the messages' answer stay the brand (the
+	// default above), the platform's side, as Normalize's model side is.
+	.ntfy__gut--in {
+		--ntfy-rail: var(--ntfy-alarm);
+	}
+</style>

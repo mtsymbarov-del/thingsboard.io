@@ -1,7 +1,9 @@
 # Key visuals
 
 The illustrations on the experimental homepage: `ConnectCloud`, `ConnectFlow`, `DigitalTwin`,
-`NormalizeSeries`, `ScaleDuo`, `SolutionFlow`, `DeployFork`, `WhiteLabelApp` and their candidates.
+`NormalizeSeries`, `ScaleDuo`, `SolutionFlow`, `DeployFork`, `WhiteLabelApp` and their candidates;
+the Automate switch's `FilterFlow` and `NotifyFlow`, which keep `NormalizeSeries`' frame and put the
+mark on the same spot in all three tabs; and the trust band's small `TrustVisual`.
 They are drawn in CSS and SVG, not exported as images, so they take the page's tokens and stay
 sharp at any size.
 
@@ -102,6 +104,20 @@ text width have been wrong by 25u. The browser is the source of truth; the arith
 
 **Copy that carries meaning lives in `src/data/*-visual.ts`**, not in the component, so a component
 can be redrawn without retyping the words and a marketing page can import the same strings.
+
+**A drawing's lines read `--flow-rail`, with the brand as the fallback** —
+`var(--flow-rail, var(--color-primary, #3d50f5))` for connectors, travelling signals and whatever
+lights up when one lands. Homepage orders with `hues: 'section'` set it on each row to the row's badge
+colour (`_home-rows.scss`, from `--row-hue`), so the mark, the ground and the lines are one colour;
+everywhere else it is unset and nothing changes. Names ON those lines read `--flow-label-font`,
+`--flow-label-size` (in design units) and `--flow-label-tracking` the same way. A new visual that
+draws connectors should read them too, or it will be the one blue drawing in a coloured row.
+
+Two exceptions, both in the Automate switch. The platform's OUTPUT side stays the brand whatever the
+row's hue: Normalize's model, Notify's four messages. And an alarm's path is the alarm's red
+(`--color-accent-red`) end to end: Filter's crossing, the lines into and out of its mark, and the
+line out of Notify's alarm card. That makes three colours in one row, each with one meaning: the row's
+hue is data arriving, red is the alarm, and the brand is what the platform sends out.
 
 ## Gotchas, each of which has cost an hour
 

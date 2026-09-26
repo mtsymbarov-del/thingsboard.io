@@ -1,9 +1,12 @@
 import { areaGroups, inArea, visualHref } from '@root/pages/internal/_key-visuals';
+import { HOME_COMPOSITIONS, compositionHref } from '@data/home-compositions';
 
 /**
  * The internal pages' structure, in one place: the areas the floating island links to, and the
  * pages each area's top bar shows as tabs.
  *
+ * - HOMEPAGES: the homepage's running orders, each the real page with a different order between
+ *   its hero and its CTA (`data/home-compositions.ts`). The shipping one is `/` itself.
  * - COMPONENTS: the homepage's sections, each on its own page (the ecosystem cards included, in
  *   their gallery), and the product-page pieces judged with them.
  * - FLOWS: the paths behind a button that leads to Cloud, one page per button.
@@ -36,12 +39,20 @@ export const TABS_UP_TO = 5;
 const overview = (href: string): AreaPage => ({ href, label: 'Overview', icon: 'tabler:layout-grid' });
 
 export interface Area {
-	id: 'components' | 'flows' | 'design';
+	id: 'homepages' | 'components' | 'flows' | 'design';
 	label: string;
 	pages: AreaPage[];
 }
 
 export const AREAS: Area[] = [
+	{
+		id: 'homepages',
+		label: 'Homepages',
+		pages: [
+			overview('/internal/homepages/'),
+			...HOME_COMPOSITIONS.map((c) => ({ href: compositionHref(c), label: `${c.label} · ${c.name}` })),
+		],
+	},
 	{
 		id: 'components',
 		label: 'Components',

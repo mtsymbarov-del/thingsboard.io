@@ -1,0 +1,106 @@
+---
+import SectionHeader from '@components/Landing/SectionHeader.astro';
+import FeatureTile from '@components/Landing/FeatureTile.astro';
+import { HOME_FEATURES_COPY, homeFeatures } from '@data/homeFeatures';
+
+/**
+ * "Why choose": the heading over the twelve feature tiles, on the page's one light tint.
+ *
+ * Its own component, out of `HomeSections` and `index.astro`, so the homepage and its sandbox page
+ * (`/internal/sections/features/`) render the one section. Its rules came with it, keyed to the same
+ * ids at the same specificity, so the page did not change by moving them.
+ *
+ * Heading and cards both come from `develop`'s own closing feature section, so the two pages make
+ * the same argument in the same words. The lede sets the section against the ecosystem above it:
+ * that one is what you can add, this one is what's in the box.
+ */
+
+interface Props {
+	/**
+	 * `why` — develop's heading, as the handoff homepage runs it. `value` keeps those words and adds a
+	 * claim over them: the develop heading becomes the eyebrow, and the heading says what twelve tiles
+	 * of "in the box" are worth.
+	 */
+	heading?: 'why' | 'value';
+}
+
+const { heading = 'why' } = Astro.props;
+---
+
+<section id="bottom-features">
+	<div class="main-div">
+		<SectionHeader
+			eyebrow={heading === 'value' ? HOME_FEATURES_COPY.title : undefined}
+			title={heading === 'value' ? HOME_FEATURES_COPY.valueTitle : HOME_FEATURES_COPY.title}
+			titleSize="section"
+			subtitle={HOME_FEATURES_COPY.subtitle}
+		/>
+		<div id="cards">
+			{homeFeatures.map((feature) => <FeatureTile {...feature} />)}
+		</div>
+	</div>
+</section>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	#bottom-features {
+		padding-top: $spacing-16;
+		padding-bottom: $spacing-20;
+		// The page's ONE light tint again: color-mix(in srgb, #3d50f5 5%, #fff).
+		// This ran at twice that ink (#eceefe) while the ecosystem sat on the same
+		// wash next door and the two needed forcing apart. The ecosystem is white
+		// now, so the boundary is self-evident and the doubled ink retires.
+		background-color: #f5f6ff;
+
+		// The heading sat flush against the band's top edge (padding-top was 0), and
+		// the gap under it was 100px — the header's own 50px margin plus #cards'
+		// 50px padding, stacked. The band gets a top to match its bottom, and the
+		// tiles come up to one 32px step under the heading.
+		:global(.section-header) {
+			margin-bottom: $spacing-8;
+		}
+	}
+
+	#cards {
+		padding-top: 0;
+		// THREE ACROSS, NOT FOUR. Four put the descriptions on a 24-character measure once this
+		// section took develop's copy — two and three sentences a card rather than the one line the
+		// auto-fill this replaced was tuned for, which ran the longest of them to ten lines. Three
+		// gives ~34, on the same three-two-one ladder the ecosystem grid above it uses, so the page's
+		// two card grids break at the same widths instead of one reflowing on its own schedule.
+		//
+		// FLEX RATHER THAN GRID, for the last row. Ten cards over three columns leaves one on its own,
+		// and a grid pins it to the first track — an orphan hard against the left edge under two full
+		// rows. Flex centres a short row for free, and it is the only part of this that grid cannot do
+		// without naming the leftover by `nth-child`, which would be wrong again the moment a card is
+		// added or dropped.
+		//
+		// The basis is the track width written out: the container less the gaps between n cards,
+		// divided by n. `flex-shrink: 1` is deliberate — at an exact basis a sub-pixel rounding could
+		// otherwise tip the third card onto its own row.
+		--cards-per-row: 3;
+
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: $spacing-3;
+		width: 100%;
+		max-width: 960px;
+		margin-inline: auto;
+
+		> :global(*) {
+			flex: 0 1 calc((100% - (var(--cards-per-row) - 1) * #{$spacing-3}) / var(--cards-per-row));
+			// Without this a long word sets the card's floor and the row overflows instead of wrapping.
+			min-width: 0;
+		}
+
+		@include media-down(lg) {
+			--cards-per-row: 2;
+		}
+
+		@include media-down(md) {
+			--cards-per-row: 1;
+		}
+	}
+</style>

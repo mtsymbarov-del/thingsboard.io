@@ -1,0 +1,247 @@
+---
+import SegmentedToggle from '@components/Landing/SegmentedToggle.astro';
+import NormalizeSeries from '@components/Landing/NormalizeSeries.astro';
+import FilterFlow from '@components/Landing/FilterFlow.astro';
+import NotifyFlow from '@components/Landing/NotifyFlow.astro';
+import { AUTOMATE_STAGES, AUTOMATE_SWITCH_LABEL } from '@data/automate-visual';
+import { NORMALIZE_COPY } from '@data/normalize-visual';
+
+/**
+ * "Turn IoT data into action" as three drawings — Normalize, Filter, Notify — and a switch over them.
+ * A candidate beside `NormalizeSeries`, which it holds unchanged as its first panel: the row that
+ * renders `NormalizeSeries` alone (the handoff's) is untouched by this file.
+ *
+ * It sits in the ROW's media column, not in a centred section of its own. A centred section between
+ * two rows is what the AI section used to be, and it broke the rows' order; a switch inside the row
+ * keeps the rows one run and still gives this one its three steps.
+ *
+ * THE PANELS ARE STACKED, NOT HIDDEN. `SegmentedToggle` would set `hidden` on the two that are not
+ * showing, which is `display: none` — and `NormalizeSeries` steps its readings off its own pips'
+ * CSS animation clock, which `display: none` cancels and a re-show restarts somewhere else. So this
+ * takes the switch's cancelable `segmented:change`, leaves `hidden` alone, and shows one panel of
+ * three stacked in one grid cell: the others are `visibility: hidden` and `inert`, still laid out
+ * and still running. Stacking also holds the row at the tallest panel, so switching never moves it.
+ * Before the script runs, the panels are `hidden` the ordinary way and the first one shows.
+ *
+ * THE SWITCH IS THE AI SECTION'S HAND-OFF. Everything but the mark moves as one layer — the stage
+ * names, both columns, the lines — out 24px the way the thumb slides and in from 32px the other side,
+ * on the same 300ms curve (`AiHandoff`); the mark, on the same spot in all three drawings, holds still.
+ * The drawings name the layer's parts (`data-flow="label" | "in" | "gut" | "node" | "out"`); nothing
+ * about how they render changes. Reduced motion gets a short fade and no travel.
+ *
+ * NO CAPTION UNDER THE DRAWINGS. Each had a line saying what its stage just did; the row's paragraph
+ * already names all three steps, and the labels inside each drawing say the rest.
+ *
+ * The inactive panels' own pulses are paused through `--flow-play`, which `FilterFlow` and
+ * `NotifyFlow` read. Normalize's is left running on purpose: its script keeps its readings on that
+ * clock, and pausing it here would be a second hand on it.
+ */
+
+interface Props {
+	/** Prefixes the panel ids, for a page that renders the switch more than once. */
+	id?: string;
+}
+
+const { id = 'automate' } = Astro.props;
+const panelId = (stage: string) => `${id}-${stage}`;
+---
+
+<div class="auto" data-automate>
+	<div class="auto__switch">
+		<SegmentedToggle
+			label={AUTOMATE_SWITCH_LABEL}
+			options={AUTOMATE_STAGES.map((s) => ({
+				label: s.label,
+				icon: s.icon,
+				panel: panelId(s.id),
+				// The row's own badge hue: 5.68:1 on the white thumb, so it reads as type.
+				color: NORMALIZE_COPY.badge.color,
+			}))}
+		/>
+	</div>
+
+	<div class="auto__stage">
+		{
+			AUTOMATE_STAGES.map((s, i) => (
+				<div
+					class="auto__panel"
+					id={panelId(s.id)}
+					role="tabpanel"
+					aria-labelledby={`${panelId(s.id)}-tab`}
+					hidden={i !== 0}
+				>
+					{s.id === 'normalize' ? (
+						<NormalizeSeries motion="pulse" />
+					) : s.id === 'filter' ? (
+						<FilterFlow />
+					) : (
+						<NotifyFlow />
+					)}
+				</div>
+			))
+		}
+	</div>
+</div>
+
+<script>
+	const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	document.querySelectorAll<HTMLElement>('[data-automate]').forEach((root) => {
+		const list = root.querySelector<HTMLElement>('[data-segmented]');
+		const panels = Array.from(root.querySelectorAll<HTMLElement>('.auto__panel'));
+		if (!list || panels.length === 0) return;
+
+		const show = (active: HTMLElement) => {
+			panels.forEach((p) => {
+				const on = p === active;
+				p.classList.toggle('is-active', on);
+				p.inert = !on;
+				p.setAttribute('aria-hidden', String(!on));
+				p.style.setProperty('--flow-play', on ? 'running' : 'paused');
+			});
+		};
+
+		// Only the animations this script starts: the drawings' own pulses are CSS animations and keep
+		// their clocks (Normalize's readings are synced to its pips).
+		const scripted = (p: HTMLElement) =>
+			p.getAnimations({ subtree: true }).filter((a) => !(a instanceof CSSAnimation) && !(a instanceof CSSTransition));
+
+		// Everything but the mark: the stage names, the two columns, the lines, and whatever hangs under
+		// the mark (Filter's rule). The mark itself — the node's first child — is the one thing that holds.
+		const layer = (p: HTMLElement) =>
+			p.querySelectorAll<HTMLElement>(
+				'[data-flow="label"], [data-flow="in"], [data-flow="gut"], [data-flow="out"], [data-flow="node"] > :not(:first-child)'
+			);
+
+		// The AI section's hand-off, to the value (`AiHandoff`): the view pans the way the thumb slides —
+		// out 24px toward the side it leaves by in 47% of the time, accelerating; in from 32px the other
+		// way over the full 300ms, decelerating, 40ms after — so there is never a frame with nothing.
+		const DURATION = 300;
+		const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+
+		const handoff = (previous: HTMLElement, next: HTMLElement, dir: number) => {
+			if (reduced) {
+				layer(next).forEach((el) => el.animate([{ opacity: 0, offset: 0 }], { duration: 150, easing: 'ease-out' }));
+				return;
+			}
+			previous.classList.add('is-leaving');
+			const outs = [...layer(previous)].map((el) =>
+				el.animate(
+					[
+						{ opacity: 1, transform: 'none' },
+						{ opacity: 0, transform: `translateX(${-dir * 24}px)` },
+					],
+					{
+						duration: DURATION * 0.47,
+						easing: 'cubic-bezier(0.4, 0, 1, 1)',
+						fill: 'forwards',
+					}
+				)
+			);
+			// One keyframe pinned to the start: each part arrives from it at wherever its own styles put it.
+			layer(next).forEach((el) =>
+				el.animate([{ opacity: 0, transform: `translateX(${dir * 32}px)`, offset: 0 }], {
+					duration: DURATION,
+					delay: 40,
+					easing: EASE,
+					fill: 'backwards',
+				})
+			);
+			Promise.all(outs.map((a) => a.finished)).then(
+				() => {
+					previous.classList.remove('is-leaving');
+					outs.forEach((a) => a.cancel());
+				},
+				() => {}
+			);
+		};
+
+		// From here the class decides which panel shows, and every panel is laid out in the one cell.
+		const first = panels.find((p) => !p.hidden) ?? panels[0];
+		panels.forEach((p) => (p.hidden = false));
+		root.classList.add('is-stacked');
+		show(first);
+		let current = first;
+
+		list.addEventListener('segmented:change', (e) => {
+			// Cancel the switch's own `hidden` swap: see the note at the top of this file.
+			e.preventDefault();
+			const panel = (e as CustomEvent<{ panel: HTMLElement | null }>).detail.panel;
+			if (!panel || panel === current) return;
+			// A switch pressed mid-way: finish whatever this script had in flight, at once.
+			panels.forEach((p) => {
+				scripted(p).forEach((a) => a.cancel());
+				p.classList.remove('is-leaving');
+			});
+			const previous = current;
+			const dir = panels.indexOf(panel) > panels.indexOf(previous) ? 1 : -1;
+			current = panel;
+			show(panel);
+			handoff(previous, panel, dir);
+		});
+	});
+</script>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	.auto {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: $spacing-5;
+		width: 100%;
+	}
+
+	// The thumb on the hand-off's own curve and time, as the AI section sets it, so the pill and the
+	// drawing under it move as one gesture.
+	.auto__switch {
+		--seg-duration: 300ms;
+		--seg-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+		max-width: 100%;
+	}
+
+	// Three segments on a phone, where `SegmentedToggle` spreads the track to the column and gives each
+	// segment a third of it — 118px at 375, measured on a 359px track. "Normalize" needs 100 of that
+	// with the segment's padding (a 76px label), and its icon would take 28 more, so the icons go and
+	// the words stay whole. Same breakpoint as the toggle's own phone rules, so the two change together.
+	@media (max-width: 480px) {
+		.auto__switch {
+			align-self: stretch;
+		}
+
+		.auto__switch :global(.seg__icon) {
+			display: none;
+		}
+	}
+
+	.auto__stage {
+		display: grid;
+		width: 100%;
+	}
+
+	.auto__panel {
+		min-width: 0;
+	}
+
+	// Stacked once the script has taken over: one cell, one showing, the row held at the tallest.
+	.auto.is-stacked .auto__panel {
+		grid-area: 1 / 1;
+		visibility: hidden;
+	}
+
+	// The arriving drawing on top of the leaving one: its parts start hidden and come up over the fade.
+	.auto.is-stacked .auto__panel.is-active {
+		position: relative;
+		z-index: 1;
+		visibility: visible;
+	}
+
+	// The drawing on its way out stays on screen for its fade, under the one arriving, and catches no
+	// clicks meant for it.
+	.auto.is-stacked .auto__panel.is-leaving {
+		visibility: visible;
+		pointer-events: none;
+	}
+</style>

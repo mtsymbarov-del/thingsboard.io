@@ -1,0 +1,64 @@
+// THE HOMEPAGE'S CONTEXT, for a sandbox page whose variants are whole homepage sections (`bleed`):
+// what the section is drawn against on `/` and the playground does not load. A page loads it with
+// `@use '../bleed-context';` in a global style; `_Variant` does not, because every sandbox page
+// imports that and only the bleed ones want any of this.
+//
+// Found by diffing the computed style of every element in the AI section, `/` against its page, at
+// the same width — and the diff is the test if a variant ever looks different here: before this
+// block the chat's app bar, chip and composer line all came out shorter (line-height `normal`
+// against 24px) and the title sat 27px lower (the UA's h2 margin).
+
+@use '../../styles/variables' as *;
+
+// The `section .main-div` container, its ~5px margin that `.ai__band` zeroes, and the 1000px
+// measure. `landing` also gives every `section` the page ground, which `index.astro` strips again
+// — the bands carry their own gradient, and a fill under them is a colour the homepage never paints.
+@use '../../styles/landing';
+@use '../../styles/sections-flat';
+
+:root section {
+	background: none;
+}
+
+// The rest reaches the SECTION ONLY, through its wrapper, and every selector is `:where()`-wrapped
+// so it lands at the specificity the homepage's own rule has. One class heavier and these would
+// start beating the section's scoped rules, which is the opposite of fidelity.
+
+// What the homepage body passes down: `BaseLayout`'s two Starlight properties, and Starlight's
+// body rule reading them. The playground's body sets its own colour and no line-height.
+.vx__bleed {
+	--sl-line-height: 1.5;
+	--__sl-font: #{$font-family-base};
+	line-height: var(--sl-line-height);
+	color: var(--sl-color-text);
+}
+
+// Starlight's reset, in Starlight's layer — so, as on the homepage, anything the section writes
+// beats it.
+@layer starlight.reset {
+	:where(.vx__bleed) * {
+		margin: 0;
+	}
+
+	:where(.vx__bleed) :is(input, button, textarea, select) {
+		font: inherit;
+	}
+
+	:where(.vx__bleed) :is(p, h1, h2, h3, h4, h5, h6, code) {
+		overflow-wrap: break-word;
+	}
+}
+
+// `index.astro`'s page-wide wrapping.
+:where(.vx__bleed) :is(h1, h2, h3) {
+	text-wrap: balance;
+}
+
+:where(.vx__bleed) p {
+	text-wrap: pretty;
+}
+
+// The playground caps every `svg` at its box; the homepage does not.
+:where(.vx__bleed) svg {
+	max-width: none;
+}

@@ -1,0 +1,512 @@
+---
+import { Icon } from 'astro-icon/components';
+import { DOOR_OPENINGS, FILTER_NODE, FILTER_STAGES, FREEZER_ALARM, openFor, passes } from '@data/automate-visual';
+import { inkedMark } from '@util/tb-mark';
+
+/**
+ * Filter: a morning's door openings on one freezer, as a spark, and the one the alarm rule keeps.
+ *
+ * The second of the Automate switch's three drawings, on `NormalizeSeries`' frame: 574 units wide, a
+ * label row and a 224-unit body, the product's mark on its squircle at 266 in all three, so switching
+ * never moves the row or the mark.
+ *
+ * THE INPUT IS A SPARK, the way a dashboard would chart the door: how long it has been open, which
+ * climbs while it is open and drops to nothing when it shuts. Each opening is a tooth; the rule's
+ * limit is a dashed line across them; the one tooth that crosses it turns red from the moment it does,
+ * with a dot where the rule fired. The three that stay under the line are what the rule drops, and
+ * need no line of their own: they never reach it. Which teeth cross is computed from the threshold
+ * (`passes`), so the drawing cannot redden an opening the rule would have let go.
+ *
+ * THE ALARM'S PATH IS THE ALARM'S RED: the spark's crossing, the line into the mark, the line out to
+ * the card, and the card's own icon and severity. Everything else is grey. `NotifyFlow` starts from
+ * the same card and draws the line out of it in the same red.
+ *
+ * The node says the rule, "Over 5 min", where Normalize hides its word: there the row's heading
+ * names the step, here the rule is the whole argument.
+ *
+ * Type floor: 15 units (the labels), so R = 574 / 15 = 38, the same as Normalize: ~9.6px on a phone.
+ */
+
+interface Props {
+	/**
+	 * `pulse` — a pip leaves the spark, crosses the node and lands on the alarm, which answers.
+	 * `still` — the same drawing at rest.
+	 */
+	motion?: 'still' | 'pulse';
+}
+
+const { motion = 'pulse' } = Astro.props;
+
+// The node starts at 214 in all three tabs (Normalize's 144 + 70). The spark takes Notify's split,
+// 186 + 28, so the spark card and Notify's alarm card are one width; the right keeps 70 + 186.
+const BADGE = 104;
+const COL = { in: 186, gutIn: 28, node: BADGE, gutOut: 70, out: 186 };
+const NATIVE = COL.in + COL.gutIn + COL.node + COL.gutOut + COL.out;
+const NODE_START = 214;
+if (COL.in + COL.gutIn !== NODE_START || NATIVE !== 574) {
+	throw new Error(
+		`FilterFlow: the node starts at ${COL.in + COL.gutIn} of ${NATIVE}; the other two tabs put it at ${NODE_START} of 574`
+	);
+}
+const BODY_H = 224;
+const MID = BODY_H / 2;
+
+const straight = (gut: number) => `M 0,${MID} L ${gut},${MID}`;
+const head = (gut: number) => `M ${gut - 6},${MID - 4} L ${gut},${MID} L ${gut - 6},${MID + 4}`;
+
+const kept = DOOR_OPENINGS.find(passes);
+if (kept === undefined) {
+	throw new Error('FilterFlow: no door opening passes the rule, so there is no alarm to draw');
+}
+
+// --- the spark --------------------------------------------------------------------------------
+// In the card's own units: 162 wide (the card's 186 less 12 each side) and 110 tall. The teeth rise
+// from a baseline at 106 to the longest opening at 24, which leaves the peak's label room above it.
+// Time runs sideways at one scale for every tooth (the longest is 56 wide), and the gaps between
+// them — the door shut — are shared out evenly, since how long it stayed shut is not the argument.
+const SPARK = { w: 162, h: 110, top: 24, base: 106 };
+const PEAK = Math.max(...DOOR_OPENINGS);
+const PER_S = 56 / PEAK;
+const r2 = (v: number) => +v.toFixed(2);
+const yOf = (s: number) => r2(SPARK.base - (s / PEAK) * (SPARK.base - SPARK.top));
+const gap = (SPARK.w - DOOR_OPENINGS.reduce((sum, s) => sum + s * PER_S, 0)) / (DOOR_OPENINGS.length + 1);
+const teeth = DOOR_OPENINGS.map((s, i) => {
+	const x0 = gap * (i + 1) + DOOR_OPENINGS.slice(0, i).reduce((sum, t) => sum + t * PER_S, 0);
+	return { s, x0: r2(x0), x1: r2(x0 + s * PER_S), y: yOf(s), passes: passes(s) };
+});
+const limitY = yOf(FREEZER_ALARM.over);
+const line = [
+	`M 0,${SPARK.base}`,
+	...teeth.map((t) => `L ${t.x0},${SPARK.base} L ${t.x1},${t.y} L ${t.x1},${SPARK.base}`),
+	`L ${SPARK.w},${SPARK.base}`,
+].join(' ');
+// From where the rule fired — the tooth crossing the limit — to where the door finally shut.
+const hot = teeth.filter((t) => t.passes).map((t) => ({ ...t, xc: r2(t.x0 + FREEZER_ALARM.over * PER_S) }));
+const sparkLabel = `Door open times this morning: ${DOOR_OPENINGS.map(openFor).join(', ')}. Only ${openFor(kept)} is over the ${openFor(FREEZER_ALARM.over)} limit.`;
+
+// One loop of the pulse. The pip crosses the short line in, the node, then the long line out, at
+// one speed, and the alarm answers as it lands.
+const BEAT_MS = 3200;
+---
+
+<div class="filt-fit">
+	<div
+		class="filt"
+		data-motion={motion}
+		style={[
+			// Normalize's unit, derived from the same native width: a ceiling and no floor, so the
+			// drawing is exactly 100cqw wide below the cap and never wider than what holds it.
+			`--filt-u: min(1.15px, calc(100cqw / ${NATIVE}))`,
+			`--filt-native: ${NATIVE}`,
+			`--filt-col-in: ${COL.in}`,
+			`--filt-col-gut-in: ${COL.gutIn}`,
+			`--filt-col-node: ${COL.node}`,
+			`--filt-badge: ${BADGE}`,
+			`--filt-col-gut-out: ${COL.gutOut}`,
+			`--filt-col-out: ${COL.out}`,
+			`--filt-body-h: ${BODY_H}`,
+			`--filt-beat: ${BEAT_MS}ms`,
+		].join('; ')}
+	>
+		<p class="filt__label filt__label--in" data-flow="label">{FILTER_STAGES.in}</p>
+		<p class="filt__label filt__label--out" data-flow="label">{FILTER_STAGES.out}</p>
+
+		<div class="filt__in">
+			<div class="filt__spark" data-flow="in">
+				<svg viewBox={`0 0 ${SPARK.w} ${SPARK.h}`} role="img" aria-label={sparkLabel}>
+					<line class="filt__limit" x1="0" y1={limitY} x2={SPARK.w} y2={limitY}></line>
+					<text class="filt__limit-label" x="0" y={limitY - 7}>{openFor(FREEZER_ALARM.over)}</text>
+					<path class="filt__area" d={`${line} Z`}></path>
+					{hot.map((t) => <path class="filt__over" d={`M ${t.xc},${limitY} L ${t.x1},${t.y} L ${t.x1},${limitY} Z`} />)}
+					<path class="filt__line" d={line}></path>
+					{
+						hot.map((t) => (
+							<>
+								<path class="filt__hot" d={`M ${t.xc},${limitY} L ${t.x1},${t.y}`} />
+								<circle class="filt__fired" cx={t.xc} cy={limitY} r="3.5" />
+								<text class="filt__peak-label" x={t.x1} y={t.y - 9}>
+									{openFor(t.s)}
+								</text>
+							</>
+						))
+					}
+				</svg>
+			</div>
+		</div>
+
+		<svg class="filt__gut filt__gut--in" data-flow="gut" viewBox={`0 0 ${COL.gutIn} ${BODY_H}`} aria-hidden="true">
+			<path class="filt__curve" d={straight(COL.gutIn)}></path>
+			{motion === 'pulse' && <path class="filt__pip filt__pip--in" d={straight(COL.gutIn)} pathLength="100" />}
+			<path class="filt__head" d={head(COL.gutIn)}></path>
+		</svg>
+
+		<div class="filt__node" data-flow="node">
+			<span class="filt__badge" aria-hidden="true" set:html={inkedMark()} />
+			<span class="filt__node-label">{FILTER_NODE.label}</span>
+		</div>
+
+		<svg class="filt__gut filt__gut--out" data-flow="gut" viewBox={`0 0 ${COL.gutOut} ${BODY_H}`} aria-hidden="true">
+			<path class="filt__curve" d={straight(COL.gutOut)}></path>
+			{motion === 'pulse' && <path class="filt__pip filt__pip--out" d={straight(COL.gutOut)} pathLength="100" />}
+			<path class="filt__head" d={head(COL.gutOut)}></path>
+		</svg>
+
+		<div class="filt__out">
+			<div class="filt__alarm" data-flow="out">
+				<span class="filt__alarm-head">
+					<Icon name="tabler:alert-triangle-filled" class="filt__alarm-icon" aria-hidden="true" />
+					<span class="filt__sev">{FREEZER_ALARM.severity}</span>
+				</span>
+				<span class="filt__name">{FREEZER_ALARM.name}</span>
+				<span class="filt__meta">{`${FREEZER_ALARM.source} · open ${openFor(kept)}`}</span>
+			</div>
+		</div>
+	</div>
+</div>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	@function u($n) {
+		@return calc(#{$n} * var(--u));
+	}
+
+	.filt-fit {
+		container-type: inline-size;
+	}
+
+	.filt {
+		--u: var(--filt-u);
+		--filt-grey: var(--color-text-secondary, #5b616e);
+		--filt-rail-w: max(1px, #{u(2)});
+		// The alarm's red, for everything on its path: the crossing, both lines, the icon, the severity.
+		--filt-alarm: var(--color-accent-red, #b23c33);
+		--filt-card-shadow: 0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.06);
+
+		display: grid;
+		grid-template-columns:
+			u(var(--filt-col-in))
+			u(var(--filt-col-gut-in))
+			u(var(--filt-col-node))
+			u(var(--filt-col-gut-out))
+			u(var(--filt-col-out));
+		grid-template-rows: auto u(var(--filt-body-h));
+		grid-template-areas:
+			'label-in .      .    .       label-out'
+			'in       gut-in node gut-out out';
+		align-items: center;
+		max-width: u(var(--filt-native));
+		margin: 0 auto;
+	}
+
+	// Normalize's stage labels, to the unit.
+	.filt__label {
+		min-height: u(24);
+		margin: 0 0 u(8);
+		font-size: u(15);
+		line-height: u(24);
+		text-align: center;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		white-space: nowrap;
+		color: var(--filt-grey);
+	}
+
+	.filt__label--in {
+		grid-area: label-in;
+	}
+
+	.filt__label--out {
+		grid-area: label-out;
+	}
+
+	.filt__in {
+		grid-area: in;
+		position: relative;
+		z-index: 1;
+	}
+
+	// The two cards, the spark and the alarm: Normalize's white model card, hairline, 8-unit corner.
+	.filt__spark,
+	.filt__alarm {
+		border: 1px solid var(--color-border, #ebebeb);
+		border-radius: u(var(--flow-radius, 8));
+		background: var(--color-bg-surface, #fff);
+		box-shadow: var(--filt-card-shadow);
+	}
+
+	.filt__spark {
+		padding: u(12);
+
+		svg {
+			display: block;
+			width: 100%;
+			max-width: none;
+			height: auto;
+			overflow: visible;
+		}
+	}
+
+	.filt__line,
+	.filt__hot {
+		fill: none;
+		vector-effect: non-scaling-stroke;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	// The teeth under the limit recede, as the dropped openings always have: legible, and plainly short.
+	.filt__line {
+		stroke: var(--filt-grey);
+		stroke-opacity: 0.55;
+		stroke-width: var(--filt-rail-w);
+	}
+
+	.filt__hot {
+		stroke: var(--filt-alarm);
+		stroke-width: max(1.5px, #{u(3)});
+	}
+
+	// Normalize's spark fill, at its 10%: the teeth get a body rather than an outline. What lies over
+	// the limit — the time the door stood open past the rule — is the one wedge in red.
+	.filt__area {
+		fill: var(--filt-grey);
+		opacity: 0.1;
+	}
+
+	.filt__over {
+		fill: var(--filt-alarm);
+		opacity: 0.16;
+	}
+
+	.filt__fired {
+		fill: var(--filt-alarm);
+	}
+
+	.filt__limit {
+		stroke: var(--filt-grey);
+		stroke-opacity: 0.5;
+		stroke-width: 1;
+		stroke-dasharray: 4 3;
+	}
+
+	// In the spark's own units, which are the drawing's, so 15 here is the family's 15.
+	.filt__limit-label,
+	.filt__peak-label {
+		font-family: $font-family-mono;
+		font-size: 15px;
+	}
+
+	.filt__limit-label {
+		fill: var(--filt-grey);
+	}
+
+	.filt__peak-label {
+		font-weight: $font-weight-bold;
+		text-anchor: middle;
+		fill: var(--filt-alarm);
+	}
+
+	.filt__gut {
+		width: 100%;
+		height: 100%;
+		overflow: visible;
+	}
+
+	.filt__gut--in {
+		grid-area: gut-in;
+	}
+
+	.filt__gut--out {
+		grid-area: gut-out;
+	}
+
+	.filt__curve,
+	.filt__head {
+		fill: none;
+		stroke: var(--filt-alarm);
+		stroke-width: var(--filt-rail-w);
+		vector-effect: non-scaling-stroke;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.filt__node {
+		grid-area: node;
+		position: relative;
+		z-index: 1;
+		display: flex;
+		justify-content: center;
+		height: u(var(--filt-badge));
+	}
+
+	// Normalize's badge, to the unit and the gradient.
+	.filt__badge {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: u(var(--filt-badge));
+		height: u(var(--filt-badge));
+		padding: u(16);
+		border-radius: 32%;
+		color: #000;
+		background: linear-gradient(155deg, #fff 35%, color-mix(in srgb, var(--color-primary, #3d50f5) 5%, #fff) 100%);
+		box-shadow: var(
+			--flow-shadow-badge,
+			0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.06),
+			0 #{u(7)} #{u(16)} #{u(-5)} rgba(var(--color-shadow-ui-rgb), 0.22)
+		);
+	}
+
+	// Out of flow, as Normalize's is, so the node IS the badge and the lines meet its centre.
+	.filt__node-label {
+		position: absolute;
+		top: calc(100% + #{u(10)});
+		left: 50%;
+		transform: translateX(-50%);
+		font-size: u(15);
+		line-height: u(20);
+		font-weight: $font-weight-medium;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		white-space: nowrap;
+		color: var(--color-text);
+	}
+
+	.filt__out {
+		grid-area: out;
+		position: relative;
+		z-index: 1;
+	}
+
+	// The alarm as the product shows one: severity, name, source — with the warning sign first, the
+	// way Notify's messages each open on their channel's mark.
+	.filt__alarm {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: u(6);
+		padding: u(14) u(16);
+	}
+
+	.filt__alarm-head {
+		display: flex;
+		align-items: center;
+		gap: u(6);
+	}
+
+	.filt__alarm-icon {
+		flex: none;
+		width: u(22);
+		height: u(22);
+		color: var(--filt-alarm);
+	}
+
+	.filt__sev {
+		padding: u(2) u(8);
+		border-radius: u(5);
+		font-family: $font-family-mono;
+		font-size: u(15);
+		font-weight: $font-weight-bold;
+		line-height: u(20);
+		letter-spacing: 0.04em;
+		color: #fff;
+		background: var(--filt-alarm);
+	}
+
+	.filt__name {
+		font-size: u(16);
+		font-weight: $font-weight-medium;
+		line-height: u(21);
+		color: var(--color-text);
+	}
+
+	.filt__meta {
+		font-size: u(15);
+		line-height: u(20);
+		font-variant-numeric: tabular-nums;
+		color: var(--filt-grey);
+	}
+
+	// --- the pulse ---------------------------------------------------------------------------
+
+	// One dash per leg, parked outside the path at both ends: at offset 8 it sits just before the
+	// start, at -100 just past the end, so it only shows while it travels. No opacity needed.
+	.filt__pip {
+		fill: none;
+		stroke: color-mix(in srgb, var(--filt-alarm) 28%, #fff);
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-dasharray: 8 200;
+		stroke-dashoffset: 8;
+		animation: var(--filt-beat) linear infinite;
+		animation-play-state: var(--flow-play, running);
+	}
+
+	.filt__pip--in {
+		animation-name: filt-pip-in;
+	}
+
+	.filt__pip--out {
+		animation-name: filt-pip-out;
+	}
+
+	// The alarm answers once the pip lands: a ring in its own red, then back to rest.
+	.filt[data-motion='pulse'] .filt__alarm {
+		animation: filt-answer var(--filt-beat) ease-out infinite;
+		animation-play-state: var(--flow-play, running);
+	}
+
+	// 28 units in, 70 out, at one speed: 8% of the beat for the short leg, 20% for the long one, with
+	// the node's width between them.
+	@keyframes filt-pip-in {
+		0% {
+			stroke-dashoffset: 8;
+		}
+		8%,
+		100% {
+			stroke-dashoffset: -100;
+		}
+	}
+
+	@keyframes filt-pip-out {
+		0%,
+		14% {
+			stroke-dashoffset: 8;
+		}
+		34%,
+		100% {
+			stroke-dashoffset: -100;
+		}
+	}
+
+	@keyframes filt-answer {
+		0%,
+		34% {
+			box-shadow:
+				var(--filt-card-shadow),
+				0 0 0 0 color-mix(in srgb, var(--filt-alarm) 0%, transparent);
+		}
+		40% {
+			box-shadow:
+				var(--filt-card-shadow),
+				0 0 0 u(5) color-mix(in srgb, var(--filt-alarm) 22%, transparent);
+		}
+		68%,
+		100% {
+			box-shadow:
+				var(--filt-card-shadow),
+				0 0 0 u(10) color-mix(in srgb, var(--filt-alarm) 0%, transparent);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.filt__pip {
+			display: none;
+		}
+
+		.filt[data-motion='pulse'] .filt__alarm {
+			animation: none;
+		}
+	}
+</style>

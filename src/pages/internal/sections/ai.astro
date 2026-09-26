@@ -3,6 +3,7 @@ import VisualPage from '@root/pages/internal/_VisualPage.astro';
 import Variant from '@root/pages/internal/_Variant.astro';
 import AiSection from '@components/Landing/AiSection.astro';
 import { kv } from '@root/pages/internal/_key-visuals';
+import { AI_BADGE_CYCLE_HANDOFF } from '@data/ai-visual';
 
 /**
  * The AI section — "Build IoT solutions faster than ever with AI inside ThingsBoard".
@@ -34,6 +35,19 @@ import { kv } from '@root/pages/internal/_key-visuals';
  * content could change the sizing) and folded back into `AiSection` as the default. The shell
  * terminal it replaced is `terminal="cli"`; its own variant was retired, as it matched the shipping
  * section until the second tab was picked, and `bands` still shows it.
+ *
+ * PROMOTED 2026-09-26, with running order A: an action under each route's copy (`cta`), now the
+ * default. The handoff's section without them is "No actions"; the two older references pin
+ * `cta: false` too, and the two candidates follow the shipping section and show the actions.
+ *
+ * PROMOTED 2026-09-26, later: the wash follows the mark (`wash: 'cycle'`, this page's "Wash follows
+ * mark" until now, so that variant went — it was the shipping section) and one call to action under
+ * the row (`cta: 'block'`). The morning's action per route is the candidate "Action per route". The
+ * references now pin `wash: 'route'` and `cta: 'none'`, and "Value copy" pins `wash: 'route'`: its
+ * kickers are set in the route's hue, which a cycling wash would put on the wrong ground.
+ *
+ * LATER STILL: the default mark cycle gained the use cases' berry, and the cycling wash became a glow.
+ * The references pin `hues: AI_BADGE_CYCLE_HANDOFF`, the handoff's five colours.
  */
 ---
 
@@ -44,31 +58,40 @@ import { kv } from '@root/pages/internal/_key-visuals';
 		bleed
 		shipping
 		name="Toggle"
-		note="The toggle with the hand-off (2026-09-23), the coding-agent terminal, the freezer-door chat and windows that fill their column (2026-09-24), all promoted from this page"
+		note="The toggle with the hand-off (2026-09-23), the coding-agent terminal, the freezer-door chat and windows that fill their column (2026-09-24); the wash following the mark and a call to action under the row (2026-09-26, running order A), all promoted from this page"
 	/>
 
 	<Variant
 		visual={kv('ai')}
 		component={AiSection}
-		props={{ wash: 'cycle' }}
+		props={{ cta: 'route' }}
 		bleed
-		name="Wash follows mark"
-		note="experimental · the band's wash cycles with the mark's colours, in step; the kicker-less copy, so no coloured type rides a moving ground"
+		name="Action per route"
+		note="candidate (2026-09-26, the morning's A) · a button at the end of each route's copy instead of the block under the row"
 	/>
 
 	<Variant
 		visual={kv('ai')}
 		component={AiSection}
-		props={{ copy: 'value' }}
+		props={{ copy: 'value', wash: 'route' }}
 		bleed
 		name="Value copy"
-		note="candidate · a kicker naming the tool, and headlines that say what you get"
+		note="candidate · a kicker naming the tool, and headlines that say what you get; on the route's wash, since its kickers take the route's hue"
 	/>
 
 	<Variant
 		visual={kv('ai')}
 		component={AiSection}
-		props={{ fit: 'inset', chat: 'dewPoint' }}
+		props={{ cta: 'none', wash: 'route', hues: AI_BADGE_CYCLE_HANDOFF }}
+		bleed
+		name="No actions"
+		note="previous homepage (the handoff, 2026-09-25) · the shipping section with no action under either route"
+	/>
+
+	<Variant
+		visual={kv('ai')}
+		component={AiSection}
+		props={{ fit: 'inset', chat: 'dewPoint', cta: 'none', wash: 'route', hues: AI_BADGE_CYCLE_HANDOFF }}
 		bleed
 		name="Inset windows"
 		note="previous homepage (2026-09-24, before the chat and the fit were promoted) · both windows 500 wide and centred in their column; the dew-point chat"
@@ -77,76 +100,22 @@ import { kv } from '@root/pages/internal/_key-visuals';
 	<Variant
 		visual={kv('ai')}
 		component={AiSection}
-		props={{ layout: 'bands', terminal: 'cli', chat: 'dewPoint', fit: 'inset' }}
+		props={{
+			layout: 'bands',
+			terminal: 'cli',
+			chat: 'dewPoint',
+			fit: 'inset',
+			cta: 'none',
+			wash: 'route',
+			hues: AI_BADGE_CYCLE_HANDOFF,
+		}}
 		bleed
 		name="Bands"
 		note="previous homepage · both routes stacked, with the lede, the kickers and the shell terminal"
 	/>
 </VisualPage>
 
-{
-	/* THE HOMEPAGE'S CONTEXT, which the section is drawn against and the playground does not load.
-	   Here rather than in `_Variant`, because every sandbox page imports that and none of the others
-	   want any of it.
-
-	   Found by diffing the computed style of every element in the section, `/` against this page, at
-	   the same width — and the diff is the test if a variant ever looks different here: before this
-	   block the chat's app bar, chip and composer line all came out shorter (line-height `normal`
-	   against 24px) and the title sat 27px lower (the UA's h2 margin). */
-}
+{/* The homepage's context the section is drawn against: `_bleed-context.scss`. */}
 <style lang="scss" is:global>
-	@use '../../../styles/variables' as *;
-
-	// The `section .main-div` container, its ~5px margin that `.ai__band` zeroes, and the 1000px
-	// measure. `landing` also gives every `section` the page ground, which `index.astro` strips again
-	// — the bands carry their own gradient, and a fill under them is a colour the homepage never paints.
-	@use '../../../styles/landing';
-	@use '../../../styles/sections-flat';
-
-	:root section {
-		background: none;
-	}
-
-	// The rest reaches the SECTION ONLY, through its wrapper, and every selector is `:where()`-wrapped
-	// so it lands at the specificity the homepage's own rule has. One class heavier and these would
-	// start beating the section's scoped rules, which is the opposite of fidelity.
-
-	// What the homepage body passes down: `BaseLayout`'s two Starlight properties, and Starlight's
-	// body rule reading them. The playground's body sets its own colour and no line-height.
-	.vx__bleed {
-		--sl-line-height: 1.5;
-		--__sl-font: #{$font-family-base};
-		line-height: var(--sl-line-height);
-		color: var(--sl-color-text);
-	}
-
-	// Starlight's reset, in Starlight's layer — so, as on the homepage, anything the section writes
-	// beats it.
-	@layer starlight.reset {
-		:where(.vx__bleed) * {
-			margin: 0;
-		}
-
-		:where(.vx__bleed) :is(input, button, textarea, select) {
-			font: inherit;
-		}
-
-		:where(.vx__bleed) :is(p, h1, h2, h3, h4, h5, h6, code) {
-			overflow-wrap: break-word;
-		}
-	}
-
-	// `index.astro`'s page-wide wrapping.
-	:where(.vx__bleed) :is(h1, h2, h3) {
-		text-wrap: balance;
-	}
-
-	:where(.vx__bleed) p {
-		text-wrap: pretty;
-	}
-
-	// The playground caps every `svg` at its box; the homepage does not.
-	:where(.vx__bleed) svg {
-		max-width: none;
-	}
+	@use '../bleed-context';
 </style>

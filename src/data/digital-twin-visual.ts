@@ -10,7 +10,7 @@
 export const DIGITAL_TWIN_COPY = {
 	title: 'Model your real world',
 	body: 'Organize devices, assets, customers, and hierarchies that match your case. Control data, permissions, and processing at every level — site, machine, or single sensor. Aggregate, transform, and act on data wherever it makes sense.',
-	link: { text: 'Build a digital twin', href: '/docs/pe/user-guide/digital-twins/entities/' },
+	link: { text: 'Digital twin model', href: '/docs/pe/concepts/digital-twin-model/' },
 	// #7a37e7, a dE 1.3 nudge off #7b3fe4 — same violet, brought onto the set's L* 53 and the brand's
 	// chroma. It is worth knowing this hue is the GATEWAY's in `homeEcosystem`, which this row has
 	// always borrowed; the normalisation does not change that, it just stops the two being identical.

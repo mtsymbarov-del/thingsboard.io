@@ -1,6 +1,6 @@
 ---
 import { Icon } from 'astro-icon/components';
-import { SCALE_MODES, type ScaleMode } from '@data/scale-visual';
+import { SCALE_LOGOS as LOGOS, SCALE_MODES, type ScaleMode } from '@data/scale-visual';
 
 /**
  * A seventh cut: two deployment modes, one colour, and no third element of any kind.
@@ -51,18 +51,8 @@ interface Props {
 
 const { modes = SCALE_MODES, animate = false, hue = 'card' } = Astro.props;
 
-/**
- * Chip label to mark. Citus and Valkey are LOCAL files under `src/icons/`, because Simple Icons
- * publishes neither — they were supplied as brand SVGs and redrawn in `currentColor`, so every mark
- * in the row is the project's own rather than a stand-in.
- */
-const LOGOS: Record<string, string> = {
-	PostgreSQL: 'simple-icons:postgresql',
-	Citus: 'citus',
-	Cassandra: 'simple-icons:apachecassandra',
-	Kafka: 'simple-icons:apachekafka',
-	Valkey: 'valkey',
-};
+// The stack's marks are `SCALE_LOGOS` in `@data/scale-visual`, shared with the trust band's small
+// copy of this drawing (`TrustVisual`), so the two cannot name a store differently.
 
 // How far each card's surface reaches PAST its column, horizontally — the `inset` on
 // `.sd__card::before`. It used to be invisible: a 6% wash bleeding over the gutter is not

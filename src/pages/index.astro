@@ -5,55 +5,36 @@ import InternalNav from './internal/_InternalNav.astro';
 import { Icon } from 'astro-icon/components';
 import CustomersLogo from '@components/Landing/CustomersLogo.astro';
 import Hero from '@components/Landing/Hero.astro';
-import DashboardShowcase from '@components/Landing/DashboardShowcase.astro';
 import { Products } from '@models/site.models';
-import IntroSection from '@components/Landing/IntroSection.astro';
-import PlatformClear from '@components/Landing/PlatformClear.astro';
-import { PLATFORM_SECTION_COPY } from '@data/platform-visual';
-import FeatureBlockSection from '@components/Landing/FeatureBlockSection.astro';
-
-import ConnectHub from '@components/Landing/ConnectHub.astro';
-import SolutionFlow from '@components/Landing/SolutionFlow.astro';
-import TwinCorridor from '@components/Landing/TwinCorridor.astro';
-import NormalizeSeries from '@components/Landing/NormalizeSeries.astro';
-import ScaleDuo from '@components/Landing/ScaleDuo.astro';
-
-import { CONNECT_COPY } from '@data/connect-visual';
-import { DIGITAL_TWIN_COPY } from '@data/digital-twin-visual';
-import { NORMALIZE_COPY } from '@data/normalize-visual';
-import { SCALE_COPY } from '@data/scale-visual';
-import { SOLUTION_COPY } from '@data/solution-flow';
-import AiSection from '@components/Landing/AiSection.astro';
-import FeatureTile from '@components/Landing/FeatureTile.astro';
+import HomeSections from '@components/Landing/HomeSections.astro';
 import ClosingCta from '@components/Landing/ClosingCta.astro';
-import EcosystemCard from '@components/Landing/EcosystemCard.astro';
-import GatewayRelay from '@components/Landing/GatewayRelay.astro';
-import SectionHeader from '@components/Landing/SectionHeader.astro';
-import { homeFeatures } from '~/data/homeFeatures';
-import { homeEcosystem } from '~/data/homeEcosystem';
-
-// Trial: the filled badge treatment, now carried by the mobile card alone — the
-// other six were tried filled and reverted. A card opts in with its own `filled`
-// key in `homeEcosystem`; this flips the whole trial off.
-const ECOSYSTEM_FILLED = true;
-import { homeProducts } from '~/data/homeProducts';
-import PricingBackground from '@components/Pricing/PricingBackground.astro';
-import { homeCarouselItems } from '~/data/homeCarousel';
 import { heroLcpPreload } from '@util/lcp-preload';
+import { shippingComposition, type HomeComposition } from '@data/home-compositions';
 
 /**
  * The homepage.
  *
- * The five key visuals run as `FeatureBlockSection` rows — the repo's own alternating row, given a
- * component in its default slot instead of an image, with `imageFirst` alternating the sides. They
- * replaced `ManageSection`, `ScadaSection` and `ReactSection`, which said the same things in
- * screenshots; `RuleEngineSection` went with them, having been behind `{false && …}` since before
- * this work started.
+ * The hero, the logo strip and the closing CTA are here. Everything between them is a RUNNING ORDER
+ * from `data/home-compositions.ts`, rendered by `HomeSections`: which sections run, in what order,
+ * with which options. `/` renders the shipping one.
  *
- * Each visual draws itself from a design unit derived from the width this row gives it — see
- * `src/components/Landing/CLAUDE.md` before changing one. They were built and judged at
- * `/internal/sections/`, which is still the place to do that.
+ * THIS PAGE IS ALSO A COMPONENT. `/internal/homepages/<id>/` imports it and passes another order as
+ * `composition`, with `preview` to keep that copy out of search. It is rendered from here rather than
+ * from a shared layout so that every order gets this page's own stylesheet below, which dresses the
+ * sections by their ids and classes, without that stylesheet moving.
+ *
+ * The key visuals run as `FeatureBlockSection` rows — the repo's own alternating row, given a
+ * component in its default slot instead of an image. Each draws itself from a design unit derived
+ * from the width its row gives it — see `src/components/Landing/CLAUDE.md` before changing one.
+ * They were built and judged at `/internal/sections/`, which is still the place to do that.
  */
+interface Props {
+	composition?: HomeComposition;
+	/** A running order under `/internal/homepages/`, not the homepage: noindex, no canonical. */
+	preview?: boolean;
+}
+
+const { composition = shippingComposition(), preview = false } = Astro.props;
 
 // Passed to both <Hero> and the preload, so the <link> can't name a file the CSS
 // won't paint — which is also why backgroundImage isn't left to Hero's default.
@@ -72,6 +53,8 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 	description="ThingsBoard is an open-source IoT platform for device management, data collection, processing, and visualization for your IoT projects."
 	customTitle={true}
 	preloadLcpImage={heroLcpPreload(HERO_BACKGROUND)}
+	noIndex={preview}
+	noCanonical={preview}
 >
 	<!-- HERO -->
 	<Hero
@@ -111,224 +94,11 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 
 	<section id="overflow">
 		{
-			/* The centred section: the statement, and the platform visual under it.
-		    
-		    THIS DISPLACED THE PUBLISHED STATEMENT that used to sit here. That copy was approved and is
-		    one revert away — see the commit that removed `data/home-intro.ts`. What replaces it was
-		    written for this section with the drawing under it, which is why the heading carries no
-		    link: "ThingsBoard" is the first word of a sentence here, and a link inside it is a second
-		    thing to look at in the largest line on the page.
-
-		    The visual is NOT inside `.new-rows`. It is a full-width section rather than a row's media,
-		    and `styles/_home-intro.scss` gives it the 1000 measure — so it gets a 960 column, where it
-		    stays horizontal and simply scales. */
+			/* Everything between the hero and the closing CTA: one running order, from
+			   `data/home-compositions.ts`. The order decides which sections run and where; the sections'
+			   markup is in `HomeSections`, and the rules that dress them are this page's stylesheet below. */
 		}
-		<IntroSection title={PLATFORM_SECTION_COPY.title} description={PLATFORM_SECTION_COPY.description} titleLink={null}>
-			<PlatformClear />
-		</IntroSection>
-
-		{
-			/* The five new key visuals, in running order, alternating sides. Wrapped so the page can
-		    tighten the row and alternate its wash without touching the shared component, which two
-		    product pages also use. */
-		}
-		<div class="new-rows">
-			<FeatureBlockSection
-				id="connect"
-				heading={CONNECT_COPY.title}
-				description={CONNECT_COPY.body}
-				links={[{ href: CONNECT_COPY.link.href, text: CONNECT_COPY.link.text }]}
-				badge={CONNECT_COPY.badge}
-				imageEqual
-			>
-				{
-					/* The hub at five arms a side: ten protocols arriving at one platform, each on a line
-				    that runs off and fades out where a device icon would have been. It replaced the
-				    cloud, which said "whatever you have is already in here" by piling up names; this
-				    says "everything arrives at one place" and draws the arrival.
-
-				    Colour is texture, not a coding — four hues in rotation, no hue repeating down a
-				    column or across a row. Nothing on the page names a route, so a coding would have
-				    been a key with nothing to decode it; the paragraph beside it lists the routes in
-				    words instead.
-
-				    The cloud and ConnectFlow are both still in the sandbox, and either is the fallback
-				    if this does not survive review. */
-				}
-				<ConnectHub arms="five" />
-			</FeatureBlockSection>
-
-			<FeatureBlockSection
-				id="solution"
-				heading={SOLUTION_COPY.title}
-				description={SOLUTION_COPY.body}
-				links={[{ href: SOLUTION_COPY.link.href, text: SOLUTION_COPY.link.text }]}
-				badge={SOLUTION_COPY.badge}
-				imageFirst
-				imageEqual
-			>
-				<SolutionFlow />
-			</FeatureBlockSection>
-
-			<FeatureBlockSection
-				id="twin"
-				heading={DIGITAL_TWIN_COPY.title}
-				description={DIGITAL_TWIN_COPY.body}
-				links={[{ href: DIGITAL_TWIN_COPY.link.href, text: DIGITAL_TWIN_COPY.link.text }]}
-				badge={DIGITAL_TWIN_COPY.badge}
-				imageEqual
-			>
-				{/* The nested reading: the unit in its zone on the left, the same path on the right. */}
-				<TwinCorridor zone />
-			</FeatureBlockSection>
-		</div>
-
-		{
-			/* AI, ported from the `tb-landing-prototype` repo's section 06.
-
-		    HERE, between "Model your real world" and "Turn IoT data into action": the rows before it
-		    are about describing your system, the rows after are about acting on what it produces, and
-		    this is the seam. It is NOT a `FeatureBlockSection`: it is two routes into one platform,
-		    and a switch under its heading chooses which one is on the page — the chat first, the
-		    terminal a click away. That layout is `AiSection`'s default; `layout="bands"` is the one
-		    it replaced, both routes stacked.
-
-		    IT BREAKS `.new-rows` IN TWO, and has to. That container is not just a wrapper: it sets
-		    `.new-rows .main-div { padding: 80px 20px }`, which would reach every one of this section's
-		    own `.main-div`s and blow apart the band geometry the windows are docked to. The rows
-		    resume in a second block below, carrying the wash across the seam — see
-		    `new-rows--continued`. */
-		}
-		<AiSection />
-
-		<div class="new-rows new-rows--continued">
-			<FeatureBlockSection
-				id="normalize"
-				heading={NORMALIZE_COPY.title}
-				description={NORMALIZE_COPY.body}
-				links={[{ href: NORMALIZE_COPY.link.href, text: NORMALIZE_COPY.link.text }]}
-				badge={NORMALIZE_COPY.badge}
-				imageFirst
-				imageEqual
-			>
-				<NormalizeSeries motion="pulse" />
-			</FeatureBlockSection>
-
-			<FeatureBlockSection
-				id="scale"
-				heading={SCALE_COPY.title}
-				description={SCALE_COPY.body}
-				links={[{ href: SCALE_COPY.link.href, text: SCALE_COPY.link.text }]}
-				badge={SCALE_COPY.badge}
-				imageEqual
-			>
-				<ScaleDuo animate hue="field" />
-			</FeatureBlockSection>
-		</div>
-
-		<!-- Dashboard Description Section -->
-		<section id="dashboard_description">
-			<div class="main-div">
-				{
-					/* The mark is `tabler:layout-dashboard` at #006bc7, and neither is new. The glyph is
-					   the dashboard tiles the solution row already uses for its "Dashboards" screen — a
-					   board of widgets, which is what this section shows, where `chart-dots` (the
-					   platform's Operate stage) read as one chart. The hue is the sixth of the section colours, the only one with no
-					   home on the page: Operate itself is coded indigo, and indigo is already the brand,
-					   the solution row's badge and the app squircle. A fourth job for it was not worth
-					   the saving. */
-				}
-				<SectionHeader
-					title="Build real-time IoT dashboards"
-					subtitle="Build the view your users need from 600+ widgets, and control devices from the same screen. No front-end work required."
-					titleSize="section"
-					subtitleMeasure="copy"
-					badge={{ icon: 'tabler:layout-dashboard', color: '#006bc7' }}
-				>
-					<div class="view-all-link">
-						<a href="/use-cases/">
-							Browse all use cases
-							<Icon name="tabler:chevron-right" aria-hidden="true" />
-						</a>
-					</div>
-				</SectionHeader>
-				<DashboardShowcase items={homeCarouselItems} interval={12000} />
-			</div>
-		</section>
-
-		<!-- Products + ecosystem share one band; the wave field is Products' own -->
-		<div class="home-band">
-			<!-- Products Section -->
-			<section id="products">
-				<PricingBackground contained />
-				<div class="main-div">
-					<SectionHeader
-						title="Products"
-						subtitle="The same platform and the same features either way — what changes is who runs it. We host, scale and upgrade it for you, or you deploy it inside your own network."
-						theme="dark"
-						titleSize="title"
-						subtitleMeasure="copy"
-					/>
-					<div class="product-list">
-						{
-							/* The pair with its actions in line: button and link on one line once the card is
-							   400px wide, no step under the button. Promoted 2026-09-25 from /internal/sections/products/.
-							   Set here rather than in `homeProducts`, which the product pages and the header
-							   also read. */
-							homeProducts.map((product) => <EcosystemCard {...product} pairInline primaryNote={undefined} />)
-						}
-					</div>
-				</div>
-			</section>
-
-			<!-- Product Ecosystem Section -->
-			<section id="product-ecosystem">
-				<div class="main-div">
-					<SectionHeader
-						title="Product ecosystem"
-						subtitle="Add what your project needs — protocol bridges, analytics, edge nodes, a mobile app, and a library of ready-made components."
-						titleSize="section"
-						subtitleMeasure="copy"
-					/>
-					<div class="product-ecosystem-list">
-						{
-							homeEcosystem.map((product) => {
-								const card = { ...product, filled: ECOSYSTEM_FILLED && (product.filled ?? false) };
-								// The Gateway card's visual is a component rather than data, so it
-								// alone takes a slot child. The others must pass NO slot at all —
-								// even an empty one would beat the video and tiles branches inside.
-								return product.name === 'IoT Gateway' ? (
-									<EcosystemCard {...card}>
-										<GatewayRelay />
-									</EcosystemCard>
-								) : (
-									<EcosystemCard {...card} />
-								);
-							})
-						}
-					</div>
-				</div>
-			</section>
-		</div>
-
-		<!-- Bottom Features Section -->
-		<section id="bottom-features">
-			<div class="main-div">
-				{
-					/* Heading and cards both come from `develop`'s own closing feature section, so the two
-					   pages make the same argument in the same words. The lede sets the section against
-					   the ecosystem above it: that one is what you can add, this one is what's in the box. */
-				}
-				<SectionHeader
-					title="Why choose ThingsBoard"
-					titleSize="section"
-					subtitle="Ten years of building one platform packs a lot in. Everything here comes in the box, before you add a thing."
-				/>
-				<div id="cards">
-					{homeFeatures.map((feature) => <FeatureTile {...feature} />)}
-				</div>
-			</div>
-		</section>
+		<HomeSections composition={composition} />
 	</section>
 
 	<ClosingCta />
@@ -341,7 +111,7 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 	    To remove: `grep -rln TEMP-INTERNAL-NAV src/pages` (this page and the Cloud and On-premises
 	    pages) and delete both hits in each file. */
 	}
-	<InternalNav />
+	<InternalNav homepage={composition.id} />
 </BaseLayout>
 
 {/* Scoped to `.new-rows`, so none of it reaches the product pages that share this component. */}
@@ -351,10 +121,12 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 	@use '../styles/home-intro';
 
 	// The sections the internal hub links to (`/#connect`, `/#ai`…) land under the fixed header, not
-	// behind it.
+	// behind it. Every top-level section of a running order, so the island's outline can jump to any.
 	#intro,
 	#ai,
-	.new-rows > section[id] {
+	.new-rows > section[id],
+	#overflow > section[id],
+	.home-band > section[id] {
 		scroll-margin-top: calc(#{$header-height} + var(--promo-h, 0px));
 	}
 </style>
@@ -1022,14 +794,6 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 		margin-bottom: $spacing-8;
 	}
 
-	// The heading sat flush against the band's top edge (padding-top was 0), and
-	// the gap under it was 100px — the header's own 50px margin plus #cards'
-	// 50px padding, stacked. The band gets a top to match its bottom, and the
-	// tiles come up to one 32px step under the heading.
-	#bottom-features .section-header {
-		margin-bottom: $spacing-8;
-	}
-
 	// Top-section actions read as labels, matching the cards'
 	// `.ecosystem-card__link`: medium weight, accent colour, no arrow, underline
 	// on hover. The shared ReadMoreLink stacks three chevrons at 0.2/0.5/1 opacity
@@ -1113,109 +877,6 @@ const HERO_BACKGROUND = '/images/hero/tb-cover.webp';
 		}
 	}
 
-	// Dashboard section
-	#dashboard_description {
-		margin-top: $spacing-16;
-		margin-bottom: $spacing-16;
-
-		@include media-down(md) {
-			margin-top: $spacing-8;
-			margin-bottom: $spacing-8;
-		}
-
-		// The 960 measure this section wanted is now the page default in
-		// _sections-flat.scss — the ID-doubled override that used to be here was
-		// there to outrank `@layer landing`'s 1400, and it was itself being beaten
-		// by a `!important` in the flat layer. Both are gone.
-
-		.section-header {
-			margin-bottom: $spacing-8;
-		}
-
-		// Sits under the lede now, so it reads as part of the header rather than a
-		// footnote to the board.
-		.view-all-link {
-			margin-top: $spacing-4;
-
-			a {
-				@include type-action;
-				display: inline-flex;
-				align-items: center;
-				gap: 0;
-				color: var(--color-primary, #{$color-brand});
-
-				// Pulled in: the glyph's own side bearing is the gap.
-				[data-icon] {
-					width: 22px;
-					height: 22px;
-					margin-left: -1px;
-				}
-
-				// `:focus-visible` alongside `:hover`, as the other outgoing links have
-				// it — on hover alone a keyboard reader reaching this link got colour
-				// and nothing else.
-				&:hover,
-				&:focus-visible {
-					text-decoration: underline;
-					// 3px, as every other outgoing link on this page underlines. Left
-					// unset it fell back to `auto`, which rides tight under the
-					// baseline — the same link treatment drawn two ways.
-					text-underline-offset: 3px;
-				}
-			}
-		}
-	}
-
-	// Bottom features section
-	#bottom-features {
-		padding-top: $spacing-16;
-		padding-bottom: $spacing-20;
-		// The page's ONE light tint again: color-mix(in srgb, #3d50f5 5%, #fff).
-		// This ran at twice that ink (#eceefe) while the ecosystem sat on the same
-		// wash next door and the two needed forcing apart. The ecosystem is white
-		// now, so the boundary is self-evident and the doubled ink retires.
-		background-color: #f5f6ff;
-	}
-
-	#cards {
-		padding-top: 0;
-		// THREE ACROSS, NOT FOUR. Four put the descriptions on a 24-character measure once this
-		// section took develop's copy — two and three sentences a card rather than the one line the
-		// auto-fill this replaced was tuned for, which ran the longest of them to ten lines. Three
-		// gives ~34, on the same three-two-one ladder the ecosystem grid above it uses, so the page's
-		// two card grids break at the same widths instead of one reflowing on its own schedule.
-		//
-		// FLEX RATHER THAN GRID, for the last row. Ten cards over three columns leaves one on its own,
-		// and a grid pins it to the first track — an orphan hard against the left edge under two full
-		// rows. Flex centres a short row for free, and it is the only part of this that grid cannot do
-		// without naming the leftover by `nth-child`, which would be wrong again the moment a card is
-		// added or dropped.
-		//
-		// The basis is the track width written out: the container less the gaps between n cards,
-		// divided by n. `flex-shrink: 1` is deliberate — at an exact basis a sub-pixel rounding could
-		// otherwise tip the third card onto its own row.
-		--cards-per-row: 3;
-
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: $spacing-3;
-		width: 100%;
-		max-width: 960px;
-		margin-inline: auto;
-
-		> * {
-			flex: 0 1 calc((100% - (var(--cards-per-row) - 1) * #{$spacing-3}) / var(--cards-per-row));
-			// Without this a long word sets the card's floor and the row overflows instead of wrapping.
-			min-width: 0;
-		}
-
-		@include media-down(lg) {
-			--cards-per-row: 2;
-		}
-
-		@include media-down(md) {
-			--cards-per-row: 1;
-		}
-	}
+	// The use cases' and "Why choose"'s own rules moved into `UseCasesSection` and `FeaturesSection`
+	// (2026-09-27), keyed to the same ids, so their sandbox pages render what this page does.
 </style>

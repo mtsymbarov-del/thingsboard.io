@@ -1,0 +1,309 @@
+---
+import IntroSection from '@components/Landing/IntroSection.astro';
+import PlatformClear from '@components/Landing/PlatformClear.astro';
+import FeatureBlockSection from '@components/Landing/FeatureBlockSection.astro';
+import ConnectHub from '@components/Landing/ConnectHub.astro';
+import SolutionFlow from '@components/Landing/SolutionFlow.astro';
+import TwinCorridor from '@components/Landing/TwinCorridor.astro';
+import NormalizeSeries from '@components/Landing/NormalizeSeries.astro';
+import AutomateSwitch from '@components/Landing/AutomateSwitch.astro';
+import ScaleDuo from '@components/Landing/ScaleDuo.astro';
+import AiSection from '@components/Landing/AiSection.astro';
+import UseCasesSection from '@components/Landing/UseCasesSection.astro';
+import TrustBand from '@components/Landing/TrustBand.astro';
+import CustomerVoices from '@components/Landing/CustomerVoices.astro';
+import SectionHeader from '@components/Landing/SectionHeader.astro';
+import EcosystemCard from '@components/Landing/EcosystemCard.astro';
+import GatewayRelay from '@components/Landing/GatewayRelay.astro';
+import FeaturesSection from '@components/Landing/FeaturesSection.astro';
+import PricingBackground from '@components/Pricing/PricingBackground.astro';
+import { PLATFORM_COPY, PLATFORM_SECTION_COPY } from '@data/platform-visual';
+import { CONNECT_COPY } from '@data/connect-visual';
+import { DIGITAL_TWIN_COPY } from '@data/digital-twin-visual';
+import { NORMALIZE_COPY } from '@data/normalize-visual';
+import { SCALE_COPY } from '@data/scale-visual';
+import { SOLUTION_COPY } from '@data/solution-flow';
+import { homeEcosystem } from '@data/homeEcosystem';
+import { homeProducts } from '@data/homeProducts';
+import { ROW_SECTIONS, type HomeComposition, type HomeSection } from '@data/home-compositions';
+import { aiBadgeCycleFor } from '@data/ai-visual';
+
+/**
+ * The homepage between the hero and the closing CTA, as one running order from
+ * `data/home-compositions.ts`.
+ *
+ * Every section is here, once, and an order only chooses which run and in what sequence. Most of
+ * their markup is inline, and the page-level rules that dress it stay in `index.astro`'s global
+ * stylesheet, keyed to the same ids and classes, reaching this markup because it renders inside that
+ * page. The sections that arrived with the running orders (the trust band, the customer voices, the
+ * Automate switch) are components with their own styles, and so, since 2026-09-27, are the use cases
+ * and "Why choose" (`UseCasesSection`, `FeaturesSection`) — out of here so their sandbox pages render
+ * the same section the homepage does.
+ *
+ * TWO KINDS OF GROUPING, both derived from the order rather than stated in it:
+ *
+ * - ROWS. Consecutive capability rows share one `.new-rows` block, which gives them the tighter row
+ *   and the alternating wash. Anything that is not a row ends the block, and the next row opens a
+ *   new one. That is how the AI section, which carries `.main-div`s of its own that `.new-rows
+ *   .main-div` would blow apart, used to split the rows in two by hand.
+ * - SIDES AND WASH follow a row's position among ALL the rows, not within its block: even rows put
+ *   their copy first and take the wash, odd rows put their visual first. A block that opens on an
+ *   odd row is `new-rows--continued`, which is the stylesheet's way of starting its wash on the
+ *   other foot (see `_home-rows.scss`). So a seam changes nothing about how the rows alternate.
+ * - PRODUCTS AND ECOSYSTEM share `.home-band` when they are consecutive, as they always have: one
+ *   band, with the wave field Products' own.
+ */
+
+interface Props {
+	composition: HomeComposition;
+}
+
+const { composition } = Astro.props;
+
+// The AI mark's cycle, from the sections this order actually renders: a section the order does not
+// run has no stop in it (see `aiBadgeCycleFor`).
+const aiHues = aiBadgeCycleFor(
+	composition.sections.map((s) => s.id),
+	composition.hues
+);
+
+// Trial: the filled badge treatment, now carried by the mobile card alone — the
+// other six were tried filled and reverted. A card opts in with its own `filled`
+// key in `homeEcosystem`; this flips the whole trial off.
+const ECOSYSTEM_FILLED = true;
+
+const BAND = new Set(['products', 'ecosystem']);
+
+type Block =
+	| { kind: 'rows'; start: number; sections: HomeSection[] }
+	| { kind: 'band'; sections: HomeSection[] }
+	| { kind: 'one'; section: HomeSection };
+
+const blocks: Block[] = [];
+let rowCount = 0;
+for (const section of composition.sections) {
+	const last = blocks.at(-1);
+	if (ROW_SECTIONS.has(section.id)) {
+		if (last?.kind === 'rows') last.sections.push(section);
+		else blocks.push({ kind: 'rows', start: rowCount, sections: [section] });
+		rowCount++;
+	} else if (BAND.has(section.id)) {
+		if (last?.kind === 'band') last.sections.push(section);
+		else blocks.push({ kind: 'band', sections: [section] });
+	} else {
+		blocks.push({ kind: 'one', section });
+	}
+}
+
+/** Copy first on even rows, visual first on odd ones: the order the handoff's five rows ran in. */
+const visualFirst = (block: Extract<Block, { kind: 'rows' }>, i: number) => (block.start + i) % 2 === 1;
+---
+
+{
+	blocks.map((block) => {
+		if (block.kind === 'rows') {
+			return (
+				<div
+					class:list={[
+						'new-rows',
+						block.start % 2 === 1 && 'new-rows--continued',
+						composition.hues === 'section' && 'new-rows--hue',
+					]}
+				>
+					{block.sections.map((section, i) => {
+						const imageFirst = visualFirst(block, i);
+						switch (section.id) {
+							case 'connect':
+								return (
+									<FeatureBlockSection
+										id="connect"
+										heading={CONNECT_COPY.title}
+										description={CONNECT_COPY.body}
+										links={[{ href: CONNECT_COPY.link.href, text: CONNECT_COPY.link.text }]}
+										badge={CONNECT_COPY.badge}
+										imageFirst={imageFirst}
+										imageEqual
+									>
+										{/* The hub at five arms a side: ten protocols arriving at one platform, each on a line
+									    that runs off and fades out where a device icon would have been. It replaced the
+									    cloud, which said "whatever you have is already in here" by piling up names; this
+									    says "everything arrives at one place" and draws the arrival.
+
+									    Colour is texture, not a coding — four hues in rotation, no hue repeating down a
+									    column or across a row. Nothing on the page names a route, so a coding would have
+									    been a key with nothing to decode it; the paragraph beside it lists the routes in
+									    words instead.
+
+									    The cloud and ConnectFlow are both still in the sandbox, and either is the fallback
+									    if this does not survive review. */}
+										<ConnectHub arms="five" />
+									</FeatureBlockSection>
+								);
+							case 'solution':
+								return (
+									<FeatureBlockSection
+										id="solution"
+										heading={SOLUTION_COPY.title}
+										description={SOLUTION_COPY.body}
+										links={[{ href: SOLUTION_COPY.link.href, text: SOLUTION_COPY.link.text }]}
+										badge={SOLUTION_COPY.badge}
+										imageFirst={imageFirst}
+										imageEqual
+									>
+										<SolutionFlow />
+									</FeatureBlockSection>
+								);
+							case 'twin':
+								return (
+									<FeatureBlockSection
+										id="twin"
+										heading={DIGITAL_TWIN_COPY.title}
+										description={DIGITAL_TWIN_COPY.body}
+										links={[{ href: DIGITAL_TWIN_COPY.link.href, text: DIGITAL_TWIN_COPY.link.text }]}
+										badge={DIGITAL_TWIN_COPY.badge}
+										imageFirst={imageFirst}
+										imageEqual
+									>
+										{/* The nested reading: the unit in its zone on the left, the same path on the right. */}
+										<TwinCorridor zone />
+									</FeatureBlockSection>
+								);
+							case 'normalize':
+								return (
+									<FeatureBlockSection
+										id="normalize"
+										heading={NORMALIZE_COPY.title}
+										description={NORMALIZE_COPY.body}
+										links={[{ href: NORMALIZE_COPY.link.href, text: NORMALIZE_COPY.link.text }]}
+										badge={NORMALIZE_COPY.badge}
+										imageFirst={imageFirst}
+										imageEqual
+									>
+										{section.media === 'switch' ? <AutomateSwitch /> : <NormalizeSeries motion="pulse" />}
+									</FeatureBlockSection>
+								);
+							case 'scale':
+								return (
+									<FeatureBlockSection
+										id="scale"
+										heading={SCALE_COPY.title}
+										description={SCALE_COPY.body}
+										links={[{ href: SCALE_COPY.link.href, text: SCALE_COPY.link.text }]}
+										badge={SCALE_COPY.badge}
+										imageFirst={imageFirst}
+										imageEqual
+									>
+										<ScaleDuo animate hue="field" />
+									</FeatureBlockSection>
+								);
+							default:
+								throw new Error(`HomeSections: "${section.id}" is listed as a row but has no row markup`);
+						}
+					})}
+				</div>
+			);
+		}
+
+		if (block.kind === 'band') {
+			return (
+				<div class="home-band">
+					{block.sections.map((section) =>
+						section.id === 'products' ? (
+							<section id="products">
+								<PricingBackground contained />
+								<div class="main-div">
+									<SectionHeader
+										title="Products"
+										subtitle="The same platform and the same features either way — what changes is who runs it. We handle hosting, scaling and upgrades, or you do, on infrastructure you choose."
+										theme="dark"
+										titleSize="title"
+										subtitleMeasure="copy"
+									/>
+									<div class="product-list">
+										{
+											/* The pair with its actions in line: button and link on one line once the card is
+											   400px wide, no step under the button. Promoted 2026-09-25 from /internal/sections/products/.
+											   Set here rather than in `homeProducts`, which the product pages and the header
+											   also read. */
+											homeProducts.map((product) => (
+												<EcosystemCard {...product} pairInline primaryNote={undefined} />
+											))
+										}
+									</div>
+								</div>
+							</section>
+						) : (
+							<section id="product-ecosystem">
+								<div class="main-div">
+									<SectionHeader
+										title="Product ecosystem"
+										subtitle="Add what your project needs — protocol bridges, analytics, edge nodes, a mobile app, and a library of ready-made components."
+										titleSize="section"
+										subtitleMeasure="copy"
+									/>
+									<div class="product-ecosystem-list">
+										{homeEcosystem.map((product) => {
+											const card = { ...product, filled: ECOSYSTEM_FILLED && (product.filled ?? false) };
+											// The Gateway card's visual is a component rather than data, so it
+											// alone takes a slot child. The others must pass NO slot at all —
+											// even an empty one would beat the video and tiles branches inside.
+											return product.name === 'IoT Gateway' ? (
+												<EcosystemCard {...card}>
+													<GatewayRelay />
+												</EcosystemCard>
+											) : (
+												<EcosystemCard {...card} />
+											);
+										})}
+									</div>
+								</div>
+							</section>
+						)
+					)}
+				</div>
+			);
+		}
+
+		const { section } = block;
+		switch (section.id) {
+			case 'platform':
+				/* The centred section: the statement, and the platform visual under it.
+
+				   THIS DISPLACED THE PUBLISHED STATEMENT that used to sit here. That copy was approved and
+				   is one revert away — see the commit that removed `data/home-intro.ts`. What replaces it
+				   was written for this section with the drawing under it, which is why the heading
+				   carries no link: "ThingsBoard" is the first word of a sentence here, and a link inside
+				   it is a second thing to look at in the largest line on the page.
+
+				   The visual is NOT inside `.new-rows`. It is a full-width section rather than a row's
+				   media, and `styles/_home-intro.scss` gives it the 1000 measure — so it gets a 960
+				   column, where it stays horizontal and simply scales. */
+				return (
+					<IntroSection
+						title={section.heading === 'loop' ? PLATFORM_COPY.title : PLATFORM_SECTION_COPY.title}
+						description={PLATFORM_SECTION_COPY.description}
+						titleLink={null}
+					>
+						<PlatformClear />
+					</IntroSection>
+				);
+			case 'ai':
+				/* AI, ported from the `tb-landing-prototype` repo's section 06. NOT a
+				   `FeatureBlockSection`: it is two routes into one platform, and a switch under its heading
+				   chooses which one is on the page — the chat first, the terminal a click away. It never
+				   sits inside `.new-rows` (see the grouping above), whose `.main-div` padding would blow
+				   apart the band geometry the windows are docked to. */
+				return <AiSection id="ai" cta={section.cta} wash={section.wash} hues={aiHues} />;
+			case 'dashboards':
+				return <UseCasesSection hued={composition.hues === 'section'} />;
+			case 'trust':
+				return <TrustBand />;
+			case 'features':
+				return <FeaturesSection heading={section.heading} />;
+			case 'voices':
+				return <CustomerVoices />;
+			default:
+				throw new Error(`HomeSections: no markup for "${section.id}"`);
+		}
+	})
+}

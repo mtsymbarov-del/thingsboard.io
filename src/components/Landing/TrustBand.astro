@@ -1,0 +1,184 @@
+---
+import { Icon } from 'astro-icon/components';
+import TrustVisual from '@components/Landing/TrustVisual.astro';
+import { TRUST_COPY, TRUST_POINTS } from '@data/home-trust';
+
+/**
+ * Three cards — security, scale, openness — each opening on a small drawing (`TrustVisual`). The
+ * homepage's breather between the use cases and the dark Products band: one band a step darker than
+ * the rows, white cards on it, so the rhythm changes before the page asks the reader to choose a
+ * deployment. Copy and its sources are in `@data/home-trust`.
+ *
+ * WHITE CARDS, NO STROKE, on a tint darker than the rows' `#f5f6ff` and much lighter than the Products
+ * band under it: the page steps from white rows through this to navy rather than jumping. The card's
+ * edge is the change of ground, so it needs no border. (They were three columns of text on the rows'
+ * own tint, each under a black glyph, until 2026-09-26.)
+ *
+ * The band is an inner `div`, not the `section`. The homepage flattens every section's background
+ * (`:root section:not(...) { background: none }` in `index.astro`, (0,3,1)), which a scoped rule
+ * here cannot outrank without an id; a div is simply not in that rule's reach.
+ */
+---
+
+<section id="trust" class="trust" aria-labelledby="trust-title">
+	<div class="trust__band">
+		<div class="main-div">
+			<h2 id="trust-title" class="trust__title">{TRUST_COPY.title}</h2>
+			<ul class="trust__list" role="list">
+				{
+					TRUST_POINTS.map((p) => (
+						<li class="trust__item">
+							<div class="trust__visual">
+								<TrustVisual kind={p.kind} />
+							</div>
+							<h3 class="trust__name">{p.title}</h3>
+							<p class="trust__text">{p.body}</p>
+							<a class="trust__link" href={p.link.href}>
+								{p.link.text}
+								<Icon name="tabler:chevron-right" aria-hidden="true" />
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+	</div>
+</section>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	.trust {
+		scroll-margin-top: calc(#{$header-height} + var(--promo-h, 0px));
+	}
+
+	// THE BOOKENDS' INDIGO, top to bottom: white to 14% of the brand at the foot, the colour `#121425`
+	// — the Products ground — is mixed from, so this band reads as the approach to the dark one rather
+	// than as a step before it. The rows' construction, and the voices band's above the closing CTA.
+	// It was a flat cool grey (#e9ecf5) for a pass, then 6% to 14%.
+	.trust__band {
+		padding-block: $spacing-16;
+		background: linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--color-brand, #3d50f5) 14%, #fff) 100%);
+
+		@include media-down(md) {
+			padding-block: $spacing-12;
+		}
+	}
+
+	.trust__title {
+		@include visually-hidden;
+	}
+
+	// Three cards on the page's 960 measure, the ecosystem grid's 24 between them: these are cards
+	// now, and cards are separated by their own edges rather than by a wide gutter.
+	.trust__list {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: $spacing-6;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		@include media-down(lg) {
+			grid-template-columns: minmax(0, 1fr);
+			gap: $spacing-4;
+		}
+	}
+
+	// Each card's four parts — drawing, title, text, link — on rows shared across the three, through
+	// `subgrid`, so a title that takes two lines moves every card's text down with it instead of
+	// starting its own paragraph lower than its neighbours'.
+	.trust__item {
+		display: grid;
+		grid-row: span 4;
+		grid-template-rows: subgrid;
+		row-gap: 0;
+		justify-items: start;
+		margin: 0;
+		padding: $spacing-6;
+		border-radius: 16px;
+		background: #fff;
+		// No border, still: the ground starts at white now, so a card's top would dissolve into it. A
+		// soft shadow draws the edge the ground no longer does — the voices cards' own.
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.04),
+			0 8px 24px -8px rgba(0, 0, 0, 0.1);
+	}
+
+	.trust__visual {
+		width: 100%;
+		margin-bottom: $spacing-6;
+	}
+
+	.trust__name {
+		@include type-card;
+		margin: 0 0 $spacing-3;
+		color: var(--color-text);
+		text-wrap: balance;
+	}
+
+	.trust__text {
+		@include type-body;
+		margin: 0;
+		color: var(--color-text);
+	}
+
+	// A card's link, one step under the rows' section link: `type-link`, the body size, where the rows
+	// take `type-action`. These three sit inside cards beside a drawing, and at the rows' size they
+	// read as three section headings' worth of links. One still chevron, underlined on hover and focus.
+	.trust__link {
+		@include type-link;
+		display: inline-flex;
+		align-items: center;
+		align-self: end;
+		padding-top: $spacing-4;
+		color: var(--color-primary, #{$color-brand});
+		text-decoration: none;
+
+		:global([data-icon]) {
+			width: 18px;
+			height: 18px;
+			margin-left: -1px;
+		}
+
+		&:hover,
+		&:focus-visible {
+			text-decoration: underline;
+			text-underline-offset: 3px;
+		}
+	}
+
+	// One card to a row below the three-up grid. From md to lg the room is wide and short, so the
+	// drawing moves beside the words — one row each, the drawing at its full 299 — instead of three
+	// tall cards with a small picture on top of each. Below md, where the card is the column, the
+	// drawing goes back on top.
+	@media (min-width: #{$breakpoint-md}) and (max-width: #{$breakpoint-lg - 1px}) {
+		.trust__item {
+			grid-row: auto;
+			grid-template-columns: 300px minmax(0, 1fr);
+			grid-template-rows: auto auto 1fr;
+			column-gap: $spacing-8;
+			align-items: start;
+		}
+
+		.trust__visual {
+			grid-row: 1 / -1;
+			align-self: center;
+			margin-bottom: 0;
+		}
+
+		.trust__name,
+		.trust__text,
+		.trust__link {
+			grid-column: 2;
+		}
+	}
+
+	@include media-down(md) {
+		.trust__item {
+			grid-row: auto;
+			grid-template-rows: none;
+			padding: $spacing-5;
+		}
+	}
+</style>

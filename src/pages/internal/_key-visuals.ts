@@ -11,12 +11,15 @@
  * THE ORDER IS THE PAGE'S ORDER. Platform first: it opens the homepage as a centred section
  * above the rows. Then the rows in the order `index.astro` runs them, so walking the section menu
  * walks the page. `ai` sits between twin and normalize because that is where `AiSection` runs: a
- * full-bleed section rather than a row, but on the page there. `products` and `ecosystem` close the
- * homepage run.
+ * full-bleed section rather than a row, but on the page there. Then the sections the running orders
+ * brought or reworked — the use cases, the trust band — around `products` and `ecosystem`, and
+ * "Why choose" and the customer voices close the homepage run. The hub and the menus do not read this
+ * order for the homepage group: they follow the shipping running order (see `ON_HOME` below).
  * After it, what is not on the homepage: `choice`, which ships on the product pages instead, then
  * gateway, deploy and whitelabel, drawn and waiting for a section. The flows come last, in their
  * own area.
  */
+import { compositionAnchors, shippingComposition } from '@data/home-compositions';
 import { PLATFORM_COPY } from '@data/platform-visual';
 import { SOLUTION_COPY } from '@data/solution-flow';
 import { DIGITAL_TWIN_COPY } from '@data/digital-twin-visual';
@@ -26,6 +29,10 @@ import { SCALE_COPY } from '@data/scale-visual';
 import { DEPLOY_COPY } from '@data/deploy-visual';
 import { WHITELABEL_COPY } from '@data/whitelabel-visual';
 import { AI_COPY } from '@data/ai-visual';
+import { DASHBOARDS_BADGE, DASHBOARDS_COPY } from '@data/home-dashboards';
+import { TRUST_COPY } from '@data/home-trust';
+import { HOME_FEATURES_COPY } from '@data/homeFeatures';
+import { VOICES_COPY } from '@data/home-voices';
 
 export interface KeyVisual {
 	id: string;
@@ -126,6 +133,26 @@ export const KEY_VISUALS: KeyVisual[] = [
 		badge: SCALE_COPY.badge,
 	},
 	{
+		// A centred section, not a row: the heading over the board and the named cases, whose copy
+		// `UseCasesSection` reads from the same place.
+		id: 'dashboards',
+		home: 'dashboard_description',
+		label: 'Use cases',
+		title: DASHBOARDS_COPY.title,
+		body: DASHBOARDS_COPY.subtitle,
+		link: DASHBOARDS_COPY.link,
+		badge: DASHBOARDS_BADGE,
+	},
+	{
+		// Three cards between the use cases and Products. It carries no mark on the page; the tile's is
+		// the bookends' indigo, the colour its ground runs into.
+		id: 'trust',
+		home: 'trust',
+		label: 'Trust band',
+		title: TRUST_COPY.title,
+		badge: { icon: 'tabler:shield-check', color: '#121425' },
+	},
+	{
 		// A SECTION of cards rather than a drawing: the deployment pair on the dark band. Its copy
 		// is restated from `index.astro`'s own SectionHeader call, where it lives inline — keep the
 		// two in step by hand until the section grows a data file.
@@ -147,6 +174,26 @@ export const KEY_VISUALS: KeyVisual[] = [
 		body: 'Add what your project needs — protocol bridges, analytics, edge nodes, a mobile app, and a library of ready-made components.',
 		href: '/internal/library/cards/',
 		badge: { icon: 'tabler:apps', color: '#007c7b' },
+	},
+	{
+		// Twelve tiles on the page's one light tint, under the value heading the shipping order gives
+		// them (`heading: 'value'`) — the tile shows that one.
+		id: 'features',
+		home: 'bottom-features',
+		label: 'Why choose',
+		title: HOME_FEATURES_COPY.valueTitle,
+		body: HOME_FEATURES_COPY.subtitle,
+		badge: { icon: 'tabler:layout-grid', color: '#5b616e' },
+	},
+	{
+		// The numbers and six quotes before the closing CTA. No mark on the page either; the tile's is
+		// the bookends' indigo, as the trust band's is.
+		id: 'voices',
+		home: 'voices',
+		label: 'Proven in production',
+		title: VOICES_COPY.title,
+		body: VOICES_COPY.lede,
+		badge: { icon: 'tabler:quote', color: '#121425' },
 	},
 	{
 		// The product pages' choice cards — Cloud's Public/Private pair and On-premises' licence
@@ -206,8 +253,33 @@ export const KEY_VISUALS: KeyVisual[] = [
 	},
 ];
 
+/**
+ * ON THE HOMEPAGE MEANS IN THE SHIPPING RUNNING ORDER (`data/home-compositions.ts`), and in its
+ * order — not this array's, and not merely having a `home` anchor. An entry's `home` is the anchor its
+ * section answers to in ANY running order; the ones the shipping order does not render (Scale, since A
+ * sends it to the On-premises page) fall to the groups below, and lose their tile's `/#anchor` link,
+ * which would land on a `/` without them.
+ *
+ * `hero` is not a running-order section: the hero opens every order, so an entry anchored to it is
+ * always on the homepage, and first.
+ */
+const FRAME = ['hero'];
+const SHIPPING_ANCHORS = compositionAnchors(shippingComposition());
+
+const homeRank = (v: Pick<KeyVisual, 'home'>) => {
+	if (!v.home) return -1;
+	const framed = FRAME.indexOf(v.home);
+	if (framed >= 0) return framed;
+	const i = SHIPPING_ANCHORS.indexOf(v.home);
+	return i < 0 ? -1 : FRAME.length + i;
+};
+
+const onHome = (v: Pick<KeyVisual, 'home'>) => homeRank(v) >= 0;
+const byHome = (a: KeyVisual, b: KeyVisual) => homeRank(a) - homeRank(b);
+const offHome = (v: KeyVisual): KeyVisual => (v.home ? { ...v, home: undefined } : v);
+
 /** The visuals that are on the homepage, in page order. */
-export const ON_HOME = KEY_VISUALS.filter((v) => v.home);
+export const ON_HOME = KEY_VISUALS.filter(onHome).sort(byHome);
 
 /** The visuals in one menu, in the array's order. */
 export const inArea = (area: 'sections' | 'flows') => KEY_VISUALS.filter((v) => (v.area ?? 'sections') === area);
@@ -227,17 +299,17 @@ export function areaGroups(area: 'sections' | 'flows') {
 		{
 			key: 'home',
 			title: 'Homepage',
-			items: all.filter((v) => v.home),
+			items: all.filter(onHome).sort(byHome),
 		},
 		{
 			key: 'product',
 			title: 'Product pages',
-			items: all.filter((v) => !v.home && v.shipsOn),
+			items: all.filter((v) => !onHome(v) && v.shipsOn).map(offHome),
 		},
 		{
 			key: 'waiting',
 			title: 'Waiting for a section',
-			items: all.filter((v) => !v.home && !v.shipsOn),
+			items: all.filter((v) => !onHome(v) && !v.shipsOn).map(offHome),
 		},
 	].filter((g) => g.items.length);
 }

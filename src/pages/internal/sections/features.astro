@@ -1,0 +1,41 @@
+---
+import VisualPage from '@root/pages/internal/_VisualPage.astro';
+import Variant from '@root/pages/internal/_Variant.astro';
+import FeaturesSection from '@components/Landing/FeaturesSection.astro';
+import { kv } from '@root/pages/internal/_key-visuals';
+
+/**
+ * "Why choose": the twelve feature tiles on the page's one light tint, as `FeaturesSection` renders
+ * them on the homepage.
+ *
+ * The running orders keep it under a claim (`heading: 'value'`): develop's heading becomes the
+ * eyebrow, and the heading says what twelve tiles of "in the box" are worth. The handoff runs
+ * develop's heading alone, the reference below.
+ */
+---
+
+<VisualPage visual="features">
+	<Variant
+		visual={kv('features')}
+		component={FeaturesSection}
+		props={{ heading: 'value' }}
+		bleed
+		shipping
+		name="Value heading"
+		note="Shipping in A and B · develop's heading as the eyebrow, and a claim over the twelve tiles"
+	/>
+
+	<Variant
+		visual={kv('features')}
+		component={FeaturesSection}
+		props={{ heading: 'why' }}
+		bleed
+		name="Why choose"
+		note="previous homepage · develop's own heading, “Why choose ThingsBoard”, over the same tiles"
+	/>
+</VisualPage>
+
+{/* The homepage's context the section is drawn against: `_bleed-context.scss`. */}
+<style lang="scss" is:global>
+	@use '../bleed-context';
+</style>

@@ -1,0 +1,44 @@
+---
+import VisualPage from '@root/pages/internal/_VisualPage.astro';
+import Variant from '@root/pages/internal/_Variant.astro';
+import UseCasesSection from '@components/Landing/UseCasesSection.astro';
+import { kv } from '@root/pages/internal/_key-visuals';
+
+/**
+ * The use cases: the dashboards heading over `DashboardShowcase`, the board and its named cases.
+ *
+ * A `bleed` Variant, since the section is a whole homepage section with its own header, and the one
+ * component the homepage renders (`UseCasesSection`), so this page cannot drift from it.
+ *
+ * PROMOTED 2026-09-27 to the running orders that colour each section (A, B): the berry mark, a glow
+ * in it under the board rather than behind the heading, and the page's hand-off between cases — the
+ * next shot in from the side it comes from, the card easing to its width, the copy rising. The
+ * handoff order keeps the section as it shipped, which is the reference below.
+ */
+---
+
+<VisualPage visual="dashboards">
+	<Variant
+		visual={kv('dashboards')}
+		component={UseCasesSection}
+		props={{ hued: true }}
+		bleed
+		shipping
+		name="Glow under the board"
+		note="Promoted 2026-09-27 · the berry mark, a glow in it under the board, and the hand-off between cases: the next shot fades in from its side, the card eases to its width, the copy rises"
+	/>
+
+	<Variant
+		visual={kv('dashboards')}
+		component={UseCasesSection}
+		props={{ hued: false }}
+		bleed
+		name="As handed off"
+		note="previous homepage · the blue mark on white, and a case changes at once"
+	/>
+</VisualPage>
+
+{/* The homepage's context the section is drawn against: `_bleed-context.scss`. */}
+<style lang="scss" is:global>
+	@use '../bleed-context';
+</style>

@@ -60,14 +60,21 @@ interface Props {
 	 * window on the page and reads each window's scenario from the window itself.
 	 */
 	scenario?: AiChatScenario;
+	/**
+	 * A plain label in the bar in place of the product's `New chat` picker, with the edit control gone
+	 * and the context ring and the close kept — the bar as a window title rather than a chat header.
+	 * For a treatment that shows the whole window (`AiWide`); the homepage crops the bar away and
+	 * leaves this unset.
+	 */
+	title?: string;
 }
 
-const { animate = true, scenario = 'shipping' } = Astro.props;
+const { animate = true, scenario = 'shipping', title } = Astro.props;
 const { demo: AI_ASSISTANT_DEMO, label: AI_ASSISTANT_LABEL } = AI_ASSISTANT_SCENARIOS[scenario];
 ---
 
 <div
-	class="assistant"
+	class:list={['assistant', title && 'assistant--titled']}
 	role="img"
 	aria-label={AI_ASSISTANT_LABEL}
 	data-assistant-plate
@@ -75,13 +82,26 @@ const { demo: AI_ASSISTANT_DEMO, label: AI_ASSISTANT_LABEL } = AI_ASSISTANT_SCEN
 	data-animate={animate ? 'on' : null}
 >
 	<div class="assistant__bar" aria-hidden="true">
-		<span class="assistant__chat">
-			New chat
-			<Icon name="tabler:chevron-down" />
-		</span>
+		{
+			title ? (
+				<span class="assistant__title">{title}</span>
+			) : (
+				<span class="assistant__chat">
+					New chat
+					<Icon name="tabler:chevron-down" />
+				</span>
+			)
+		}
 		<span class="assistant__tools">
-			<span class="assistant__ring"></span>
-			<Icon name="tabler:edit" />
+			{
+				/* The context-usage ring: a track and an arc, drawn as strokes so the arc is a true arc at any
+				   scale. `pathLength` makes the dash a percentage: 22 is the fill in the product's header. */
+			}
+			<svg class="assistant__ring" viewBox="0 0 20 20">
+				<circle class="assistant__ring-track" cx="10" cy="10" r="8"></circle>
+				<circle class="assistant__ring-arc" cx="10" cy="10" r="8" pathLength="100"></circle>
+			</svg>
+			{!title && <Icon name="tabler:edit" />}
 			<Icon name="tabler:x" />
 		</span>
 	</div>
@@ -193,6 +213,13 @@ const { demo: AI_ASSISTANT_DEMO, label: AI_ASSISTANT_LABEL } = AI_ASSISTANT_SCEN
 		color: var(--tb-ink);
 	}
 
+	// The label, where `title` is set: the picker's size, a step heavier, so it reads as the window's name.
+	.assistant__title {
+		font-size: 12px;
+		font-weight: $font-weight-medium;
+		color: var(--tb-ink);
+	}
+
 	.assistant__tools {
 		display: flex;
 		align-items: center;
@@ -205,24 +232,27 @@ const { demo: AI_ASSISTANT_DEMO, label: AI_ASSISTANT_LABEL } = AI_ASSISTANT_SCEN
 		color: var(--tb-muted);
 	}
 
-	// The context ring from the product header.
-	.assistant__ring {
-		position: relative;
+	// The context-usage ring from the product header: a grey track and a green arc over it, starting
+	// at twelve o'clock (an SVG circle starts at three, so the whole ring is turned a quarter back).
+	// It was a bordered box with a green dot on its rim, which read as a broken circle rather than as
+	// a gauge. Selected through its parent so it outranks the `.assistant svg` rule below and keeps the
+	// ring's own 17.
+	.assistant__tools .assistant__ring {
 		width: 17px;
 		height: 17px;
-		border: 2px solid #e2e6e5;
-		border-radius: 50%;
+		transform: rotate(-90deg);
+		fill: none;
+		stroke-width: 2.4;
+	}
 
-		&::after {
-			content: '';
-			position: absolute;
-			top: -1px;
-			right: 0;
-			width: 5px;
-			height: 5px;
-			border-radius: 50%;
-			background: var(--tb-green);
-		}
+	.assistant__ring-track {
+		stroke: #e2e6e5;
+	}
+
+	.assistant__ring-arc {
+		stroke: var(--tb-green);
+		stroke-linecap: round;
+		stroke-dasharray: 22 100;
 	}
 
 	// The exchange grows from the bottom, as in a real chat.
@@ -278,6 +308,20 @@ const { demo: AI_ASSISTANT_DEMO, label: AI_ASSISTANT_LABEL } = AI_ASSISTANT_SCEN
 	.assistant__log.is-running {
 		-webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 20px, #000 96px);
 		mask-image: linear-gradient(to bottom, transparent 0, transparent 20px, #000 96px);
+	}
+
+	// WITH THE BAR SHOWING (`title` set), less of a fade. The 20px hold exists to hide the crop's cut,
+	// and there is no cut under a visible bar; what is left is a short ramp under it so a line
+	// scrolling out dissolves rather than being sliced by the bar's rule. Both states shorten in
+	// step — the resting one keeps clear of the greeting, the running one keeps the dissolve.
+	.assistant--titled .assistant__log {
+		-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+		mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+	}
+
+	.assistant--titled .assistant__log.is-running {
+		-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
+		mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
 	}
 
 	.assistant__intro {

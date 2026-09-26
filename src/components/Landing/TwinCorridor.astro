@@ -984,9 +984,12 @@ const vars = [
 
 	// The platform's own blue, not the family's grey: these two lines are the only thing in the
 	// picture that IS the platform rather than something it is describing.
+	//
+	// `--flow-rail` where the page colours each section by its badge (`hues: 'section'`): the twin's
+	// violet, so the row's mark, ground and wires are one colour.
 	.tc__wire {
 		fill: none;
-		stroke: var(--color-primary, #3d50f5);
+		stroke: var(--flow-rail, var(--color-primary, #3d50f5));
 		stroke-width: max(1px, #{u(2)});
 		stroke-linecap: round;
 		stroke-linejoin: round;
@@ -1008,13 +1011,17 @@ const vars = [
 		// the paths are, so without it they sit a pixel above the runs they name — measured, that put
 		// 9.1u over the telemetry line and 4.9u under the commands one, from the same number.
 		transform: translate(-50%, -50%) translateY(var(--tc-stroke));
-		font-size: u(var(--tc-label));
+		// The page may set these a notch quieter than the stage names — mono, smaller, less tracked —
+		// so the wires' names read as labels ON the lines rather than as a second pair of headings
+		// (`--flow-label-*`, set by the `hues: 'section'` orders). Unset, they are the stage names' voice.
+		font-family: var(--flow-label-font, inherit);
+		font-size: calc(var(--flow-label-size, var(--tc-label)) * var(--u));
 		// Tighter leading than the stage names carry at the same size: this is a single uppercase
 		// line, and box beyond what it needs is spent on the clearance between it and its run.
-		line-height: calc(#{u(var(--tc-label))} + #{u(3)});
+		line-height: calc((var(--flow-label-size, var(--tc-label)) + 3) * var(--u));
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: var(--flow-label-tracking, 0.05em);
 		white-space: nowrap;
-		color: var(--color-primary, #3d50f5);
+		color: var(--flow-rail, var(--color-primary, #3d50f5));
 	}
 </style>

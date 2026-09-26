@@ -1,0 +1,31 @@
+---
+import VisualPage from '@root/pages/internal/_VisualPage.astro';
+import Variant from '@root/pages/internal/_Variant.astro';
+import CustomerVoices from '@components/Landing/CustomerVoices.astro';
+import { kv } from '@root/pages/internal/_key-visuals';
+
+/**
+ * Proven in production: four numbers, then six short verbatim quotes from `clients-feedback`, two of
+ * them accents on the bookends' navy, before the closing CTA. On a phone the quotes are a swipe strip.
+ *
+ * NEW WITH THE RUNNING ORDERS (2026-09-26). Two of the four numbers — 5M+ devices and 100+
+ * countries — come from the old wireframe and have no source yet (`VOICES_STATS`); confirm them
+ * before this ships.
+ */
+---
+
+<VisualPage visual="voices">
+	<Variant
+		visual={kv('voices')}
+		component={CustomerVoices}
+		bleed
+		shipping
+		name="Numbers and six quotes"
+		note="Shipping in A and B · four numbers (two unsourced), six verbatim quotes with two navy accents, a swipe strip on phones"
+	/>
+</VisualPage>
+
+{/* The homepage's context the section is drawn against: `_bleed-context.scss`. */}
+<style lang="scss" is:global>
+	@use '../bleed-context';
+</style>

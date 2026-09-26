@@ -1,5 +1,6 @@
 ---
 import { Products } from '@models/site.models';
+import { GITHUB_STARS } from '@data/github-stars';
 
 interface Props {
 	platform?: Products;
@@ -24,15 +25,8 @@ const link = `https://github.com/${repo}`;
 // control that looked broken for the first seconds of every visit, and for good wherever the API
 // is out of reach (rate limits, blockers, a static copy). Rounded down to the hundred and written
 // short, so it never claims a precision it does not have; the fetch swaps in the exact number.
-// Counts as of 2026-09-25 — refresh when one crosses the next hundred, or leave them: they only
-// ever read low.
-const starsAsOf: Record<string, number> = {
-	'thingsboard/thingsboard': 22480,
-	'thingsboard/thingsboard-gateway': 2190,
-	'thingsboard/thingsboard-edge': 180,
-	'thingsboard/tbmq': 766,
-};
-const known = starsAsOf[repo];
+// The counts and their date are in `@data/github-stars`, which the homepage's numbers read too.
+const known = GITHUB_STARS[repo];
 const shortStars = (n: number) => (n < 1000 ? String(n) : `${Math.floor(n / 100) / 10}k`);
 const fallback = known === undefined ? undefined : shortStars(known);
 ---

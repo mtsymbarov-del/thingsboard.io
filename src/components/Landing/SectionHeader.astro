@@ -50,12 +50,19 @@ interface Props {
 	 * because this header is.
 	 */
 	badge?: { icon: string; color: string };
+	/**
+	 * An uppercase kicker over the title, when the title makes a claim and the section still needs its
+	 * plain name: "Why choose ThingsBoard" over the heading that says what the tiles are worth. Inside
+	 * the header rather than above it, so it takes the header's alignment and theme.
+	 */
+	eyebrow?: string;
 	class?: string;
 }
 
 const {
 	title,
 	subtitle,
+	eyebrow,
 	align = 'center',
 	theme = 'light',
 	titleSize = 'section',
@@ -88,6 +95,7 @@ const measure = titleMeasure ?? (align === 'center' ? 'headline' : 'full');
 			</span>
 		)
 	}
+	{eyebrow && <p class="section-header__eyebrow">{eyebrow}</p>}
 	<h2 class="section-header__title">{title}</h2>
 	{subtitle && <p class="section-header__subtitle">{subtitle}</p>}
 	<slot />
@@ -151,6 +159,7 @@ const measure = titleMeasure ?? (align === 'center' ? 'headline' : 'full');
 		// out-specified by an ancestor-keyed rule again.
 		--sh-title-color: var(--color-text);
 		--sh-subtitle-color: var(--color-text);
+		--sh-eyebrow-color: var(--color-text-secondary, #{$color-text-secondary});
 
 		&--center {
 			text-align: center;
@@ -177,6 +186,14 @@ const measure = titleMeasure ?? (align === 'center' ? 'headline' : 'full');
 			@include type-section;
 			margin-bottom: $spacing-5;
 			color: var(--sh-title-color);
+		}
+
+		// The section's name, one step quieter than the claim under it: the ladder's kicker, in a
+		// secondary ink so it reads as the header's own rather than as an accent.
+		&__eyebrow {
+			@include type-eyebrow;
+			margin: 0 0 $spacing-3;
+			color: var(--sh-eyebrow-color);
 		}
 
 		&__subtitle {
@@ -253,6 +270,7 @@ const measure = titleMeasure ?? (align === 'center' ? 'headline' : 'full');
 		&--dark {
 			--sh-title-color: #{$color-white};
 			--sh-subtitle-color: #{$color-text-disabled};
+			--sh-eyebrow-color: #{$color-text-disabled};
 		}
 	}
 </style>

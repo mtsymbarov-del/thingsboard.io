@@ -337,6 +337,33 @@
 	background: #f5f6ff;
 }
 
+// --- the section's own hue (`hues: 'section'` running orders) ---------------------------------
+//
+// Each row on a LINEAR gradient in ITS badge colour instead of the one flat primary wash: white at
+// the top to 8% of the hue at the base — the AI band's construction (clear to 20%) at well under half
+// its strength, so a row reads as tinted rather than coloured. Every row carries one, so what
+// alternates down the page is the hue, not a wash switching on and off.
+//
+// LINEAR FOR THE ALTERNATING ROWS, RADIAL ONLY FOR THE CENTRED SECTIONS. A glow behind each drawing
+// was tried here (2026-09-26) and sent back: the rows are the page's run of alternating bands, and a
+// band reads as a band by running edge to edge. The glows stay where a section is built around a
+// centred mark — the use cases, the AI section's cycling wash.
+//
+// The row's drawing takes the same hue for its lines: `--flow-rail`, which the drawings read with
+// the brand as their fallback, and the quieter voice for the names on those lines (`--flow-label-*`,
+// read by `TwinCorridor`). `--row-hue` is set on each row by `FeatureBlockSection` from its badge.
+//
+// `:nth-child(n)` is there for the score: it matches every row and brings this to (0,4,0), level
+// with the two wash rules above, which it follows and so replaces.
+:root .new-rows--hue .feature-block-section:nth-child(n) {
+	--flow-rail: var(--row-hue, #3d50f5);
+	--flow-label-font: #{$font-family-mono};
+	--flow-label-size: 14;
+	--flow-label-tracking: 0.02em;
+
+	background: linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--row-hue, #3d50f5) 8%, #fff) 100%);
+}
+
 // --- links ------------------------------------------------------------------------------
 
 // A link that behaves like one: underlined on hover, a visible focus ring for the keyboard, and

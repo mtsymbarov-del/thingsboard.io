@@ -69,7 +69,7 @@ export interface SolutionCase {
 export const SOLUTION_COPY = {
 	title: 'Build IoT solutions from device to end-user',
 	body: 'ThingsBoard enables development of the complete use-case and is white-labeled for your customers or your team: ship complete IoT applications, not just data pipelines.',
-	link: { text: 'Why ThingsBoard', href: '/products/' },
+	link: { text: 'Getting started tutorial', href: '/docs/pe/getting-started/' },
 	// `tools`. It says BUILDING, which is the section's verb — "Build IoT solutions from device to
 	// end-user" — where `layout-dashboard` said the output instead, and the output is already spoken
 	// for: the Operate stage in the platform overview carries it with `chart-dots`.

@@ -137,11 +137,11 @@ export const PLATFORM_ZONES: Zone[] = [
 	{
 		id: 'people',
 		icon: 'tabler:users-group',
-		title: 'Your people and operations',
+		title: 'Your teams and customers',
 		items: [
-			{ icon: 'tabler:urgent', name: 'Operators', note: 'Know what needs attention' },
+			{ icon: 'tabler:urgent', name: 'Operators and managers', note: 'Real-time status and KPIs' },
 			{ icon: 'tabler:tool', name: 'Service teams', note: 'Act with equipment context' },
-			{ icon: 'tabler:chart-line', name: 'Business owners', note: 'Track operational KPIs' },
+			{ icon: 'tabler:users', name: 'Customers', note: 'Branded live dashboards' },
 		],
 	},
 ];
@@ -226,15 +226,15 @@ export const PLATFORM_STAGES: PlatformStage[] = [
 	},
 	{
 		name: 'Automate',
-		items: ['Rule chains', 'Calculated fields', 'Alarms'],
-		note: 'Rule chains, calculated fields, alarms',
+		items: ['Calculated fields', 'Alarm rules', 'Rule chains'],
+		note: 'Calculated fields, alarm rules, rule chains',
 		icon: 'tabler:binary-tree',
 		accent: NORMALIZE_COPY.badge.color,
 	},
 	{
 		name: 'Operate',
-		items: ['Dashboards', 'SCADA', 'Reports'],
-		note: 'Dashboards, SCADA, reports',
+		items: ['Dashboards', 'Reports', 'SCADA'],
+		note: 'Dashboards, reports, SCADA',
 		icon: 'tabler:chart-dots',
 		accent: SOLUTION_COPY.badge.color,
 	},

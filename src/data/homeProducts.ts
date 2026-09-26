@@ -38,9 +38,9 @@ export const homeProducts: ProductChoice[] = [
 		// of them. The fork itself stays on the Cloud page, which is built around exactly that
 		// comparison — see `paasChoice`.
 		label: 'Fully managed, shared or dedicated',
-		// 99.9, not 99.95. The old figure was in no other file and on no page of develop: develop's
-		// own comparison row reads "Uptime SLA — 99.9% / 99.9%–99.99%", and `paasPage.ts` carries
-		// the same pair. 99.95 described neither product.
+		// No figure. It said 99.9 for a while, but the card covers both tiers and they carry
+		// different ones (develop's comparison row: "Uptime SLA — 99.9% / 99.9%–99.99%"), so it names
+		// the contract instead, as thingsboard.one's copy does (2026-09-24).
 		//
 		// The residency sentence came out to make room. It was saying what the two region buttons
 		// under it were already saying, and those are gone now as well.
@@ -48,7 +48,7 @@ export const homeProducts: ProductChoice[] = [
 		// the button now takes the Cloud page's "Start for free" so the pair reads the same on both
 		// pages. The estimate still lives there, in the Public Cloud card's points.
 		description:
-			'We run the servers, scaling, backups and upgrades on a 99.9% SLA. Start free on shared infrastructure, or move to Private Cloud, a dedicated cluster we provision and operate for you.',
+			'We run the servers, scaling, backups and upgrades, with a contractual uptime SLA. Start free on shared infrastructure, or move to Private Cloud for a dedicated cluster.',
 		icon: '/src/assets/images/landings/thingsboard-mark.svg',
 		cornerIcon: 'tabler:cloud',
 		badgeFill: 'var(--color-product-cloud)',
@@ -75,7 +75,7 @@ export const homeProducts: ProductChoice[] = [
 	},
 	{
 		name: 'ThingsBoard On-premises',
-		label: 'Deployed on your infrastructure',
+		label: 'Self-managed, on your infrastructure',
 		// The list is gone, and that is the point: "in AWS, Azure, GCP, or on Kubernetes" named
 		// the same four things the `targets` marks name directly underneath, so the card said its
 		// targets twice and its reason not at all. The marks are better at the list than a
@@ -84,13 +84,15 @@ export const homeProducts: ProductChoice[] = [
 		// So it now says the two things nothing else on this page says. WHO RUNS IT is the
 		// decision the section is built on, and it is the only line where this card can answer
 		// it. OFFLINE is the capability no managed option has at any price — develop's own
-		// On-premises hero leads on it, "Your own cloud, on-premises, or fully offline".
+		// On-premises hero leads on it, "Your own cloud, on-premises, or fully offline". Since
+		// thingsboard.one's pass (2026-09-24) it says so as "fully air-gapped", and adds the one thing
+		// we still do for a deployment we don't run: LTS releases and security patches.
 		//
 		// It also no longer says "your private cloud". ThingsBoard sells a product by that name —
 		// a dedicated cluster OUR team runs — and it is the opposite of this card. Develop's
 		// On-premises page never uses the phrase either.
 		description:
-			'You run the deployment, so data location and compliance stay in your hands — and it can run fully offline.',
+			'You host it in your cloud, data center, or fully air-gapped, so data location and compliance stay in your hands. We ship LTS releases and security patches.',
 		icon: '/src/assets/images/landings/thingsboard-mark.svg',
 		// A server, not the rotated square that was here. The rhombus named nothing —
 		// it was a shape holding the badge colour next to the word, while Cloud's

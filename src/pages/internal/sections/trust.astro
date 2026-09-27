@@ -6,12 +6,11 @@ import { kv } from '@root/pages/internal/_key-visuals';
 
 /**
  * The trust band: three white cards between the use cases and Products — security, scale, openness
- * — each opening on a small drawing (`TrustVisual`), on a ground that runs from white into the
- * bookends' indigo.
+ * — each opening on a small drawing, on a ground that runs from white into the bookends' indigo.
  *
- * NEW WITH THE RUNNING ORDERS (2026-09-26, reworked 09-27): two ISO seals with SSO and 2FA, the
- * monolith over the cluster in `ScaleDuo`'s squares and pulse, and the GitHub tile with the star
- * count. CANDIDATE 2026-09-27: `drawings="stages"` (`TrustVisualStages`), under the shipping one.
+ * SHIPPING SINCE 2026-09-27: "One topology at a time" (`TrustVisualStages`, `TrustBand`'s default),
+ * promoted over "Three cards" (`TrustVisual`, NEW WITH THE RUNNING ORDERS on 2026-09-26), which stays
+ * below as the reference, pinned to `drawings: 'cards'` so a default that moves cannot move it.
  */
 ---
 
@@ -19,19 +18,20 @@ import { kv } from '@root/pages/internal/_key-visuals';
 	<Variant
 		visual={kv('trust')}
 		component={TrustBand}
+		props={{ drawings: 'stages' }}
 		bleed
 		shipping
-		name="Three cards"
-		note="Shipping in A and B · ISO seals with SSO and 2FA, the monolith over the cluster with its pulse, the GitHub tile and its stars; white cards on a white-to-indigo ground"
+		name="One topology at a time"
+		note="Shipping in A and B · the shield on the bookends' navy beside white ISO seals its size, grey-ringed; scale as one strip of nodes that recolours and grows — monolith, hybrid, then the cluster scaling out and folding home — over a devices bar in 25 / 25 / 50, timed 3 / 5 / 9, each stage's stores lit; the repo as GitHub shows it in the brand's blue, GitHub's mark closing its foot, the ThingsBoard mark white on the On-premises green as its org"
 	/>
 
 	<Variant
 		visual={kv('trust')}
 		component={TrustBand}
-		props={{ drawings: 'stages' }}
+		props={{ drawings: 'cards' }}
 		bleed
-		name="One topology at a time"
-		note="candidate · the indigo shield beside white ISO seals, no SSO or 2FA; scale as monolith, then hybrid, then the cluster scaling out, with devices, a three-step chart and each stage's stores lit; the repo as GitHub shows it, the ThingsBoard mark as its org"
+		name="Three cards"
+		note="previous · ISO seals with SSO and 2FA, the monolith over the cluster with its pulse, the GitHub tile and its stars; white cards on a white-to-indigo ground"
 	/>
 </VisualPage>
 

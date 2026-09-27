@@ -94,7 +94,7 @@ export const TRUST_VISUAL_LABELS: Record<Exclude<TrustKind, 'open'>, string> = {
 	scale: 'Two ways to run it: a monolith on PostgreSQL, Citus or Cassandra, and a cluster that adds Kafka and Valkey.',
 };
 
-// --- the stages direction (`TrustBand drawings="stages"`, a candidate, 2026-09-27) --------------
+// --- the stages drawings (`TrustVisualStages`, the homepage's since 2026-09-27) ----------------
 
 /**
  * Scale as ONE TOPOLOGY AT A TIME, growing: the monolith, then hybrid storage, then the cluster, each
@@ -104,14 +104,20 @@ export const TRUST_VISUAL_LABELS: Record<Exclude<TrustKind, 'open'>, string> = {
  *   `@data/scale-visual`, which calls the mode "Hybrid storage").
  * - 1–10K for the monolith on PostgreSQL alone has no source in the docs' recommendations yet.
  * - "Up to 5M" for the cluster is thingsboard.one's "5+ million", which this repo does not benchmark;
- *   the Scale row says "Any size". Confirm both before this direction ships.
+ *   the Scale row says "Any size". STILL UNCONFIRMED: this direction shipped (2026-09-27) with both.
  */
 export interface TrustScaleStage {
 	mode: string;
 	devices: string;
 	/** The mode's hue: the cells, its name, its bar. */
 	hue: string;
-	/** Cells lit out of four; more than one lights in turn, the cluster scaling out. */
+	/**
+	 * Its section of the devices bar, as a percentage: 25 / 25 / 50, the cluster half. A picture of the
+	 * steps, not a scale of the ranges (10K is 0.2% of 5M). The loop's time splits 3 / 5 / 9 on its
+	 * own (`TrustVisualStages`), so the fill's pace differs per section.
+	 */
+	span: number;
+	/** Cells lit out of five; more than one lights in turn, the cluster scaling out. */
 	cells: number;
 	/** The stores this stage lights in the one row of marks; the rest stay dim. */
 	stores: string[];
@@ -121,16 +127,25 @@ export const TRUST_SCALE_STAGES: TrustScaleStage[] = [
 	{
 		mode: 'Monolith',
 		devices: '1–10K devices',
+		span: 25,
 		hue: 'var(--color-primary, #3d50f5)',
 		cells: 1,
 		stores: ['PostgreSQL'],
 	},
-	{ mode: 'Hybrid', devices: '10K–1M devices', hue: '#007c7b', cells: 1, stores: ['Cassandra'] },
+	{
+		mode: 'Hybrid',
+		devices: '10K–1M devices',
+		span: 25,
+		hue: '#007c7b',
+		cells: 1,
+		stores: ['PostgreSQL', 'Cassandra'],
+	},
 	{
 		mode: 'Cluster',
 		devices: 'Up to 5M devices',
+		span: 50,
 		hue: 'var(--color-product-gw, #6d28d9)',
-		cells: 4,
+		cells: 5,
 		stores: ['Citus', 'Kafka', 'Valkey'],
 	},
 ];
@@ -138,5 +153,5 @@ export const TRUST_SCALE_STAGES: TrustScaleStage[] = [
 export const TRUST_STAGES_LABELS = {
 	security: 'Certified to ISO 27001 and ISO 9001.',
 	scale:
-		'As it grows: a monolith on PostgreSQL for 1 to 10 thousand devices, hybrid storage with Cassandra up to a million, and a cluster with Citus, Kafka and Valkey up to 5 million.',
+		'As it grows: a monolith on PostgreSQL for 1 to 10 thousand devices, hybrid storage adding Cassandra beside PostgreSQL up to a million, and a cluster with Citus, Kafka and Valkey up to 5 million.',
 };

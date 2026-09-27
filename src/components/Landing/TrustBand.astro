@@ -22,18 +22,18 @@ import { TRUST_COPY, TRUST_POINTS } from '@data/home-trust';
 
 interface Props {
 	/**
-	 * Which drawings open the cards. `shipping` — `TrustVisual`, the homepage's. `stages` — the
-	 * candidate `TrustVisualStages` (2026-09-27): the shield with the seals, scale one topology at a
-	 * time, and the repo as GitHub shows it.
+	 * Which drawings open the cards. `stages` — `TrustVisualStages`, the homepage's since 2026-09-27:
+	 * the shield with the seals, scale one topology at a time, and the repo as GitHub shows it.
+	 * `cards` — `TrustVisual`, the drawings it replaced, kept as the sandbox's reference.
 	 */
-	drawings?: 'shipping' | 'stages';
+	drawings?: 'stages' | 'cards';
 }
 
-const { drawings = 'shipping' } = Astro.props;
+const { drawings = 'stages' } = Astro.props;
 const Drawing = drawings === 'stages' ? TrustVisualStages : TrustVisual;
 ---
 
-<section id="trust" class="trust" aria-labelledby="trust-title">
+<section id="trust" class:list={['trust', drawings === 'stages' && 'trust--stages']} aria-labelledby="trust-title">
 	<div class="trust__band">
 		<div class="main-div">
 			<h2 id="trust-title" class="trust__title">{TRUST_COPY.title}</h2>
@@ -128,6 +128,13 @@ const Drawing = drawings === 'stages' ? TrustVisualStages : TrustVisual;
 		margin: 0 0 $spacing-3;
 		color: var(--color-text);
 		text-wrap: balance;
+	}
+
+	// With the stages drawings, the titles a step down, at 20 — off the homepage's seven-size ladder,
+	// which has nothing between the card's 24 and the tile's 16. It shipped this way; the ladder still
+	// needs the size, or the titles take 16. The `cards` reference keeps `type-card`.
+	.trust--stages .trust__name {
+		font-size: $font-size-xl;
 	}
 
 	.trust__text {

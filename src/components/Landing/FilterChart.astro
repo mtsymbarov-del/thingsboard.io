@@ -1,0 +1,501 @@
+---
+import { Icon } from 'astro-icon/components';
+import { DOOR_MORNING, FILTER_CHART, FREEZER_ALARM, openFor, passes } from '@data/automate-visual';
+
+/**
+ * CANDIDATE (2026-09-27): Filter without the mark. `FilterFlow` puts the product's squircle between a
+ * small spark and a small alarm, the same squircle all three tabs share; this draws the rule as it
+ * would be seen — a live dashboard line of the morning's door-open times, large, on the row's own
+ * ground — and the alarm as the product lists one, opening where the line crosses the limit.
+ *
+ * A LIVE WINDOW, 06:00 to 12:00, drawn up to "now": six short openings, then the door that is still
+ * open, climbing. The rest of the morning is empty, as a live chart's is, and that is where the alarm
+ * opens. The dashed limit turns red from the crossing and runs into the alarm's edge; the alarm's time
+ * is read off the chart's own axis at that crossing, so the two cannot disagree.
+ *
+ * WHICH OPENING FIRES IS COMPUTED (`passes`), as in `FilterFlow`, and `DOOR_MORNING` is asserted to
+ * keep the same one as `DOOR_OPENINGS`, so Notify still quotes it.
+ *
+ * On `FilterFlow`'s frame, 574 × 256 units, so the switch's row holds its height. One SVG in the
+ * frame's own units carries the chart; the alarm is HTML over it, placed in the same units. Type
+ * floor 15 units (the axes), so R = 574 / 15 = 38, as the other two tabs.
+ *
+ * MOTION IN REAL TIME, 14s, while the tab shows (`--flow-play`). The open door reads 4:55 by the live
+ * point and counts up a second a second; at 5:00, five seconds in, the point turns red, the crossing
+ * pops, the limit lights into the alarm and the alarm rises in, answering once. It counts on to 5:08
+ * in red, then everything that answered fades and the door is back at 4:55. At a second a second the
+ * line itself barely moves — 13 seconds is a few units on a six-minute axis — so the readout carries
+ * the time and the line carries where it stands against the limit. Without motion: the picture at
+ * 5:08, at rest.
+ */
+
+// --- the frame --------------------------------------------------------------------------------
+const NATIVE = 574;
+const H = 256;
+const PLOT = { x0: 56, x1: 558, top: 60, base: 214 };
+const Y_MAX = 6 * 60;
+const ALARM_W = 236;
+/** Where the live point stands at the end of the climb: "now", left of the window's middle. */
+const NOW_X = 290;
+
+const r2 = (v: number) => +v.toFixed(2);
+const yOf = (s: number) => r2(PLOT.base - (s / Y_MAX) * (PLOT.base - PLOT.top));
+
+// --- the motion's clock -----------------------------------------------------------------------
+const LOOP_S = 14;
+const S_START = FREEZER_ALARM.over - 5;
+const S_END = FREEZER_ALARM.over + 8;
+/** The climb runs a second a second, so it takes as long as it counts. */
+const CLIMB = r2(((S_END - S_START) / LOOP_S) * 100);
+const pct = (s: number) => r2(((s - S_START) / (S_END - S_START)) * CLIMB);
+const tc = pct(FREEZER_ALARM.over);
+
+// --- the line ---------------------------------------------------------------------------------
+// Each opening is a tooth: the open time climbing while the door stands open, then nothing. Time runs
+// sideways at one scale inside a tooth and the shut gaps between are shared out evenly — how long it
+// stayed shut is not the argument. The last tooth is the live one, and has no fall yet.
+const live = DOOR_MORNING[DOOR_MORNING.length - 1];
+if (!passes(live) || DOOR_MORNING.slice(0, -1).some(passes)) {
+	throw new Error('FilterChart: the live opening must be the only one over the limit');
+}
+const history = DOOR_MORNING.slice(0, -1);
+const PER_S = 0.2;
+const liveX0 = r2(NOW_X - S_END * PER_S);
+const gap = (liveX0 - PLOT.x0 - history.reduce((sum, s) => sum + s * PER_S, 0)) / (history.length + 1);
+const teeth = history.map((s, i) => {
+	const x0 = PLOT.x0 + gap * (i + 1) + history.slice(0, i).reduce((sum, t) => sum + t * PER_S, 0);
+	return { x0: r2(x0), x1: r2(x0 + s * PER_S), y: yOf(s) };
+});
+const at = (s: number) => ({ x: r2(liveX0 + s * PER_S), y: yOf(s) });
+const tip = at(S_END);
+const from = at(S_START);
+const cross = at(FREEZER_ALARM.over);
+const limitY = cross.y;
+const line = [
+	`M ${PLOT.x0},${PLOT.base}`,
+	...teeth.map((t) => `L ${t.x0},${PLOT.base} L ${t.x1},${t.y} L ${t.x1},${PLOT.base}`),
+	`L ${liveX0},${PLOT.base} L ${tip.x},${tip.y}`,
+].join(' ');
+
+// --- the axes ---------------------------------------------------------------------------------
+const Y_TICKS = [0, 150, FREEZER_ALARM.over];
+const X_TICKS = [0, 1, 2, 3].map((i) => FILTER_CHART.from + ((FILTER_CHART.to - FILTER_CHART.from) * i) / 3);
+const plotW = PLOT.x1 - PLOT.x0;
+const hhmm = (min: number) =>
+	`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(Math.round(min % 60)).padStart(2, '0')}`;
+const xOfMin = (min: number) =>
+	r2(PLOT.x0 + ((min - FILTER_CHART.from) / (FILTER_CHART.to - FILTER_CHART.from)) * plotW);
+const firedAt = hhmm(FILTER_CHART.from + ((cross.x - PLOT.x0) / plotW) * (FILTER_CHART.to - FILTER_CHART.from));
+
+// --- the alarm --------------------------------------------------------------------------------
+// In the morning still to come, clear of the live point, centred on the limit it hangs from.
+const alarmX = r2(tip.x + 26);
+if (alarmX + ALARM_W > PLOT.x1) {
+	throw new Error(`FilterChart: the alarm (${alarmX}–${alarmX + ALARM_W}) runs past the plot's edge at ${PLOT.x1}`);
+}
+
+// --- the keyframes ----------------------------------------------------------------------------
+// The reveal is a clip from the plot's left edge to the live point, growing with it: from where the
+// door stood at 4:55 to where it stands at 5:08, at one pace. The live point rides its tip. What
+// answers the crossing is timed from `tc`.
+const reveal = { x: PLOT.x0 - 2, w: r2(tip.x - (PLOT.x0 - 2)) };
+const k0 = r2((from.x - reveal.x) / reveal.w);
+const dx = r2(from.x - tip.x);
+const dy = r2(from.y - tip.y);
+// Unique per render: the keyframes carry this drawing's own timings, and a page may show two.
+const uid = `fch-${Math.random().toString(36).slice(2, 8)}`;
+const keyframes = `
+@keyframes ${uid}-reveal { 0% { transform: scaleX(${k0}); } ${CLIMB}%, 100% { transform: scaleX(1); } }
+@keyframes ${uid}-now { 0% { transform: translate(${dx}px, ${dy}px); } ${CLIMB}%, 100% { transform: none; } }
+@keyframes ${uid}-now-in { 0% { opacity: 0; } 3%, 93% { opacity: 1; } 97%, 100% { opacity: 0; } }
+@keyframes ${uid}-turn { 0%, ${tc}% { fill: var(--fch-now); } ${r2(tc + 1)}%, 100% { fill: var(--fch-alarm); } }
+@keyframes ${uid}-dot { 0%, ${tc}% { transform: scale(0); } ${r2(tc + 2)}% { transform: scale(1.4); } ${r2(tc + 4)}%, 100% { transform: scale(1); } }
+@keyframes ${uid}-link { 0%, ${r2(tc + 1)}% { transform: scaleX(0); } ${r2(tc + 5)}%, 100% { transform: scaleX(1); } }
+@keyframes ${uid}-alarm { 0%, ${r2(tc + 2)}% { opacity: 0; transform: translateY(8px) scale(0.97); } ${r2(tc + 7)}%, 100% { opacity: 1; transform: none; } }
+@keyframes ${uid}-answer {
+	0%, ${r2(tc + 7)}% { box-shadow: var(--fch-card-shadow), 0 0 0 0 color-mix(in srgb, var(--fch-alarm) 0%, transparent); }
+	${r2(tc + 10)}% { box-shadow: var(--fch-card-shadow), 0 0 0 6px color-mix(in srgb, var(--fch-alarm) 20%, transparent); }
+	${r2(tc + 20)}%, 100% { box-shadow: var(--fch-card-shadow), 0 0 0 12px color-mix(in srgb, var(--fch-alarm) 0%, transparent); }
+}
+@keyframes ${uid}-fade { 0%, 93% { opacity: 1; } 97%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+	[data-fch='${uid}'] .fch__reveal { animation: ${uid}-reveal var(--fch-loop) linear infinite; }
+	[data-fch='${uid}'] .fch__now { animation: ${uid}-now var(--fch-loop) linear infinite, ${uid}-now-in var(--fch-loop) linear infinite; }
+	[data-fch='${uid}'] :is(.fch__now-dot, .fch__readout) { animation: ${uid}-turn var(--fch-loop) linear infinite; }
+	[data-fch='${uid}'] .fch__fade { animation: ${uid}-fade var(--fch-loop) linear infinite; }
+	[data-fch='${uid}'] .fch__fired { animation: ${uid}-dot var(--fch-loop) ease-out infinite; }
+	[data-fch='${uid}'] .fch__link { animation: ${uid}-link var(--fch-loop) ease-out infinite; }
+	[data-fch='${uid}'] .fch__alarm-move { animation: ${uid}-alarm var(--fch-loop) cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+	[data-fch='${uid}'] .fch__alarm { animation: ${uid}-answer var(--fch-loop) ease-out infinite; }
+	[data-fch='${uid}'] :is(.fch__reveal, .fch__now, .fch__now-dot, .fch__readout, .fch__fade, .fch__fired, .fch__link, .fch__alarm-move, .fch__alarm) {
+		animation-play-state: var(--flow-play, running);
+	}
+}`;
+
+const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(FILTER_CHART.to)}: ${history.length} short openings, then the door left open past the ${openFor(FREEZER_ALARM.over)} limit, which raised a ${FREEZER_ALARM.severity.toLowerCase()} alarm, ${FREEZER_ALARM.name}, at ${firedAt}.`;
+---
+
+<style is:inline set:html={keyframes}></style>
+
+<div class="fch-fit">
+	<div
+		class="fch"
+		data-fch={uid}
+		data-fch-loop={LOOP_S}
+		data-fch-climb={CLIMB}
+		data-fch-from={S_START}
+		data-fch-to={S_END}
+		data-flow="in"
+		style={[
+			`--fch-u: min(1.15px, calc(100cqw / ${NATIVE}))`,
+			`--fch-native: ${NATIVE}`,
+			`--fch-h: ${H}`,
+			`--fch-alarm-x: ${alarmX}`,
+			`--fch-alarm-w: ${ALARM_W}`,
+			`--fch-limit-y: ${limitY}`,
+			`--fch-loop: ${LOOP_S}s`,
+		].join('; ')}
+	>
+		<svg class="fch__chart" viewBox={`0 0 ${NATIVE} ${H}`} role="img" aria-label={chartLabel}>
+			<defs>
+				<clipPath id={`${uid}-clip`}>
+					<rect class="fch__reveal" x={reveal.x} y="0" width={reveal.w} height={H}></rect>
+				</clipPath>
+			</defs>
+
+			<text class="fch__title" x="0" y="34">{FILTER_CHART.title}</text>
+
+			{
+				Y_TICKS.map((s) => (
+					<>
+						<line class="fch__grid" x1={PLOT.x0} y1={yOf(s)} x2={PLOT.x1} y2={yOf(s)} />
+						<text class="fch__tick fch__tick--y" x={PLOT.x0 - 10} y={yOf(s) + 5}>
+							{openFor(s)}
+						</text>
+					</>
+				))
+			}
+			{
+				X_TICKS.map((min, i) => (
+					<text
+						class:list={['fch__tick', i === 0 && 'is-start', i === X_TICKS.length - 1 && 'is-end']}
+						x={xOfMin(min)}
+						y={H - 14}
+					>
+						{hhmm(min)}
+					</text>
+				))
+			}
+
+			<line class="fch__limit" x1={PLOT.x0} y1={limitY} x2={PLOT.x1} y2={limitY}></line>
+
+			<g clip-path={`url(#${uid}-clip)`}>
+				<path class="fch__area" d={`${line} L ${tip.x},${PLOT.base} Z`}></path>
+				<path class="fch__over fch__fade" d={`M ${cross.x},${limitY} L ${tip.x},${tip.y} L ${tip.x},${limitY} Z`}
+				></path>
+				<path class="fch__line" d={line}></path>
+				<path class="fch__hot fch__fade" d={`M ${cross.x},${limitY} L ${tip.x},${tip.y}`}></path>
+			</g>
+			<line class="fch__link fch__fade" x1={cross.x} y1={limitY} x2={alarmX} y2={limitY}></line>
+			<circle class="fch__fired fch__fade" cx={cross.x} cy={limitY} r="5"></circle>
+
+			<g class="fch__now">
+				<circle class="fch__now-dot" cx={tip.x} cy={tip.y} r="5"></circle>
+				<text class="fch__readout" x={tip.x - 12} y={tip.y - 12} data-fch-readout>{openFor(S_END)}</text>
+			</g>
+		</svg>
+
+		<div class="fch__alarm-at fch__fade" aria-hidden="true">
+			<div class="fch__alarm-move">
+				<div class="fch__alarm">
+					<span class="fch__alarm-head">
+						<Icon name="tabler:alert-triangle-filled" class="fch__alarm-icon" />
+						<span class="fch__sev">{FREEZER_ALARM.severity}</span>
+						<span class="fch__time">{firedAt}</span>
+					</span>
+					<span class="fch__name">{FREEZER_ALARM.name}</span>
+					<span class="fch__row">
+						<span class="fch__key">Originator</span>
+						{FREEZER_ALARM.source}
+					</span>
+					<span class="fch__row">
+						<span class="fch__status-dot"></span>
+						{FILTER_CHART.status}
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	// The live readout: the door's open time, read off the reveal's own CSS clock so the number and the
+	// point cannot drift apart, and so it stops when the switch pauses the tab. Only while on screen.
+	const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+	document.querySelectorAll<HTMLElement>('[data-fch]').forEach((root) => {
+		const readout = root.querySelector<SVGTextElement>('[data-fch-readout]');
+		const clip = root.querySelector<SVGRectElement>('.fch__reveal');
+		if (!readout || !clip) return;
+		const loop = Number(root.dataset.fchLoop) * 1000;
+		const climb = Number(root.dataset.fchClimb) / 100;
+		const from = Number(root.dataset.fchFrom);
+		const to = Number(root.dataset.fchTo);
+		let frame = 0;
+		let last = '';
+
+		const tick = () => {
+			const anim = clip.getAnimations()[0];
+			const time = anim ? Number(anim.currentTime ?? 0) : loop;
+			const t = (time % loop) / loop;
+			const text = fmt(t < climb ? from + (t / climb) * (to - from) : to);
+			if (text !== last) readout.textContent = last = text;
+			frame = requestAnimationFrame(tick);
+		};
+
+		new IntersectionObserver(([entry]) => {
+			cancelAnimationFrame(frame);
+			if (entry.isIntersecting) frame = requestAnimationFrame(tick);
+		}).observe(root);
+	});
+</script>
+
+<style lang="scss">
+	@use '../../styles/variables' as *;
+
+	@function u($n) {
+		@return calc(#{$n} * var(--u));
+	}
+
+	.fch-fit {
+		container-type: inline-size;
+	}
+
+	// The chart sits on the row's own ground, no card of its own: the alarm is the one card, over it.
+	.fch {
+		--u: var(--fch-u);
+		--fch-grey: var(--color-text-secondary, #5b616e);
+		--fch-hue: var(--flow-rail, var(--color-primary, #3d50f5));
+		// The alarm's red, for everything on its path: the crossing, the lit limit, the alarm itself.
+		--fch-alarm: var(--color-accent-red, #b23c33);
+		// The live point and its readout, in the line's hue until the rule fires.
+		--fch-now: var(--fch-hue);
+		--fch-card-shadow:
+			0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.08),
+			0 #{u(8)} #{u(20)} #{u(-8)} rgba(var(--color-shadow-ui-rgb), 0.3);
+
+		position: relative;
+		width: 100%;
+		max-width: u(var(--fch-native));
+		height: u(var(--fch-h));
+		margin: 0 auto;
+	}
+
+	.fch__chart {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		max-width: none;
+		height: 100%;
+		overflow: visible;
+	}
+
+	// In the frame's own units, so 15 here is the family's 15.
+	.fch__tick {
+		font-size: 15px;
+		fill: var(--fch-grey);
+	}
+
+	// Set as the alarm's name is, at its size and weight, and subdued: the chart's heading, not its news.
+	.fch__title {
+		font-size: 17px;
+		font-weight: $font-weight-medium;
+		fill: var(--fch-grey);
+	}
+
+	.fch__tick {
+		font-family: $font-family-mono;
+		text-anchor: middle;
+
+		&.is-start {
+			text-anchor: start;
+		}
+
+		&.is-end {
+			text-anchor: end;
+		}
+	}
+
+	.fch__tick--y {
+		text-anchor: end;
+	}
+
+	.fch__grid {
+		stroke: var(--color-text, #17181c);
+		stroke-opacity: 0.06;
+		stroke-width: 1;
+		vector-effect: non-scaling-stroke;
+	}
+
+	.fch__limit {
+		stroke: var(--fch-grey);
+		stroke-opacity: 0.55;
+		stroke-width: 1;
+		stroke-dasharray: 5 4;
+		vector-effect: non-scaling-stroke;
+	}
+
+	// The reveal grows from its left edge.
+	.fch__reveal {
+		transform-box: fill-box;
+		transform-origin: left center;
+	}
+
+	.fch__area {
+		fill: var(--fch-hue);
+		opacity: 0.08;
+	}
+
+	.fch__line,
+	.fch__hot,
+	.fch__link {
+		fill: none;
+		vector-effect: non-scaling-stroke;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.fch__line {
+		stroke: var(--fch-hue);
+		stroke-opacity: 0.7;
+		stroke-width: max(1px, #{u(2)});
+	}
+
+	// What lies over the limit — the time the door stood open past the rule — in the alarm's red.
+	.fch__over {
+		fill: var(--fch-alarm);
+		opacity: 0.16;
+	}
+
+	.fch__hot {
+		stroke: var(--fch-alarm);
+		stroke-width: max(1.5px, #{u(3)});
+	}
+
+	.fch__link {
+		stroke: var(--fch-alarm);
+		stroke-width: max(1px, #{u(2)});
+		transform-box: fill-box;
+		transform-origin: left center;
+	}
+
+	.fch__fired {
+		fill: var(--fch-alarm);
+		stroke: var(--color-bg-surface, #fff);
+		stroke-width: 2;
+		transform-box: fill-box;
+		transform-origin: center;
+	}
+
+	// The live point and the door's open time beside it. At rest they show 5:08, past the limit, so
+	// their resting colour is the alarm's; the loop holds them in the line's hue until 5:00.
+	.fch__now-dot {
+		fill: var(--fch-alarm);
+		stroke: var(--color-bg-surface, #fff);
+		stroke-width: 2;
+	}
+
+	.fch__readout {
+		font-family: $font-family-mono;
+		font-size: 15px;
+		font-weight: $font-weight-bold;
+		font-variant-numeric: tabular-nums;
+		text-anchor: end;
+		fill: var(--fch-alarm);
+	}
+
+	// --- the alarm --------------------------------------------------------------------------
+
+	// Placed in the frame's units, its left edge where the lit limit ends, centred on the limit.
+	.fch__alarm-at {
+		position: absolute;
+		top: u(var(--fch-limit-y));
+		left: u(var(--fch-alarm-x));
+		width: u(var(--fch-alarm-w));
+		transform: translateY(-50%);
+	}
+
+	// The alarm as the product lists one: severity and time, the name, the originator, the state.
+	.fch__alarm {
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		gap: u(6);
+		padding: u(12) u(14);
+		border-radius: u(8);
+		background: var(--color-bg-surface, #fff);
+		box-shadow: var(--fch-card-shadow);
+	}
+
+	.fch__alarm-head {
+		display: flex;
+		align-items: center;
+		gap: u(6);
+	}
+
+	.fch__alarm-icon {
+		flex: none;
+		width: u(20);
+		height: u(20);
+		color: var(--fch-alarm);
+	}
+
+	.fch__sev {
+		padding: u(1) u(7);
+		border-radius: u(5);
+		font-family: $font-family-mono;
+		font-size: u(15);
+		font-weight: $font-weight-bold;
+		line-height: u(20);
+		letter-spacing: 0.04em;
+		color: #fff;
+		background: var(--fch-alarm);
+	}
+
+	.fch__time {
+		margin-left: auto;
+		font-family: $font-family-mono;
+		font-size: u(15);
+		line-height: u(20);
+		color: var(--fch-grey);
+	}
+
+	.fch__name {
+		font-size: u(17);
+		font-weight: $font-weight-medium;
+		line-height: u(22);
+		color: var(--color-text);
+	}
+
+	.fch__row {
+		display: flex;
+		align-items: center;
+		gap: u(8);
+		font-size: u(15);
+		line-height: u(20);
+		color: var(--color-text);
+	}
+
+	.fch__key {
+		color: var(--fch-grey);
+	}
+
+	.fch__status-dot {
+		flex: none;
+		width: u(8);
+		height: u(8);
+		border-radius: 50%;
+		background: var(--fch-alarm);
+	}
+</style>

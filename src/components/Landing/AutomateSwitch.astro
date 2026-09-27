@@ -2,6 +2,7 @@
 import SegmentedToggle from '@components/Landing/SegmentedToggle.astro';
 import NormalizeSeries from '@components/Landing/NormalizeSeries.astro';
 import FilterFlow from '@components/Landing/FilterFlow.astro';
+import FilterChart from '@components/Landing/FilterChart.astro';
 import NotifyFlow from '@components/Landing/NotifyFlow.astro';
 import { AUTOMATE_STAGES, AUTOMATE_SWITCH_LABEL } from '@data/automate-visual';
 import { NORMALIZE_COPY } from '@data/normalize-visual';
@@ -40,13 +41,19 @@ import { NORMALIZE_COPY } from '@data/normalize-visual';
 interface Props {
 	/** Prefixes the panel ids, for a page that renders the switch more than once. */
 	id?: string;
+	/**
+	 * The Filter tab. `flow` — `FilterFlow`, the spark, the mark and the alarm, as the switch shipped.
+	 * `chart` — `FilterChart` (a candidate, 2026-09-27): a large line chart as the ground, and the
+	 * alarm opening where it crosses the limit; no mark.
+	 */
+	filter?: 'flow' | 'chart';
 }
 
-const { id = 'automate' } = Astro.props;
+const { id = 'automate', filter = 'flow' } = Astro.props;
 const panelId = (stage: string) => `${id}-${stage}`;
 ---
 
-<div class="auto" data-automate>
+<div class:list={['auto', filter === 'chart' && 'auto--blend']} data-automate>
 	<div class="auto__switch">
 		<SegmentedToggle
 			label={AUTOMATE_SWITCH_LABEL}
@@ -73,7 +80,11 @@ const panelId = (stage: string) => `${id}-${stage}`;
 					{s.id === 'normalize' ? (
 						<NormalizeSeries motion="pulse" />
 					) : s.id === 'filter' ? (
-						<FilterFlow />
+						filter === 'chart' ? (
+							<FilterChart />
+						) : (
+							<FilterFlow />
+						)
 					) : (
 						<NotifyFlow />
 					)}
@@ -214,6 +225,13 @@ const panelId = (stage: string) => `${id}-${stage}`;
 		.auto__switch :global(.seg__icon) {
 			display: none;
 		}
+	}
+
+	// With the chart candidate, the switch's track takes the row's ground instead of its own grey: a
+	// translucent ink, which darkens whatever tint is under it as a multiply would, while the white
+	// thumb stays white (a real multiply on the toggle would dissolve it into the ground).
+	.auto--blend .auto__switch :global(.seg) {
+		background: rgba(23, 24, 28, 0.06);
 	}
 
 	.auto__stage {

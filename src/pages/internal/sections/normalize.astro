@@ -27,10 +27,18 @@ import { kv } from '@root/pages/internal/_key-visuals';
 	<Variant
 		visual={kv('normalize')}
 		component={AutomateSwitch}
-		props={{ id: 'sandbox-automate' }}
+		props={{ id: 'sandbox-automate', filter: 'flow' }}
 		shipping
 		name="Switch"
 		note="Normalize · Filter · Notify, one skeleton, a switch over the row’s media; the mark holds its place across all three, and no caption under the drawing (2026-09-26)"
+	/>
+
+	<Variant
+		visual={kv('normalize')}
+		component={AutomateSwitch}
+		props={{ id: 'sandbox-automate-chart', filter: 'chart' }}
+		name="Switch, Filter as a chart"
+		note="candidate · Filter without the mark: the morning's door-open times as a large line chart, and the alarm as the product lists one, opening where the line crosses the 5:00 limit; Normalize and Notify as shipped for now (2026-09-27)"
 	/>
 
 	<Variant

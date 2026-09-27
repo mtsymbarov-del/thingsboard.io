@@ -72,6 +72,29 @@ export const DOOR_OPENINGS = [42, 75, 450, 55];
 
 export const passes = (seconds: number) => seconds > FREEZER_ALARM.over;
 
+/**
+ * The chart direction (`FilterChart`, a candidate, 2026-09-27): the morning so far as a live dashboard
+ * line — six short openings, then the one still open, the same long opening (7:30) the flow keeps and
+ * the only one over the limit, so Notify's SMS still quotes it. The last is live: the chart runs up
+ * to "now" while that door stands open, and the rest of the morning is still to come.
+ */
+export const DOOR_MORNING = [36, 64, 28, 52, 41, 30, 450];
+
+/** What the chart's own header says, and its time axis: a morning, 06:00 to 12:00. */
+export const FILTER_CHART = {
+	title: `${FREEZER_ALARM.source} · Door open time`,
+	from: 6 * 60,
+	to: 12 * 60,
+	/** The alarm as the product lists one, under its name. */
+	status: 'Active · Unacknowledged',
+};
+
+if (DOOR_MORNING.filter(passes).join() !== DOOR_OPENINGS.filter(passes).join()) {
+	throw new Error(
+		'automate-visual: the chart keeps a different opening from the flow, so Notify would disagree with it'
+	);
+}
+
 /** `m:ss`, the way a door sensor's open time reads in a dashboard table. */
 export const openFor = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 

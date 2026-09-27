@@ -16,9 +16,11 @@ import mark from '@root/assets/images/landings/draft/thingsboard-mark.svg?raw';
  *   open      the repo as GitHub shows it: the ThingsBoard mark as the org's avatar, white on the
  *             On-premises green, the repo's name as the link, and the star count under it
  *
- * THE SCALE LOOP is 9s, split 3 / 5 / 9 — the monolith 1.5s, hybrid 2.5s, the cluster 5s, its last
- * half-second with the bar full — so the fill quickens through the monolith's quarter and slows
- * through hybrid's, meeting each notch as its stage hands over.
+ * THE SCALE LOOP is 9s, six beats of the nodes' 1.5s pulse, and every event lands on the grid. The
+ * bar fills at ONE pace over the first four beats, so time is the bar: the monolith one beat, hybrid
+ * one, the cluster two, each handover on a pulse. The cluster's nodes join as the fill passes their
+ * share of its section, one every half beat, so the growth is the bar's. Then two beats whole with
+ * the bar full, and the fold home.
  *
  * ONE STRIP OF NODES, NOT ONE PER STAGE, so the drawing grows rather than switching. The stage's hue
  * is one animated colour (`--trs-node-hue`, registered so it can blend) that the nodes, their pale
@@ -65,11 +67,8 @@ const spanTotal = TRUST_SCALE_STAGES.reduce((sum, st) => sum + st.span, 0);
 const meterAt = TRUST_SCALE_STAGES.map(
 	(_, i) => +(TRUST_SCALE_STAGES.slice(0, i + 1).reduce((sum, st) => sum + st.span, 0) / spanTotal).toFixed(4)
 );
-/** The stages' hues, for the one animated node hue, and the bar's notches. */
-const scaleVars = [
-	...TRUST_SCALE_STAGES.map((st, i) => `--trs-hue-${i}: ${st.hue}`),
-	...meterAt.map((at, i) => `--trs-at-${i}: ${at}`),
-].join('; ');
+/** The stages' hues, for the one animated node hue. */
+const scaleVars = TRUST_SCALE_STAGES.map((st, i) => `--trs-hue-${i}: ${st.hue}`).join('; ');
 /** The most nodes any stage lights: the cluster's. */
 const NODES = Math.max(...TRUST_SCALE_STAGES.map((st) => st.cells));
 
@@ -128,8 +127,14 @@ const [owner, repo] = TRUST_REPO.split('/');
 						<ul class="trs__seals" role="list">
 							{TRUST_CERTS.map((number) => (
 								<li class="trs__seal">
-									<span class="trs__seal-body">ISO</span>
-									<span class="trs__seal-number">{number}</span>
+									<svg class="trs__ribbon" viewBox="0 0 44 40">
+										<path class="trs__ribbon-band" d="M0 0h44v40L22 31 0 40z" />
+										<path class="trs__ribbon-fold" d="M22 0h22v40L22 31z" />
+									</svg>
+									<span class="trs__seal-disc">
+										<span class="trs__seal-body">ISO</span>
+										<span class="trs__seal-number">{number}</span>
+									</span>
 								</li>
 							))}
 						</ul>
@@ -219,7 +224,7 @@ const [owner, repo] = TRUST_REPO.split('/');
 
 	// --- security: the shield, then two seals ------------------------------------------------
 
-	// 72 + 20 + 72 + 14 + 72 = 250 of the 260: spread across the box rather than huddled at its left.
+	// 72 + 20 + 72 + 20 + 72 = 256 of the 260: spread across the box rather than huddled at its left.
 	.trs__pair {
 		display: flex;
 		align-items: center;
@@ -256,7 +261,7 @@ const [owner, repo] = TRUST_REPO.split('/');
 
 	.trs__seals {
 		display: flex;
-		gap: u(14);
+		gap: u(20);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -267,13 +272,42 @@ const [owner, repo] = TRUST_REPO.split('/');
 	// the standard's name; the number is plain text under it.
 	.trs__seal {
 		position: relative;
+		flex: none;
+		width: u(72);
+		height: u(72);
+		margin: 0;
+	}
+
+	// One wide ribbon hanging straight down from the seal's foot, symmetrical, in the accent "ISO"
+	// takes, with a notch cut up into its end. It starts behind the disc, so only its lower 18 show;
+	// its right half a shade darker, as a fold catches the light.
+	.trs__ribbon {
+		position: absolute;
+		top: u(50);
+		left: 50%;
+		display: block;
+		width: u(44);
+		max-width: none;
+		height: u(40);
+		transform: translateX(-50%);
+		overflow: visible;
+	}
+
+	.trs__ribbon-band {
+		fill: var(--trs-indigo);
+	}
+
+	.trs__ribbon-fold {
+		fill: color-mix(in srgb, var(--trs-indigo) 82%, #000);
+	}
+
+	.trs__seal-disc {
+		position: absolute;
+		inset: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		width: u(72);
-		height: u(72);
-		margin: 0;
 		border-radius: 50%;
 		background: var(--color-bg-surface, #fff);
 		box-shadow: var(--trs-tile-shadow);
@@ -622,16 +656,16 @@ const [owner, repo] = TRUST_REPO.split('/');
 	}
 
 	// ── The loop ──────────────────────────────────────────────────────────
-	// 9s. The bar fills over the first 94% and holds full until it fades at the end. The stages take it
-	// 3 / 5 / 9 — the monolith least, the cluster, with the most to show, over half — while the bar's
-	// sections stay 25 / 25 / 50 (`span`), so the fill's pace is each section's own.
+	// 9s = six beats of the 1.5s pulse. The bar fills at one pace over the first four beats (66.7%), so
+	// each stage's time is its section's width (`span`, 25 / 25 / 50): the monolith 1.5s, hybrid 1.5s,
+	// the cluster 3s of fill and 3s whole with the bar full, folding home in its last half-second.
 	//
 	// EVERY HANDOVER IS CENTRED ON ITS BOUNDARY: the names, the stores and the hue all cross-fade over
 	// the moment the fill crosses the notch, rather than one stage leaving before the next arrives.
 	// The loop's own seam, cluster to monolith, is a boundary like the others — at 100% and 0% both are
 	// halfway — so it wraps without a cut.
-	$fill: 94%;
-	$bounds: (0%, $fill * math.div(3, 17), $fill * math.div(8, 17), 100%);
+	$fill: math.div(200%, 3);
+	$bounds: (0%, $fill * 0.25, $fill * 0.5, 100%);
 	$cluster: nth($bounds, 3);
 	// Half a cross-fade: ±1.5%, about 0.27s in all.
 	$xf: 1.5%;
@@ -710,17 +744,11 @@ const [owner, repo] = TRUST_REPO.split('/');
 		}
 	}
 
-	// The bar reaches each notch as its stage hands over, holds full, and fades as the loop turns; its
-	// hue is the nodes' one hue.
+	// One pace, so it crosses each notch on a beat as its stage hands over; holds full, and fades as the
+	// loop turns. Its hue is the nodes' one hue.
 	@keyframes trs-meter-fill {
 		0% {
 			transform: scaleX(0);
-		}
-		#{nth($bounds, 2)} {
-			transform: scaleX(var(--trs-at-0));
-		}
-		#{$cluster} {
-			transform: scaleX(var(--trs-at-1));
 		}
 		#{$fill},
 		97% {
@@ -765,12 +793,12 @@ const [owner, repo] = TRUST_REPO.split('/');
 		}
 	}
 
-	// The cluster scaling out and back. Node k joins 5% after the one before it, from the cluster's
-	// start: its link draws out to it just ahead, then it pops in past full size and settles. The last
-	// has settled by 69%, leaving the whole cluster 1.9s. They fold home in reverse, the newest first,
-	// 1.5% apart, each link drawing back into the node before it, the first node alone by 97.5%.
+	// The cluster scaling out and back. Node k joins as the fill passes k quarters of the cluster's
+	// section — every half beat, the last as the bar fills — its link drawing out to it just ahead, then
+	// it pops in past full size and settles. The whole cluster holds from 72% (1.6s), then folds home in
+	// reverse, the newest first, 1.5% apart, each link drawing back into the node before it.
 	@for $k from 1 through 4 {
-		$join: $cluster + $k * 5%;
+		$join: $cluster + ($fill - $cluster) * math.div($k, 4);
 		$leave: 90% + (4 - $k) * 1.5%;
 
 		@keyframes trs-join-#{$k} {

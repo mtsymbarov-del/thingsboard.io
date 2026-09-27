@@ -113,8 +113,8 @@ export interface TrustScaleStage {
 	hue: string;
 	/**
 	 * Its section of the devices bar, as a percentage: 25 / 25 / 50, the cluster half. A picture of the
-	 * steps, not a scale of the ranges (10K is 0.2% of 5M). The loop's time splits 3 / 5 / 9 on its
-	 * own (`TrustVisualStages`), so the fill's pace differs per section.
+	 * steps, not a scale of the ranges (10K is 0.2% of 5M). The bar fills at one pace, so it is each
+	 * stage's share of the fill too: one beat, one beat, two (`TrustVisualStages`).
 	 */
 	span: number;
 	/** Cells lit out of five; more than one lights in turn, the cluster scaling out. */

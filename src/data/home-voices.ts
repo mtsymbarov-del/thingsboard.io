@@ -85,6 +85,8 @@ export interface HomeVoice {
 	author: string;
 	position?: string;
 	company: string;
+	/** The company's logo, as the clients-feedback page shows it, with its drawn size for the ratio. */
+	logo: { src: string; width?: number; height?: number };
 	image?: string;
 	/** The case study, when the customer has one. */
 	href?: string;
@@ -110,6 +112,7 @@ export const HOME_VOICES: HomeVoice[] = PICKS.map((p) => {
 		// "T-Mobile Czech Republic a.s." and "TEKTELIC Communications Inc." are the legal names the
 		// feedback page prints; a card this small says the name people know.
 		company: entry.companyName.replace(/ (a\.s\.|Communications Inc\.)$/, ''),
+		logo: { src: entry.companyImage, width: entry.companyImageWidth, height: entry.companyImageHeight },
 		image: entry.authorImage,
 		href: entry.caseStudySlug ? `/case-studies/${entry.caseStudySlug}/` : undefined,
 		accent: !!p.accent,

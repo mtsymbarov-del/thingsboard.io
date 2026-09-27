@@ -58,6 +58,16 @@ import { HOME_VOICES, VOICES_COPY, VOICES_STATS } from '@data/home-voices';
 					{
 						HOME_VOICES.map((v) => (
 							<li class:list={['voices__card', v.accent && 'voices__card--accent']}>
+								{/* The name is in the card's text already, so the mark itself is decoration. */}
+								<img
+									class="voices__logo"
+									src={v.logo.src}
+									alt=""
+									width={v.logo.width}
+									height={v.logo.height}
+									loading="lazy"
+									decoding="async"
+								/>
 								<blockquote class="voices__quote">
 									<p>“{v.quote}”</p>
 								</blockquote>
@@ -132,10 +142,11 @@ import { HOME_VOICES, VOICES_COPY, VOICES_STATS } from '@data/home-voices';
 	}
 
 	// White to 10% of the bookends' indigo at its foot: the rows' gradient, in the colour of the band
-	// that follows, so the page runs down into the closing CTA rather than stepping onto it.
+	// that follows, so the page runs down into the closing CTA rather than stepping onto it. It holds
+	// white through the heading and the numbers, the top third, before the tint starts.
 	.voices__band {
 		padding-block: $spacing-16 $spacing-20;
-		background: linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--voices-indigo) 10%, #fff) 100%);
+		background: linear-gradient(180deg, #fff 0%, #fff 35%, color-mix(in srgb, var(--voices-indigo) 10%, #fff) 100%);
 
 		@include media-down(md) {
 			padding-block: $spacing-12 $spacing-16;
@@ -220,6 +231,20 @@ import { HOME_VOICES, VOICES_COPY, VOICES_STATS } from '@data/home-voices';
 		box-shadow:
 			0 1px 2px rgba(0, 0, 0, 0.04),
 			0 8px 24px -8px rgba(0, 0, 0, 0.1);
+	}
+
+	// Each customer's mark over its quote, in grey so six brands' colours do not fight the quotes: one
+	// height, as wide as its own ratio makes it, up to 120.
+	.voices__logo {
+		display: block;
+		width: auto;
+		max-width: 120px;
+		height: 24px;
+		margin-bottom: $spacing-4;
+		object-fit: contain;
+		object-position: left center;
+		filter: grayscale(1);
+		opacity: 0.72;
 	}
 
 	.voices__quote {
@@ -336,6 +361,12 @@ import { HOME_VOICES, VOICES_COPY, VOICES_STATS } from '@data/home-voices';
 		.voices__quote p {
 			@include type-card;
 			color: #fff;
+		}
+
+		// White on the navy.
+		.voices__logo {
+			filter: brightness(0) invert(1);
+			opacity: 0.9;
 		}
 
 		.voices__context,

@@ -59,24 +59,27 @@ const splitName = (name: string, highlight?: string) => {
 										<div class="install__regions">
 											<p class="install__group-title">Try now</p>
 											<ul>
-												{p.regions.map((region) => (
-													<li data-region={region.id}>
-														<a class="install__region" href={region.signup} {...externalLinkAttrs(region.signup)}>
-															<span class="install__region-globe">
-																<Icon name="tabler:world" aria-hidden="true" />
-															</span>
-															<span class="install__region-name">
-																{region.name}
-																<small>{region.note}</small>
-															</span>
-															<span class="install__region-cta">
-																Sign up
-																<span class="sr-only"> for ThingsBoard Cloud in {region.name}</span>
-																<Icon name="tabler:chevron-right" aria-hidden="true" />
-															</span>
-														</a>
-													</li>
-												))}
+												{p.regions.map((region) => {
+													const signup = `https://${region.host}/signup`;
+													return (
+														<li data-region={region.id}>
+															<a class="install__region" href={signup} {...externalLinkAttrs(signup)}>
+																<span class="install__region-globe">
+																	<Icon name="tabler:world" aria-hidden="true" />
+																</span>
+																<span class="install__region-name">
+																	{region.name}
+																	<small>{region.note}</small>
+																</span>
+																<span class="install__region-cta">
+																	Sign up
+																	<span class="sr-only"> for ThingsBoard Cloud in {region.name}</span>
+																	<Icon name="tabler:chevron-right" aria-hidden="true" />
+																</span>
+															</a>
+														</li>
+													);
+												})}
 											</ul>
 										</div>
 									)}
@@ -168,14 +171,14 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__intro-title {
-		@include type-title;
+		@include section-title;
 
 		margin: 0 0 $spacing-5;
 		color: var(--color-text);
 	}
 
 	.install__intro-text {
-		@include type-body;
+		@include text-m;
 
 		max-width: 65ch;
 		margin: 0 auto;
@@ -244,14 +247,17 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__label {
-		@include type-eyebrow;
+		@include text-xs;
+
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 
 		margin: 0 0 $spacing-1;
 		color: var(--color-text-secondary);
 	}
 
 	.install__title {
-		@include type-subsection;
+		@include card-title;
 
 		margin: 0;
 		color: var(--color-text);
@@ -273,7 +279,7 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__text {
-		@include type-body;
+		@include text-m;
 
 		max-width: 46ch;
 		margin: 0;
@@ -290,17 +296,15 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__button {
-		@include type-button;
+		@include button-base;
 
-		display: inline-flex;
-		align-items: center;
 		gap: $spacing-2;
 		height: 44px;
 		padding: 0 $spacing-4;
 		border: 1px solid var(--color-border-light);
 		border-radius: $radius-md;
+		background: transparent;
 		color: var(--color-text);
-		text-decoration: none;
 
 		:global(svg) {
 			width: 20px;
@@ -332,7 +336,9 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__link {
-		@include type-link;
+		@include text-m;
+
+		font-weight: $font-weight-medium;
 
 		display: inline-flex;
 		align-items: center;
@@ -426,7 +432,7 @@ const splitName = (name: string, highlight?: string) => {
 		line-height: 1.3;
 
 		small {
-			@include type-small;
+			@include text-s;
 
 			font-weight: $font-weight-normal;
 			color: var(--color-text-secondary);
@@ -434,7 +440,9 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__region-cta {
-		@include type-small-strong;
+		@include text-s;
+
+		font-weight: $font-weight-medium;
 
 		display: inline-flex;
 		flex: none;
@@ -467,7 +475,9 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__aside-title {
-		@include type-tile;
+		@include text-m;
+
+		font-weight: $font-weight-semibold;
 
 		display: flex;
 		align-items: center;
@@ -484,7 +494,10 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__group-title {
-		@include type-eyebrow;
+		@include text-xs;
+
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 
 		margin: 0 0 $spacing-3;
 		color: var(--color-text-secondary);
@@ -500,7 +513,7 @@ const splitName = (name: string, highlight?: string) => {
 	}
 
 	.install__chip {
-		@include type-body;
+		@include text-m;
 
 		display: inline-flex;
 		align-items: center;

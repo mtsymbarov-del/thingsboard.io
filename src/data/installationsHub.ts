@@ -1,4 +1,4 @@
-import { CLOUD_REGIONS, type CloudRegionId } from '@util/cloud-regions';
+import { CLOUD_REGIONS, type CloudRegion } from '@util/cloud-regions';
 
 /**
  * Data for the installations hub (`/installations/`): one section per product with its sign-up or
@@ -23,14 +23,6 @@ export interface InstallOption {
 export interface InstallOptionGroup {
 	title: string;
 	items: InstallOption[];
-}
-
-export interface InstallRegion {
-	id: CloudRegionId;
-	name: string;
-	/** Where the data is stored. */
-	note: string;
-	signup: string;
 }
 
 /** Cloud's Private Cloud panel, with the cloud-provider options under it. */
@@ -58,25 +50,13 @@ export interface InstallProduct {
 	/** Text links beside the button: pricing, product page. */
 	links: InstallLink[];
 	options?: InstallOptionGroup[];
-	regions?: InstallRegion[];
+	/** Cloud's regions, each signed up on its own host. */
+	regions?: readonly CloudRegion[];
 	aside?: InstallAside;
 }
 
 const logo = (name: string) => `/src/assets/images/installation/${name}`;
 const mark = (name: string) => `/src/assets/images/landings/${name}`;
-
-const REGION_NOTES: Record<CloudRegionId, string> = {
-	us: 'Data stored in North America',
-	eu: 'Data stored in the European Union',
-};
-
-/** One sign-up per Cloud region; returning users sign in from the header. */
-const regions: InstallRegion[] = CLOUD_REGIONS.map((r) => ({
-	id: r.id,
-	name: r.name,
-	note: REGION_NOTES[r.id],
-	signup: `https://${r.host}/signup`,
-}));
 
 /** Self-hosted install guides for each cloud provider, listed under Private Cloud. */
 const cloudProviders: InstallOptionGroup = {
@@ -97,12 +77,12 @@ export const installProducts: InstallProduct[] = [
 		label: 'Fully managed, shared or dedicated',
 		description:
 			'Nothing to install. Pick the region your data lives in and start on a free plan; we run the servers, scaling, backups and upgrades.',
-		icon: mark('thingsboard-mark.svg'),
+		icon: '/images/pricing/thingsboard-icon.svg',
 		accent: '#6e7481',
 		badgeFill: 'var(--color-product-cloud)',
 		cornerIcon: 'tabler:cloud',
 		links: [{ label: 'See plans', href: '/pricing/' }],
-		regions,
+		regions: CLOUD_REGIONS,
 		aside: {
 			title: 'Private Cloud',
 			text: 'A dedicated cluster we provision and operate for you, in the cloud and the region you choose.',
@@ -120,7 +100,7 @@ export const installProducts: InstallProduct[] = [
 		label: 'Self-managed, on your infrastructure',
 		description:
 			'You run the deployment, on your own servers or fully offline. Free to install; the licence for the advanced features is on the pricing page.',
-		icon: mark('thingsboard-mark.svg'),
+		icon: '/images/pricing/thingsboard-icon.svg',
 		accent: '#6e7481',
 		badgeFill: 'var(--brand-pe)',
 		cornerIcon: 'tabler:server',

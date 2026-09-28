@@ -1,5 +1,6 @@
 ---
 import { Icon } from 'astro-icon/components';
+import { renderId } from '@util/render-id';
 import { ALARM_FIRED_AT, FILTER_CHART, FREEZER_ALARM, NOTIFY_FEED, openFor } from '@data/automate-visual';
 
 /**
@@ -62,7 +63,7 @@ const curve = (k: number, s: number) =>
 // The loop's states on the rows' own schedule: row s held open over [s × 25 + 4, s × 25 + 25]%, the
 // hand-off to the next over the 4% after, and the seam at 0% the last row still open.
 const held = (s: number): [number, number] => [s * 25 + 4, s * 25 + 25];
-const uid = 'nf-' + Math.random().toString(36).slice(2, 8);
+const uid = renderId('nf');
 let keyframes = '';
 NOTIFY_FEED.forEach((_, k) => {
 	let move = '0% { transform: ' + curve(k, n - 1) + '; } ';

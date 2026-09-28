@@ -2,6 +2,7 @@
 import AlarmEntry from '@components/Landing/AlarmEntry.astro';
 import { ALARM_FIRED_AT, FILTER_CHART, FILTER_HISTORY, FREEZER_ALARM, openFor } from '@data/automate-visual';
 import { filterChartFrames } from '@util/filter-chart-frames';
+import { renderId } from '@util/render-id';
 
 /**
  * Filter without the mark — the homepage's since 2026-09-27, over `FilterFlow` — as a chart with as little ink as it can carry.
@@ -57,7 +58,7 @@ const LIMIT = { min: 30, max: Y_MAX - 15, step: 5 };
 // One pace: 6s to the top of its range (the drag's own top), stopping a few seconds past the limit
 // once the rule has fired (`filterChartFrames`, shared with the drag's replay).
 const PEAK = LIMIT.max;
-const uid = `fch-${Math.random().toString(36).slice(2, 8)}`;
+const uid = renderId('fch');
 const frames = filterChartFrames(uid, FILTER_CHART.limit, PEAK, { base: PLOT.base, top: PLOT.top, yMax: Y_MAX });
 const liveTop = yOf(PEAK);
 

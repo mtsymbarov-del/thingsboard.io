@@ -4,12 +4,13 @@ import NormalizeSeries from '@components/Landing/NormalizeSeries.astro';
 import FilterFlow from '@components/Landing/FilterFlow.astro';
 import FilterChart from '@components/Landing/FilterChart.astro';
 import NotifyFlow from '@components/Landing/NotifyFlow.astro';
+import NotifyFeed from '@components/Landing/NotifyFeed.astro';
 import { AUTOMATE_STAGES, AUTOMATE_SWITCH_LABEL } from '@data/automate-visual';
 import { NORMALIZE_COPY } from '@data/normalize-visual';
 
 /**
  * "Turn IoT data into action" as three drawings — Normalize, Filter, Notify — and a switch over them.
- * A candidate beside `NormalizeSeries`, which it holds unchanged as its first panel: the row that
+ * Beside `NormalizeSeries`, which it holds unchanged as its first panel: the row that
  * renders `NormalizeSeries` alone (the handoff's) is untouched by this file.
  *
  * It sits in the ROW's media column, not in a centred section of its own. A centred section between
@@ -42,14 +43,21 @@ interface Props {
 	/** Prefixes the panel ids, for a page that renders the switch more than once. */
 	id?: string;
 	/**
-	 * The Filter tab. `flow` — `FilterFlow`, the spark, the mark and the alarm, as the switch shipped.
-	 * `chart` — `FilterChart` (a candidate, 2026-09-27): a large line chart as the ground, and the
-	 * alarm opening where it crosses the limit; no mark.
+	 * The Filter tab. `chart` — `FilterChart`, the homepage's since 2026-09-27: the morning's door
+	 * openings as bars against a draggable limit, the live one climbing past it and the alarm opening
+	 * where it crosses; no mark. `flow` — `FilterFlow`, the spark, the mark and the alarm, as the switch
+	 * first shipped; the sandbox's reference.
 	 */
 	filter?: 'flow' | 'chart';
+	/**
+	 * The Notify tab. `feed` — `NotifyFeed`, the homepage's since 2026-09-27: the alarm as a node, one
+	 * line curving to four channels, each opening in turn into its message; clickable. `flow` —
+	 * `NotifyFlow`, the alarm through the mark into four messages at once; the sandbox's reference.
+	 */
+	notify?: 'flow' | 'feed';
 }
 
-const { id = 'automate', filter = 'flow' } = Astro.props;
+const { id = 'automate', filter = 'chart', notify = 'feed' } = Astro.props;
 const panelId = (stage: string) => `${id}-${stage}`;
 ---
 
@@ -85,6 +93,8 @@ const panelId = (stage: string) => `${id}-${stage}`;
 						) : (
 							<FilterFlow />
 						)
+					) : notify === 'feed' ? (
+						<NotifyFeed />
 					) : (
 						<NotifyFlow />
 					)}
@@ -119,10 +129,17 @@ const panelId = (stage: string) => `${id}-${stage}`;
 
 		// Everything but the mark: the stage names, the two columns, the lines, and whatever hangs under
 		// the mark (Filter's rule). The mark itself — the node's first child — is the one thing that holds.
-		const layer = (p: HTMLElement) =>
-			p.querySelectorAll<HTMLElement>(
-				'[data-flow="label"], [data-flow="in"], [data-flow="gut"], [data-flow="out"], [data-flow="node"] > :not(:first-child)'
-			);
+		//
+		// The mark holds only when BOTH drawings have one: the drawings without it (`FilterChart`,
+		// `NotifyFeed`) move as one layer, and a Normalize mark left holding over one of them would sit
+		// on top of the arriving drawing until the leaving panel is cut.
+		const hasMark = (p: HTMLElement) => p.querySelector('[data-flow="node"]') !== null;
+		const layer = (p: HTMLElement, holdMark: boolean) =>
+			holdMark
+				? p.querySelectorAll<HTMLElement>(
+						'[data-flow="label"], [data-flow="in"], [data-flow="gut"], [data-flow="out"], [data-flow="node"] > :not(:first-child)'
+					)
+				: p.querySelectorAll<HTMLElement>(':scope > *');
 
 		// The AI section's hand-off, to the value (`AiHandoff`): the view pans the way the thumb slides —
 		// out 24px toward the side it leaves by in 47% of the time, accelerating; in from 32px the other
@@ -131,12 +148,15 @@ const panelId = (stage: string) => `${id}-${stage}`;
 		const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 
 		const handoff = (previous: HTMLElement, next: HTMLElement, dir: number) => {
+			const holdMark = hasMark(previous) && hasMark(next);
 			if (reduced) {
-				layer(next).forEach((el) => el.animate([{ opacity: 0, offset: 0 }], { duration: 150, easing: 'ease-out' }));
+				layer(next, holdMark).forEach((el) =>
+					el.animate([{ opacity: 0, offset: 0 }], { duration: 150, easing: 'ease-out' })
+				);
 				return;
 			}
 			previous.classList.add('is-leaving');
-			const outs = [...layer(previous)].map((el) =>
+			const outs = [...layer(previous, holdMark)].map((el) =>
 				el.animate(
 					[
 						{ opacity: 1, transform: 'none' },
@@ -150,7 +170,7 @@ const panelId = (stage: string) => `${id}-${stage}`;
 				)
 			);
 			// One keyframe pinned to the start: each part arrives from it at wherever its own styles put it.
-			layer(next).forEach((el) =>
+			layer(next, holdMark).forEach((el) =>
 				el.animate([{ opacity: 0, transform: `translateX(${dir * 32}px)`, offset: 0 }], {
 					duration: DURATION,
 					delay: 40,
@@ -227,7 +247,7 @@ const panelId = (stage: string) => `${id}-${stage}`;
 		}
 	}
 
-	// With the chart candidate, the switch's track takes the row's ground instead of its own grey: a
+	// With the chart and feed, the switch's track takes the row's ground instead of its own grey: a
 	// translucent ink, which darkens whatever tint is under it as a multiply would, while the white
 	// thumb stays white (a real multiply on the toggle would dissolve it into the ground).
 	.auto--blend .auto__switch :global(.seg) {

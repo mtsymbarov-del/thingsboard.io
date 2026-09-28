@@ -9,7 +9,7 @@
  * alarm, and everyone it reaches). The row's paragraph already names all three, so it stays as it is.
  *
  * ONE FREEZER, ALL THE WAY DOWN. The AI demo above asks to "email the manager if a freezer stays
- * open" and creates a CRITICAL alarm rule called ‘Freezer Door Open’ that fires past five minutes.
+ * open" and creates a CRITICAL alarm rule called ‘Freezer Door Open’ that fires past three minutes.
  * Filter and Notify are that rule running: the same name, the same threshold, the same manager. Keep
  * them in step with `AI_ASSISTANT_DEMO` if either changes.
  */
@@ -51,7 +51,7 @@ export const FREEZER_ALARM = {
 	name: 'Freezer Door Open',
 	source: 'Freezer 3',
 	/** The rule's threshold, in seconds. Above it, an opening becomes an alarm. */
-	over: 5 * 60,
+	over: 3 * 60,
 };
 
 // --- filter -----------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ export const FREEZER_ALARM = {
 export const FILTER_STAGES = { in: 'Door openings', out: 'One alarm' };
 
 /** What the node says it does. Visible, unlike Normalize's: the rule IS the argument here. */
-export const FILTER_NODE = { label: 'Over 5 min' };
+export const FILTER_NODE = { label: 'Over 3 min' };
 
 /**
  * A morning's openings on one freezer door, in seconds.
@@ -73,27 +73,50 @@ export const DOOR_OPENINGS = [42, 75, 450, 55];
 export const passes = (seconds: number) => seconds > FREEZER_ALARM.over;
 
 /**
- * The chart direction (`FilterChart`, a candidate, 2026-09-27): the morning so far as a live dashboard
- * line — six short openings, then the one still open, the same long opening (7:30) the flow keeps and
- * the only one over the limit, so Notify's SMS still quotes it. The last is live: the chart runs up
- * to "now" while that door stands open, and the rest of the morning is still to come.
+ * The chart-and-feed drawings (`FilterChart` and `NotifyFeed`, the homepage's since 2026-09-27), which draw
+ * the rule without the mark. Filter is the live minute of the one opening that runs over: the door
+ * opened at 08:38:00, so its open time reaches the 3:00 limit at 08:41:00, which is when the alarm
+ * fires and the time both drawings print on it.
  */
-export const DOOR_MORNING = [36, 64, 28, 52, 41, 30, 450];
-
-/** What the chart's own header says, and its time axis: a morning, 06:00 to 12:00. */
 export const FILTER_CHART = {
 	title: `${FREEZER_ALARM.source} · Door open time`,
-	from: 6 * 60,
-	to: 12 * 60,
+	/** When the door opened, in seconds since midnight. */
+	openedAt: 8 * 3600 + 38 * 60,
+	/**
+	 * The chart's default limit: the rule's own, 3:00 (`FREEZER_ALARM.over`, which the AI demo sets
+	 * up). In the chart it is a handle anyone can move.
+	 */
+	limit: FREEZER_ALARM.over,
 	/** The alarm as the product lists one, under its name. */
 	status: 'Active · Unacknowledged',
 };
 
-if (DOOR_MORNING.filter(passes).join() !== DOOR_OPENINGS.filter(passes).join()) {
-	throw new Error(
-		'automate-visual: the chart keeps a different opening from the flow, so Notify would disagree with it'
-	);
+/**
+ * The morning's other openings on the same door, for the chart: minutes after 06:00 and how long the
+ * door stood open, in seconds. All short — the argument is that the rule leaves these alone. The
+ * one that runs over is the live one, opened at `openedAt`; asserted below to be the only one over.
+ */
+export const FILTER_HISTORY: { at: number; open: number }[] = [
+	{ at: 92, open: 42 },
+	{ at: 103, open: 64 },
+	{ at: 114, open: 35 },
+	{ at: 124, open: 90 },
+	{ at: 134, open: 48 },
+	{ at: 146, open: 72 },
+];
+
+if (FILTER_HISTORY.some((o) => o.open > FILTER_CHART.limit)) {
+	throw new Error('automate-visual: a past opening passes the rule, so the chart would show two alarms');
 }
+
+/** `hh:mm:ss` from seconds since midnight, as a live chart's clock axis reads. */
+export const clock = (seconds: number) =>
+	[Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60]
+		.map((n) => String(n).padStart(2, '0'))
+		.join(':');
+
+/** The moment the rule fires: the door's opening plus the chart and feed's limit. */
+export const ALARM_FIRED_AT = clock(FILTER_CHART.openedAt + FILTER_CHART.limit);
 
 /** `m:ss`, the way a door sensor's open time reads in a dashboard table. */
 export const openFor = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -149,3 +172,25 @@ export const NOTIFY_MESSAGES: NotifyMessage[] = [
 	},
 	{ icons: ['simple-icons:salesforce', 'simple-icons:hubspot'], channel: 'CRM', text: 'Ticket opened', to: 'via n8n' },
 ];
+
+/**
+ * The same four messages for `NotifyFeed`, shown one at a time and large enough to
+ * carry a second line. The SMS quotes the limit rather than the flow's 7:30: in the chart direction
+ * the alarm fires at the limit, and that is when the text goes out.
+ */
+export interface NotifyFeedMessage extends NotifyMessage {
+	detail: string;
+}
+
+const FEED_DETAIL: Record<string, string> = {
+	Email: `A critical alarm on ${FREEZER_ALARM.source}, raised at ${ALARM_FIRED_AT}.`,
+	SMS: `${FREEZER_ALARM.name} · ${FREEZER_ALARM.severity.toLowerCase()}`,
+	Slack: `${FREEZER_ALARM.name}, raised at ${ALARM_FIRED_AT}`,
+	CRM: `${FREEZER_ALARM.name} · ${FREEZER_ALARM.source}`,
+};
+
+export const NOTIFY_FEED: NotifyFeedMessage[] = NOTIFY_MESSAGES.map((m) => ({
+	...m,
+	text: m.channel === 'SMS' ? `${FREEZER_ALARM.source} · open over ${openFor(FILTER_CHART.limit)}` : m.text,
+	detail: FEED_DETAIL[m.channel] ?? '',
+}));

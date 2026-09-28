@@ -132,6 +132,28 @@ const { title, description, badge, bare = false } = Astro.props;
 		max-width: 100%;
 	}
 
+	// Two rules of Starlight's reset that every other page gets and this one, bypassing Starlight,
+	// did not: form controls inherit the page's font — without it the Automate switch's buttons drew
+	// in the UA's Arial here and in Ubuntu on the homepage — and the body takes Starlight's leading.
+	// In Starlight's own layer, so they lose to every component rule exactly as they do on the site.
+	// The leading is the marketing pages' 1.5, which `BaseLayout` sets over Starlight's 1.75.
+	:root {
+		--sl-line-height: 1.5;
+	}
+
+	@layer starlight.reset {
+		body {
+			line-height: var(--sl-line-height);
+		}
+
+		input,
+		button,
+		textarea,
+		select {
+			font: inherit;
+		}
+	}
+
 	// Aligned to the widest stage rather than to its own text measure, so the page title sits on
 	// the same left edge as the visuals it labels. Only the lede is held to a reading width.
 	.pg__head {

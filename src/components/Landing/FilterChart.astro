@@ -1,150 +1,101 @@
 ---
-import { Icon } from 'astro-icon/components';
-import { DOOR_MORNING, FILTER_CHART, FREEZER_ALARM, openFor, passes } from '@data/automate-visual';
+import AlarmEntry from '@components/Landing/AlarmEntry.astro';
+import { ALARM_FIRED_AT, FILTER_CHART, FILTER_HISTORY, FREEZER_ALARM, openFor } from '@data/automate-visual';
+import { filterChartFrames } from '@util/filter-chart-frames';
 
 /**
- * CANDIDATE (2026-09-27): Filter without the mark. `FilterFlow` puts the product's squircle between a
- * small spark and a small alarm, the same squircle all three tabs share; this draws the rule as it
- * would be seen — a live dashboard line of the morning's door-open times, large, on the row's own
- * ground — and the alarm as the product lists one, opening where the line crosses the limit.
+ * Filter without the mark — the homepage's since 2026-09-27, over `FilterFlow` — as a chart with as little ink as it can carry.
  *
- * A LIVE WINDOW, 06:00 to 12:00, drawn up to "now": six short openings, then the door that is still
- * open, climbing. The rest of the morning is empty, as a live chart's is, and that is where the alarm
- * opens. The dashed limit turns red from the crossing and runs into the alarm's edge; the alarm's time
- * is read off the chart's own axis at that crossing, so the two cannot disagree.
+ * THE MORNING'S OPENINGS AS BARS, each at the time it happened (07:30 to 10:00) and as tall as the
+ * door stood open, against one dashed limit. Most are short, which is the point: the rule leaves them
+ * alone. The one still open climbs past the limit, turns red, and the alarm (`AlarmEntry`) opens where
+ * it crossed. No grid, no value axis: the limit is labelled where a value axis would sit, the time axis at its two
+ * ends, and the live bar carries its own reading. Everything else on the page is data. Each opening
+ * stands in a faint column up to the limit — how much of its allowance it used — with its length over
+ * it, and the limit is a handle: drag it and the rule re-applies (see the second script).
  *
- * WHICH OPENING FIRES IS COMPUTED (`passes`), as in `FilterFlow`, and `DOOR_MORNING` is asserted to
- * keep the same one as `DOOR_OPENINGS`, so Notify still quotes it.
+ * On the other tabs' frame, 574 × 256 units, so the switch's row holds its height. One SVG in the
+ * frame's own units; the alarm is HTML over it in the same units. Type floor 15 units, R = 38.
  *
- * On `FilterFlow`'s frame, 574 × 256 units, so the switch's row holds its height. One SVG in the
- * frame's own units carries the chart; the alarm is HTML over it, placed in the same units. Type
- * floor 15 units (the axes), so R = 574 / 15 = 38, as the other two tabs.
- *
- * MOTION IN REAL TIME, 14s, while the tab shows (`--flow-play`). The open door reads 4:55 by the live
- * point and counts up a second a second; at 5:00, five seconds in, the point turns red, the crossing
- * pops, the limit lights into the alarm and the alarm rises in, answering once. It counts on to 5:08
- * in red, then everything that answered fades and the door is back at 4:55. At a second a second the
- * line itself barely moves — 13 seconds is a few units on a six-minute axis — so the readout carries
- * the time and the line carries where it stands against the limit. Without motion: the picture at
- * 5:08, at rest.
+ * MOTION, 8s while the tab shows (`--flow-play`): the morning's bars stand still — a chart only
+ * grows forwards — and the live one climbs at one pace, crosses the limit (3:00 by default),
+ * turns red, and the alarm rises in where it crossed. It holds, then the live bar and what it raised
+ * let go quickly, and it climbs again. Without motion: the picture at rest, alarm up.
  */
 
 // --- the frame --------------------------------------------------------------------------------
 const NATIVE = 574;
 const H = 256;
-const PLOT = { x0: 56, x1: 558, top: 60, base: 214 };
-const Y_MAX = 6 * 60;
+const PLOT = { x0: 56, x1: 558, top: 64, base: 214 };
 const ALARM_W = 236;
-/** Where the live point stands at the end of the climb: "now", left of the window's middle. */
-const NOW_X = 290;
+const BAR_W = 10;
+const Y_MAX = 4.5 * 60;
+/** The window, in minutes after midnight: 07:30 to 10:00, the live opening a little left of middle. */
+const DAY = { from: 7 * 60 + 30, to: 10 * 60 };
 
 const r2 = (v: number) => +v.toFixed(2);
+const xOfMin = (minAfter6: number) =>
+	r2(PLOT.x0 + ((minAfter6 + 6 * 60 - DAY.from) / (DAY.to - DAY.from)) * (PLOT.x1 - PLOT.x0));
 const yOf = (s: number) => r2(PLOT.base - (s / Y_MAX) * (PLOT.base - PLOT.top));
+const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
-// --- the motion's clock -----------------------------------------------------------------------
-const LOOP_S = 14;
-const S_START = FREEZER_ALARM.over - 5;
-const S_END = FREEZER_ALARM.over + 8;
-/** The climb runs a second a second, so it takes as long as it counts. */
-const CLIMB = r2(((S_END - S_START) / LOOP_S) * 100);
-const pct = (s: number) => r2(((s - S_START) / (S_END - S_START)) * CLIMB);
-const tc = pct(FREEZER_ALARM.over);
+// --- the bars ---------------------------------------------------------------------------------
+const bars = FILTER_HISTORY.map((o) => ({
+	cx: xOfMin(o.at),
+	x: r2(xOfMin(o.at) - BAR_W / 2),
+	y: yOf(o.open),
+	open: o.open,
+	start: 6 * 3600 + o.at * 60,
+}));
+const liveMin = FILTER_CHART.openedAt / 60 - 6 * 60;
+const liveX = xOfMin(liveMin);
+const limitY = yOf(FILTER_CHART.limit);
+/** The limit's range when dragged: long enough to catch any past opening, short of the chart's top. */
+const LIMIT = { min: 30, max: Y_MAX - 15, step: 5 };
 
-// --- the line ---------------------------------------------------------------------------------
-// Each opening is a tooth: the open time climbing while the door stands open, then nothing. Time runs
-// sideways at one scale inside a tooth and the shut gaps between are shared out evenly — how long it
-// stayed shut is not the argument. The last tooth is the live one, and has no fall yet.
-const live = DOOR_MORNING[DOOR_MORNING.length - 1];
-if (!passes(live) || DOOR_MORNING.slice(0, -1).some(passes)) {
-	throw new Error('FilterChart: the live opening must be the only one over the limit');
-}
-const history = DOOR_MORNING.slice(0, -1);
-const PER_S = 0.2;
-const liveX0 = r2(NOW_X - S_END * PER_S);
-const gap = (liveX0 - PLOT.x0 - history.reduce((sum, s) => sum + s * PER_S, 0)) / (history.length + 1);
-const teeth = history.map((s, i) => {
-	const x0 = PLOT.x0 + gap * (i + 1) + history.slice(0, i).reduce((sum, t) => sum + t * PER_S, 0);
-	return { x0: r2(x0), x1: r2(x0 + s * PER_S), y: yOf(s) };
-});
-const at = (s: number) => ({ x: r2(liveX0 + s * PER_S), y: yOf(s) });
-const tip = at(S_END);
-const from = at(S_START);
-const cross = at(FREEZER_ALARM.over);
-const limitY = cross.y;
-const line = [
-	`M ${PLOT.x0},${PLOT.base}`,
-	...teeth.map((t) => `L ${t.x0},${PLOT.base} L ${t.x1},${t.y} L ${t.x1},${PLOT.base}`),
-	`L ${liveX0},${PLOT.base} L ${tip.x},${tip.y}`,
-].join(' ');
-
-// --- the axes ---------------------------------------------------------------------------------
-const Y_TICKS = [0, 150, FREEZER_ALARM.over];
-const X_TICKS = [0, 1, 2, 3].map((i) => FILTER_CHART.from + ((FILTER_CHART.to - FILTER_CHART.from) * i) / 3);
-const plotW = PLOT.x1 - PLOT.x0;
-const hhmm = (min: number) =>
-	`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(Math.round(min % 60)).padStart(2, '0')}`;
-const xOfMin = (min: number) =>
-	r2(PLOT.x0 + ((min - FILTER_CHART.from) / (FILTER_CHART.to - FILTER_CHART.from)) * plotW);
-const firedAt = hhmm(FILTER_CHART.from + ((cross.x - PLOT.x0) / plotW) * (FILTER_CHART.to - FILTER_CHART.from));
+// --- the live bar's climb ---------------------------------------------------------------------
+// One pace: 6s to the top of its range (the drag's own top), stopping a few seconds past the limit
+// once the rule has fired (`filterChartFrames`, shared with the drag's replay).
+const PEAK = LIMIT.max;
+const uid = `fch-${Math.random().toString(36).slice(2, 8)}`;
+const frames = filterChartFrames(uid, FILTER_CHART.limit, PEAK, { base: PLOT.base, top: PLOT.top, yMax: Y_MAX });
+const liveTop = yOf(PEAK);
 
 // --- the alarm --------------------------------------------------------------------------------
-// In the morning still to come, clear of the live point, centred on the limit it hangs from.
-const alarmX = r2(tip.x + 26);
+const alarmX = r2(liveX + 22);
 if (alarmX + ALARM_W > PLOT.x1) {
 	throw new Error(`FilterChart: the alarm (${alarmX}–${alarmX + ALARM_W}) runs past the plot's edge at ${PLOT.x1}`);
 }
 
-// --- the keyframes ----------------------------------------------------------------------------
-// The reveal is a clip from the plot's left edge to the live point, growing with it: from where the
-// door stood at 4:55 to where it stands at 5:08, at one pace. The live point rides its tip. What
-// answers the crossing is timed from `tc`.
-const reveal = { x: PLOT.x0 - 2, w: r2(tip.x - (PLOT.x0 - 2)) };
-const k0 = r2((from.x - reveal.x) / reveal.w);
-const dx = r2(from.x - tip.x);
-const dy = r2(from.y - tip.y);
-// Unique per render: the keyframes carry this drawing's own timings, and a page may show two.
-const uid = `fch-${Math.random().toString(36).slice(2, 8)}`;
-const keyframes = `
-@keyframes ${uid}-reveal { 0% { transform: scaleX(${k0}); } ${CLIMB}%, 100% { transform: scaleX(1); } }
-@keyframes ${uid}-now { 0% { transform: translate(${dx}px, ${dy}px); } ${CLIMB}%, 100% { transform: none; } }
-@keyframes ${uid}-now-in { 0% { opacity: 0; } 3%, 93% { opacity: 1; } 97%, 100% { opacity: 0; } }
-@keyframes ${uid}-turn { 0%, ${tc}% { fill: var(--fch-now); } ${r2(tc + 1)}%, 100% { fill: var(--fch-alarm); } }
-@keyframes ${uid}-dot { 0%, ${tc}% { transform: scale(0); } ${r2(tc + 2)}% { transform: scale(1.4); } ${r2(tc + 4)}%, 100% { transform: scale(1); } }
-@keyframes ${uid}-link { 0%, ${r2(tc + 1)}% { transform: scaleX(0); } ${r2(tc + 5)}%, 100% { transform: scaleX(1); } }
-@keyframes ${uid}-alarm { 0%, ${r2(tc + 2)}% { opacity: 0; transform: translateY(8px) scale(0.97); } ${r2(tc + 7)}%, 100% { opacity: 1; transform: none; } }
-@keyframes ${uid}-answer {
-	0%, ${r2(tc + 7)}% { box-shadow: var(--fch-card-shadow), 0 0 0 0 color-mix(in srgb, var(--fch-alarm) 0%, transparent); }
-	${r2(tc + 10)}% { box-shadow: var(--fch-card-shadow), 0 0 0 6px color-mix(in srgb, var(--fch-alarm) 20%, transparent); }
-	${r2(tc + 20)}%, 100% { box-shadow: var(--fch-card-shadow), 0 0 0 12px color-mix(in srgb, var(--fch-alarm) 0%, transparent); }
-}
-@keyframes ${uid}-fade { 0%, 93% { opacity: 1; } 97%, 100% { opacity: 0; } }
-@media (prefers-reduced-motion: no-preference) {
-	[data-fch='${uid}'] .fch__reveal { animation: ${uid}-reveal var(--fch-loop) linear infinite; }
-	[data-fch='${uid}'] .fch__now { animation: ${uid}-now var(--fch-loop) linear infinite, ${uid}-now-in var(--fch-loop) linear infinite; }
-	[data-fch='${uid}'] :is(.fch__now-dot, .fch__readout) { animation: ${uid}-turn var(--fch-loop) linear infinite; }
-	[data-fch='${uid}'] .fch__fade { animation: ${uid}-fade var(--fch-loop) linear infinite; }
-	[data-fch='${uid}'] .fch__fired { animation: ${uid}-dot var(--fch-loop) ease-out infinite; }
-	[data-fch='${uid}'] .fch__link { animation: ${uid}-link var(--fch-loop) ease-out infinite; }
-	[data-fch='${uid}'] .fch__alarm-move { animation: ${uid}-alarm var(--fch-loop) cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
-	[data-fch='${uid}'] .fch__alarm { animation: ${uid}-answer var(--fch-loop) ease-out infinite; }
-	[data-fch='${uid}'] :is(.fch__reveal, .fch__now, .fch__now-dot, .fch__readout, .fch__fade, .fch__fired, .fch__link, .fch__alarm-move, .fch__alarm) {
-		animation-play-state: var(--flow-play, running);
-	}
-}`;
+// What the drag needs to redraw the rule: the plot, each opening's position, length and start.
+const geo = {
+	peak: PEAK,
+	top: PLOT.top,
+	base: PLOT.base,
+	yMax: Y_MAX,
+	x1: PLOT.x1,
+	h: H,
+	alarmW: ALARM_W,
+	limit: LIMIT,
+	bars: [
+		...bars.map((b) => ({ x: b.cx, open: b.open, start: b.start })),
+		{ x: liveX, open: PEAK, start: FILTER_CHART.openedAt },
+	],
+};
 
-const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(FILTER_CHART.to)}: ${history.length} short openings, then the door left open past the ${openFor(FREEZER_ALARM.over)} limit, which raised a ${FREEZER_ALARM.severity.toLowerCase()} alarm, ${FREEZER_ALARM.name}, at ${firedAt}.`;
+const chartLabel = `${FILTER_CHART.title}, ${hhmm(DAY.from)} to ${hhmm(DAY.to)}: ${FILTER_HISTORY.length} short openings, then one left open past the ${openFor(FILTER_CHART.limit)} limit, which raised a ${FREEZER_ALARM.severity.toLowerCase()} alarm, ${FREEZER_ALARM.name}, at ${ALARM_FIRED_AT}.`;
 ---
 
-<style is:inline set:html={keyframes}></style>
+<style is:inline set:html={frames.css} data-fch-style={uid}></style>
 
 <div class="fch-fit">
 	<div
 		class="fch"
 		data-fch={uid}
-		data-fch-loop={LOOP_S}
-		data-fch-climb={CLIMB}
-		data-fch-from={S_START}
-		data-fch-to={S_END}
+		data-fch-loop={frames.loop}
+		data-fch-climb={JSON.stringify(frames.climb)}
+		data-fch-end={frames.end}
+		data-fch-geo={JSON.stringify(geo)}
 		data-flow="in"
 		style={[
 			`--fch-u: min(1.15px, calc(100cqw / ${NATIVE}))`,
@@ -153,102 +104,126 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 			`--fch-alarm-x: ${alarmX}`,
 			`--fch-alarm-w: ${ALARM_W}`,
 			`--fch-limit-y: ${limitY}`,
-			`--fch-loop: ${LOOP_S}s`,
+			`--fch-loop: ${frames.loop}s`,
 		].join('; ')}
 	>
 		<svg class="fch__chart" viewBox={`0 0 ${NATIVE} ${H}`} role="img" aria-label={chartLabel}>
-			<defs>
-				<clipPath id={`${uid}-clip`}>
-					<rect class="fch__reveal" x={reveal.x} y="0" width={reveal.w} height={H}></rect>
-				</clipPath>
-			</defs>
-
 			<text class="fch__title" x="0" y="34">{FILTER_CHART.title}</text>
 
 			{
-				Y_TICKS.map((s) => (
-					<>
-						<line class="fch__grid" x1={PLOT.x0} y1={yOf(s)} x2={PLOT.x1} y2={yOf(s)} />
-						<text class="fch__tick fch__tick--y" x={PLOT.x0 - 10} y={yOf(s) + 5}>
-							{openFor(s)}
-						</text>
-					</>
-				))
-			}
-			{
-				X_TICKS.map((min, i) => (
-					<text
-						class:list={['fch__tick', i === 0 && 'is-start', i === X_TICKS.length - 1 && 'is-end']}
-						x={xOfMin(min)}
-						y={H - 14}
-					>
-						{hhmm(min)}
-					</text>
+				[...bars.map((b) => b.x), r2(liveX - BAR_W / 2)].map((x) => (
+					<rect class="fch__track" x={x} y={limitY} width={BAR_W} height={r2(PLOT.base - limitY)} rx="1" />
 				))
 			}
 
 			<line class="fch__limit" x1={PLOT.x0} y1={limitY} x2={PLOT.x1} y2={limitY}></line>
 
-			<g clip-path={`url(#${uid}-clip)`}>
-				<path class="fch__area" d={`${line} L ${tip.x},${PLOT.base} Z`}></path>
-				<path class="fch__over fch__fade" d={`M ${cross.x},${limitY} L ${tip.x},${tip.y} L ${tip.x},${limitY} Z`}
-				></path>
-				<path class="fch__line" d={line}></path>
-				<path class="fch__hot fch__fade" d={`M ${cross.x},${limitY} L ${tip.x},${tip.y}`}></path>
-			</g>
-			<line class="fch__link fch__fade" x1={cross.x} y1={limitY} x2={alarmX} y2={limitY}></line>
-			<circle class="fch__fired fch__fade" cx={cross.x} cy={limitY} r="5"></circle>
+			<line class="fch__base" x1={PLOT.x0} y1={PLOT.base} x2={PLOT.x1} y2={PLOT.base}></line>
+			<text class="fch__tick is-start" x={PLOT.x0} y={H - 14}>{hhmm(DAY.from)}</text>
+			<text class="fch__tick is-end" x={PLOT.x1} y={H - 14}>{hhmm(DAY.to)}</text>
 
-			<g class="fch__now">
-				<circle class="fch__now-dot" cx={tip.x} cy={tip.y} r="5"></circle>
-				<text class="fch__readout" x={tip.x - 12} y={tip.y - 12} data-fch-readout>{openFor(S_END)}</text>
+			{
+				bars.map((b) => (
+					<>
+						<rect class="fch__bar" x={b.x} y={b.y} width={BAR_W} height={r2(PLOT.base - b.y)} rx="1" />
+						<text class="fch__bar-label" x={b.cx} y={b.y - 7}>
+							{b.open}s
+						</text>
+					</>
+				))
+			}
+
+			<rect
+				class="fch__live"
+				x={r2(liveX - BAR_W / 2)}
+				y={liveTop}
+				width={BAR_W}
+				height={r2(PLOT.base - liveTop)}
+				rx="1"></rect>
+
+			<line class="fch__link fch__fade" x1={liveX} y1={limitY} x2={alarmX} y2={limitY}></line>
+			<circle class="fch__fired fch__fade" cx={liveX} cy={limitY} r="5"></circle>
+
+			<g class="fch__reading">
+				<text class="fch__readout" x={liveX} y={liveTop - 10} data-fch-readout>{openFor(frames.end)}</text>
 			</g>
 		</svg>
 
+		{/* The rule's limit, as a handle: drag it (or use the arrow keys) and the chart re-applies it. */}
+		<button
+			type="button"
+			class="fch__handle"
+			role="slider"
+			aria-orientation="vertical"
+			aria-label="Alarm when the door stays open longer than"
+			aria-valuemin={LIMIT.min}
+			aria-valuemax={LIMIT.max}
+			aria-valuenow={FILTER_CHART.limit}
+			aria-valuetext={openFor(FILTER_CHART.limit)}
+			data-fch-handle
+		>
+			<span class="fch__grip" aria-hidden="true"></span>
+			<span data-fch-limit-text>{openFor(FILTER_CHART.limit)}</span>
+		</button>
+
 		<div class="fch__alarm-at fch__fade" aria-hidden="true">
 			<div class="fch__alarm-move">
-				<div class="fch__alarm">
-					<span class="fch__alarm-head">
-						<Icon name="tabler:alert-triangle-filled" class="fch__alarm-icon" />
-						<span class="fch__sev">{FREEZER_ALARM.severity}</span>
-						<span class="fch__time">{firedAt}</span>
-					</span>
-					<span class="fch__name">{FREEZER_ALARM.name}</span>
-					<span class="fch__row">
-						<span class="fch__key">Originator</span>
-						{FREEZER_ALARM.source}
-					</span>
-					<span class="fch__row">
-						<span class="fch__status-dot"></span>
-						{FILTER_CHART.status}
-					</span>
-				</div>
+				<AlarmEntry />
 			</div>
 		</div>
 	</div>
 </div>
 
 <script>
-	// The live readout: the door's open time, read off the reveal's own CSS clock so the number and the
-	// point cannot drift apart, and so it stops when the switch pauses the tab. Only while on screen.
+	// The live reading: the door's open time, read off the live bar's own CSS clock with the same
+	// schedule its keyframes follow, so the number and the bar cannot drift apart, and it stops when
+	// the switch pauses the tab. Only while on screen.
 	const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 	document.querySelectorAll<HTMLElement>('[data-fch]').forEach((root) => {
 		const readout = root.querySelector<SVGTextElement>('[data-fch-readout]');
-		const clip = root.querySelector<SVGRectElement>('.fch__reveal');
-		if (!readout || !clip) return;
-		const loop = Number(root.dataset.fchLoop) * 1000;
-		const climb = Number(root.dataset.fchClimb) / 100;
-		const from = Number(root.dataset.fchFrom);
-		const to = Number(root.dataset.fchTo);
+		const bar = root.querySelector<SVGRectElement>('.fch__live');
+		if (!readout || !bar) return;
 		let frame = 0;
 		let last = '';
 
+		// A dragged limit rewrites the loop, its length and where the climb stops: re-read when it does.
+		let key = '';
+		let end = 0;
+		let loop = 0;
+		let climb: [number, number][] = [];
+		const read = () => {
+			const next = (root.dataset.fchClimb ?? '') + root.dataset.fchLoop;
+			if (next === key) return;
+			key = next;
+			end = Number(root.dataset.fchEnd);
+			loop = Number(root.dataset.fchLoop) * 1000;
+			climb = JSON.parse(root.dataset.fchClimb ?? '[]') as [number, number][];
+		};
+		const panel = root.closest<HTMLElement>('.auto__panel');
+
+		const valueAt = (pct: number) => {
+			if (pct <= climb[0][0]) return 0;
+			for (let k = 1; k < climb.length; k++) {
+				const [p0, s0] = climb[k - 1];
+				const [p1, s1] = climb[k];
+				if (pct <= p1) return s0 + ((pct - p0) / (p1 - p0)) * (s1 - s0);
+			}
+			return end;
+		};
+
 		const tick = () => {
-			const anim = clip.getAnimations()[0];
-			const time = anim ? Number(anim.currentTime ?? 0) : loop;
-			const t = (time % loop) / loop;
-			const text = fmt(t < climb ? from + (t / climb) * (to - from) : to);
+			// Held by a drag, or on a tab not showing: nothing to read this frame.
+			if (root.classList.contains('is-manual') || (panel && !panel.classList.contains('is-active'))) {
+				frame = requestAnimationFrame(tick);
+				return;
+			}
+			read();
+			const anim = bar.getAnimations()[0];
+			const pct = anim ? ((Number(anim.currentTime ?? 0) % loop) / loop) * 100 : 100;
+			// Nothing to read before the bar has started: no "0:00" on an empty foot.
+			const value = valueAt(pct);
+			const text = value < 5 ? '' : fmt(value);
 			if (text !== last) readout.textContent = last = text;
 			frame = requestAnimationFrame(tick);
 		};
@@ -257,6 +232,178 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 			cancelAnimationFrame(frame);
 			if (entry.isIntersecting) frame = requestAnimationFrame(tick);
 		}).observe(root);
+	});
+</script>
+
+<script>
+	// THE LIMIT IS MOVABLE. Dragging the handle (or the arrow keys on it) holds the picture and
+	// re-applies the rule at the new limit — every opening over it turns red, each column's empty part
+	// shrinks or grows to it — with the alarm on the latest opening over it, its time the moment that
+	// opening crossed. Let go and the new limit is tested: the loop plays again against it.
+	import { filterChartFrames } from '@util/filter-chart-frames';
+
+	interface Geo {
+		peak: number;
+		top: number;
+		base: number;
+		yMax: number;
+		x1: number;
+		h: number;
+		alarmW: number;
+		limit: { min: number; max: number; step: number };
+		bars: { x: number; open: number; start: number }[];
+	}
+
+	const openFor = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+	const clock = (s: number) =>
+		[Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60].map((n) => String(n).padStart(2, '0')).join(':');
+
+	document.querySelectorAll<HTMLElement>('[data-fch]').forEach((root) => {
+		const handle = root.querySelector<HTMLButtonElement>('[data-fch-handle]');
+		const svg = root.querySelector<SVGSVGElement>('.fch__chart');
+		if (!handle || !svg) return;
+		const geo = JSON.parse(root.dataset.fchGeo ?? '{}') as Geo;
+		const limitLine = root.querySelector<SVGLineElement>('.fch__limit');
+		const tracks = [...root.querySelectorAll<SVGRectElement>('.fch__track')];
+		const bars = [...root.querySelectorAll<SVGRectElement>('.fch__bar, .fch__live')];
+		const link = root.querySelector<SVGLineElement>('.fch__link');
+		const dot = root.querySelector<SVGCircleElement>('.fch__fired');
+		const text = handle.querySelector<HTMLElement>('[data-fch-limit-text]');
+		const time = root.querySelector<HTMLElement>('.alarm-entry__time');
+		const yOf = (s: number) => geo.base - (s / geo.yMax) * (geo.base - geo.top);
+		let limit = Number(handle.getAttribute('aria-valuenow'));
+		const uid = root.dataset.fch ?? '';
+		const styleEl = document.querySelector<HTMLStyleElement>(`style[data-fch-style="${uid}"]`);
+		const liveBar = root.querySelector<SVGRectElement>('.fch__live');
+		const reading = root.querySelector<SVGGElement>('.fch__reading');
+		const readout = root.querySelector<SVGTextElement>('[data-fch-readout]');
+		let testing = 0;
+
+		// TEST: replay the loop against the new limit. The climb is the same; only the moment it crosses
+		// moves, so the keyframes that answer the crossing are rewritten from it — or, with the limit
+		// above where the live bar stops, written to never fire — and every animation starts over.
+		const test = () => {
+			if (!styleEl) return;
+			const f = filterChartFrames(uid, limit, geo.peak, geo);
+			styleEl.textContent = f.css;
+			root.dataset.fchLoop = String(f.loop);
+			root.dataset.fchClimb = JSON.stringify(f.climb);
+			root.dataset.fchEnd = String(f.end);
+			root.style.setProperty('--fch-loop', f.loop + 's');
+			liveBar?.style.removeProperty('transform');
+			reading?.style.removeProperty('transform');
+			root.classList.remove('is-manual');
+			requestAnimationFrame(() =>
+				root.getAnimations({ subtree: true }).forEach((a) => {
+					if (a instanceof CSSAnimation) a.currentTime = 0;
+				})
+			);
+		};
+		const testSoon = (ms: number) => {
+			clearTimeout(testing);
+			testing = window.setTimeout(test, ms);
+		};
+
+		const chartLabel = svg.getAttribute('aria-label') ?? '';
+		const apply = (seconds: number) => {
+			const { min, max, step } = geo.limit;
+			limit = Math.min(max, Math.max(min, Math.round(seconds / step) * step));
+			const y = yOf(limit);
+			const overCount = geo.bars.filter((b) => b.open > limit).length;
+			svg.setAttribute(
+				'aria-label',
+				chartLabel.split(':')[0] +
+					': with the limit at ' +
+					openFor(limit) +
+					', ' +
+					(overCount ? overCount + ' opening' + (overCount > 1 ? 's' : '') + ' over it.' : 'no opening over it.')
+			);
+			root.classList.add('is-manual');
+			root.style.setProperty('--fch-limit-y', String(y));
+			limitLine?.setAttribute('y1', String(y));
+			limitLine?.setAttribute('y2', String(y));
+			tracks.forEach((t) => {
+				t.setAttribute('y', String(y));
+				t.setAttribute('height', String(Math.max(0, geo.base - y)));
+			});
+			// While held, the live bar stands where the replay will stop it.
+			const stop = limit < geo.peak ? Math.min(geo.peak, limit + 6) : geo.peak;
+			liveBar?.style.setProperty('transform', 'scaleY(' + stop / geo.peak + ')');
+			reading?.style.setProperty('transform', 'translateY(' + (yOf(stop) - yOf(geo.peak)) + 'px)');
+			if (readout) readout.textContent = openFor(stop);
+			const over = geo.bars.map((b) => b.open > limit);
+			bars.forEach((el, i) => el.classList.toggle('is-over', over[i]));
+			handle.setAttribute('aria-valuenow', String(limit));
+			handle.setAttribute('aria-valuetext', openFor(limit));
+			if (text) text.textContent = openFor(limit);
+
+			// The alarm: the latest opening over the limit, to its right if it fits, else to its left.
+			const last = geo.bars
+				.map((b, i) => (over[i] ? b : null))
+				.filter((b) => b !== null)
+				.pop();
+			root.classList.toggle('no-alarm', !last);
+			if (!last) return;
+			const right = last.x + 22 + geo.alarmW <= geo.x1;
+			const ax = right ? last.x + 22 : last.x - 22 - geo.alarmW;
+			root.style.setProperty('--fch-alarm-x', String(ax));
+			root.style.setProperty('--fch-alarm-y', String(Math.min(geo.h - 66, Math.max(66, y))));
+			link?.setAttribute('x1', String(last.x));
+			link?.setAttribute('x2', String(right ? ax : ax + geo.alarmW));
+			link?.setAttribute('y1', String(y));
+			link?.setAttribute('y2', String(y));
+			dot?.setAttribute('cx', String(last.x));
+			dot?.setAttribute('cy', String(y));
+			if (time) time.textContent = clock(last.start + limit);
+		};
+
+		// Where the pointer is, in the frame's units; the drag keeps the offset it grabbed at, so a tap
+		// anywhere on the handle leaves the limit where it was.
+		const pointerY = (e: PointerEvent) => {
+			const box = svg.getBoundingClientRect();
+			return ((e.clientY - box.top) / box.height) * geo.h;
+		};
+		let grab = 0;
+		let moved = false;
+
+		handle.addEventListener('pointerdown', (e) => {
+			clearTimeout(testing);
+			handle.setPointerCapture(e.pointerId);
+			grab = pointerY(e) - yOf(limit);
+			moved = false;
+		});
+		handle.addEventListener('pointermove', (e) => {
+			if (!handle.hasPointerCapture(e.pointerId)) return;
+			const y = pointerY(e) - grab;
+			if (!moved && Math.abs(y - yOf(limit)) < 1) return;
+			moved = true;
+			apply(((geo.base - y) / (geo.base - geo.top)) * geo.yMax);
+		});
+		// Let go (or have the touch cancelled), and a moved limit is tested: the loop plays against it.
+		const release = () => {
+			if (moved) testSoon(150);
+			moved = false;
+		};
+		handle.addEventListener('pointerup', release);
+		handle.addEventListener('pointercancel', release);
+		handle.addEventListener('lostpointercapture', release);
+		handle.addEventListener('keydown', (e) => {
+			const { min, max, step } = geo.limit;
+			const by: Record<string, number> = {
+				ArrowUp: step,
+				ArrowRight: step,
+				ArrowDown: -step,
+				ArrowLeft: -step,
+				PageUp: step * 6,
+				PageDown: -step * 6,
+			};
+			if (e.key in by) apply(limit + by[e.key]);
+			else if (e.key === 'Home') apply(min);
+			else if (e.key === 'End') apply(max);
+			else return;
+			e.preventDefault();
+			testSoon(600);
+		});
 	});
 </script>
 
@@ -276,13 +423,7 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 		--u: var(--fch-u);
 		--fch-grey: var(--color-text-secondary, #5b616e);
 		--fch-hue: var(--flow-rail, var(--color-primary, #3d50f5));
-		// The alarm's red, for everything on its path: the crossing, the lit limit, the alarm itself.
 		--fch-alarm: var(--color-accent-red, #b23c33);
-		// The live point and its readout, in the line's hue until the rule fires.
-		--fch-now: var(--fch-hue);
-		--fch-card-shadow:
-			0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.08),
-			0 #{u(8)} #{u(20)} #{u(-8)} rgba(var(--color-shadow-ui-rgb), 0.3);
 
 		position: relative;
 		width: 100%;
@@ -301,12 +442,6 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 		overflow: visible;
 	}
 
-	// In the frame's own units, so 15 here is the family's 15.
-	.fch__tick {
-		font-size: 15px;
-		fill: var(--fch-grey);
-	}
-
 	// Set as the alarm's name is, at its size and weight, and subdued: the chart's heading, not its news.
 	.fch__title {
 		font-size: 17px;
@@ -314,9 +449,11 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 		fill: var(--fch-grey);
 	}
 
+	// In the frame's own units, so 15 here is the family's 15.
 	.fch__tick {
 		font-family: $font-family-mono;
-		text-anchor: middle;
+		font-size: 15px;
+		fill: var(--fch-grey);
 
 		&.is-start {
 			text-anchor: start;
@@ -327,13 +464,9 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 		}
 	}
 
-	.fch__tick--y {
-		text-anchor: end;
-	}
-
-	.fch__grid {
+	.fch__base {
 		stroke: var(--color-text, #17181c);
-		stroke-opacity: 0.06;
+		stroke-opacity: 0.18;
 		stroke-width: 1;
 		vector-effect: non-scaling-stroke;
 	}
@@ -346,46 +479,25 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 		vector-effect: non-scaling-stroke;
 	}
 
-	// The reveal grows from its left edge.
-	.fch__reveal {
-		transform-box: fill-box;
-		transform-origin: left center;
-	}
-
-	.fch__area {
+	// The past openings: the line's hue, quiet, and still — the chart only ever grows forwards.
+	.fch__bar {
 		fill: var(--fch-hue);
-		opacity: 0.08;
+		opacity: 0.45;
 	}
 
-	.fch__line,
-	.fch__hot,
+	// The one still open: full strength, red once it passes the limit. At rest it has, so red.
+	.fch__live {
+		fill: var(--fch-alarm);
+		transform-box: fill-box;
+		transform-origin: bottom center;
+	}
+
 	.fch__link {
 		fill: none;
-		vector-effect: non-scaling-stroke;
+		stroke: var(--fch-alarm);
+		stroke-width: max(1px, #{u(2)});
 		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
-
-	.fch__line {
-		stroke: var(--fch-hue);
-		stroke-opacity: 0.7;
-		stroke-width: max(1px, #{u(2)});
-	}
-
-	// What lies over the limit — the time the door stood open past the rule — in the alarm's red.
-	.fch__over {
-		fill: var(--fch-alarm);
-		opacity: 0.16;
-	}
-
-	.fch__hot {
-		stroke: var(--fch-alarm);
-		stroke-width: max(1.5px, #{u(3)});
-	}
-
-	.fch__link {
-		stroke: var(--fch-alarm);
-		stroke-width: max(1px, #{u(2)});
+		vector-effect: non-scaling-stroke;
 		transform-box: fill-box;
 		transform-origin: left center;
 	}
@@ -398,104 +510,130 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(FILTER_CHART.from)} to ${hhmm(
 		transform-origin: center;
 	}
 
-	// The live point and the door's open time beside it. At rest they show 5:08, past the limit, so
-	// their resting colour is the alarm's; the loop holds them in the line's hue until 5:00.
-	.fch__now-dot {
-		fill: var(--fch-alarm);
-		stroke: var(--color-bg-surface, #fff);
-		stroke-width: 2;
-	}
-
+	// The live bar's reading, on its top: the only number in the plot.
 	.fch__readout {
 		font-family: $font-family-mono;
 		font-size: 15px;
 		font-weight: $font-weight-bold;
 		font-variant-numeric: tabular-nums;
-		text-anchor: end;
+		text-anchor: middle;
 		fill: var(--fch-alarm);
 	}
 
-	// --- the alarm --------------------------------------------------------------------------
-
-	// Placed in the frame's units, its left edge where the lit limit ends, centred on the limit.
+	// Placed in the frame's units, its left edge where the lit limit ends, centred on the limit (or,
+	// with the limit dragged near an edge, held inside the frame).
 	.fch__alarm-at {
 		position: absolute;
-		top: u(var(--fch-limit-y));
+		top: u(var(--fch-alarm-y, var(--fch-limit-y)));
 		left: u(var(--fch-alarm-x));
 		width: u(var(--fch-alarm-w));
 		transform: translateY(-50%);
 	}
 
-	// The alarm as the product lists one: severity and time, the name, the originator, the state.
-	.fch__alarm {
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		gap: u(6);
-		padding: u(12) u(14);
-		border-radius: u(8);
-		background: var(--color-bg-surface, #fff);
-		box-shadow: var(--fch-card-shadow);
+	// Each opening's column: the empty part is the time left before the rule, up to the limit, so the
+	// short openings read as bars (filled a little of the way) rather than as marks on the floor.
+	.fch__track {
+		fill: var(--fch-hue);
+		opacity: 0.08;
 	}
 
-	.fch__alarm-head {
+	// Every past opening's length over it, in seconds: the column says how far, the label how long.
+	.fch__bar-label {
+		font-family: $font-family-mono;
+		font-size: 15px;
+		text-anchor: middle;
+		fill: var(--fch-grey);
+	}
+
+	// The limit's handle: a white pill with a grip at the value axis, where the limit is labelled.
+	.fch__handle {
+		position: absolute;
+		top: u(var(--fch-limit-y));
+		left: 0;
 		display: flex;
 		align-items: center;
 		gap: u(6);
-	}
-
-	.fch__alarm-icon {
-		flex: none;
-		width: u(20);
-		height: u(20);
-		color: var(--fch-alarm);
-	}
-
-	.fch__sev {
-		padding: u(1) u(7);
-		border-radius: u(5);
+		height: u(34);
+		padding: 0 u(10) 0 u(8);
+		border: 0;
+		border-radius: u(17);
 		font-family: $font-family-mono;
-		font-size: u(15);
+		font-size: u(16);
 		font-weight: $font-weight-bold;
 		line-height: u(20);
-		letter-spacing: 0.04em;
-		color: #fff;
-		background: var(--fch-alarm);
+		color: var(--color-text, #17181c);
+		background: var(--color-bg-surface, #fff);
+		box-shadow:
+			0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.12),
+			0 #{u(4)} #{u(10)} #{u(-4)} rgba(var(--color-shadow-ui-rgb), 0.3);
+		transform: translateY(-50%);
+		cursor: ns-resize;
+		touch-action: none;
+
+		// A larger target than it looks, for a finger.
+		&::before {
+			content: '';
+			position: absolute;
+			inset: u(-8) u(-6);
+		}
+
+		&:hover {
+			box-shadow:
+				0 1px 2px rgba(var(--color-shadow-ui-rgb), 0.14),
+				0 #{u(6)} #{u(14)} #{u(-4)} rgba(var(--color-shadow-ui-rgb), 0.36);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--color-primary, #3d50f5);
+			outline-offset: 2px;
+		}
 	}
 
-	.fch__time {
-		margin-left: auto;
-		font-family: $font-family-mono;
-		font-size: u(15);
-		line-height: u(20);
-		color: var(--fch-grey);
+	// Three short rules, the drag's grip.
+	.fch__grip {
+		width: u(12);
+		height: u(10);
+		background: linear-gradient(var(--fch-grey), var(--fch-grey)) center / 100% max(1px, #{u(1.5)}) no-repeat;
+		border-top: max(1px, #{u(1.5)}) solid var(--fch-grey);
+		border-bottom: max(1px, #{u(1.5)}) solid var(--fch-grey);
 	}
 
-	.fch__name {
-		font-size: u(17);
-		font-weight: $font-weight-medium;
-		line-height: u(22);
-		color: var(--color-text);
+	// Dragged: the loop stops and the picture holds, re-applied at the new limit.
+	.fch.is-manual {
+		:is(.fch__live, .fch__reading, .fch__readout, .fch__fade, .fch__fired, .fch__link, .fch__alarm-move) {
+			animation: none !important;
+		}
+
+		.fch__live {
+			fill: var(--fch-hue);
+		}
+
+		.fch__live.is-over {
+			fill: var(--fch-alarm);
+			opacity: 1;
+		}
+
+		.fch__readout {
+			fill: var(--fch-hue);
+		}
+
+		.fch__live.is-over ~ .fch__reading .fch__readout {
+			fill: var(--fch-alarm);
+		}
 	}
 
-	.fch__row {
-		display: flex;
-		align-items: center;
-		gap: u(8);
-		font-size: u(15);
-		line-height: u(20);
-		color: var(--color-text);
+	// A past opening over the limit has already crossed it: red, whether held or testing.
+	.fch__bar.is-over {
+		fill: var(--fch-alarm);
+		opacity: 1;
 	}
 
-	.fch__key {
-		color: var(--fch-grey);
+	.fch.no-alarm :is(.fch__link, .fch__fired, .fch__alarm-at) {
+		opacity: 0;
 	}
 
-	.fch__status-dot {
-		flex: none;
-		width: u(8);
-		height: u(8);
-		border-radius: 50%;
-		background: var(--fch-alarm);
+	// The alarm rises in as one piece and answers once: a ring in its red, on its own corner.
+	.fch__alarm-move {
+		border-radius: u(8);
 	}
 </style>

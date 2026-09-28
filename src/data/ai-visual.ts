@@ -313,7 +313,7 @@ export const AI_ASSISTANT_DEMO: AiAssistantDemo = {
 	 * The transcript's prompt, "Email the store manager if a freezer door is left open.", was 55
 	 * characters and scrolled in the composer; it is cut to one line here. "the manager" keeps the
 	 * recipient the Assistant has to resolve (the reply still names the store manager), and "a freezer
-	 * stays open" is how people say it — the door is implied, and "stays" matches the alarm's 5-minute
+	 * stays open" is how people say it — the door is implied, and "stays" matches the alarm's 3-minute
 	 * hold. 41 characters, one over the rule of thumb, but MEASURED: 333px of the composer's 377.
 	 */
 	exchanges: [
@@ -329,7 +329,7 @@ export const AI_ASSISTANT_DEMO: AiAssistantDemo = {
 			reply:
 				// The severity as the product writes it in a reply — capitals, set apart — in the key style,
 				// but RED: in the amber it read as a warning, which is the level below.
-				'Done. A <code data-severity="critical">CRITICAL</code> alarm fires when a door stays open over 5 min and clears when it closes. The store manager gets an email right away.',
+				'Done. A <code data-severity="critical">CRITICAL</code> alarm fires when a door stays open over 3 min and clears when it closes. The store manager gets an email right away.',
 		},
 		{
 			/**

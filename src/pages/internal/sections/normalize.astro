@@ -21,24 +21,26 @@ import { kv } from '@root/pages/internal/_key-visuals';
 
 <VisualPage visual="normalize">
 	{
-		/* The switch first: it is what `/` renders (running order A). Pulse is the handoff's, still on
+		/* The switch first: it is what `/` renders (running orders A and B), promoted 2026-09-27 over the
+	    switch with the mark, which stays below as the reference, pinned to both of its drawings so a
+	    default that moves cannot move it. Pulse is the handoff's, still on
 	    `/internal/homepages/handoff/`, and Still is what Pulse was judged against. */
 	}
 	<Variant
 		visual={kv('normalize')}
 		component={AutomateSwitch}
-		props={{ id: 'sandbox-automate', filter: 'flow' }}
+		props={{ id: 'sandbox-automate-chart', filter: 'chart', notify: 'feed' }}
 		shipping
-		name="Switch"
-		note="Normalize · Filter · Notify, one skeleton, a switch over the row’s media; the mark holds its place across all three, and no caption under the drawing (2026-09-26)"
+		name="Switch without the mark"
+		note="Shipping in A and B · Filter as the morning's openings in bars against a draggable 3:00 limit, the live one climbing past it and the alarm opening where it crosses; Notify as the alarm node and one line curving to four channels, each opening in turn into its message, clickable; Normalize as before (2026-09-27)"
 	/>
 
 	<Variant
 		visual={kv('normalize')}
 		component={AutomateSwitch}
-		props={{ id: 'sandbox-automate-chart', filter: 'chart' }}
-		name="Switch, Filter as a chart"
-		note="candidate · Filter without the mark: the morning's door-open times as a large line chart, and the alarm as the product lists one, opening where the line crosses the 5:00 limit; Normalize and Notify as shipped for now (2026-09-27)"
+		props={{ id: 'sandbox-automate', filter: 'flow', notify: 'flow' }}
+		name="Switch"
+		note="previous · Normalize · Filter · Notify, one skeleton, a switch over the row’s media; the mark holds its place across all three, and no caption under the drawing (2026-09-26)"
 	/>
 
 	<Variant

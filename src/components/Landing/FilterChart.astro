@@ -96,6 +96,7 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(DAY.from)} to ${hhmm(DAY.to)}:
 		data-fch-climb={JSON.stringify(frames.climb)}
 		data-fch-end={frames.end}
 		data-fch-geo={JSON.stringify(geo)}
+		data-fch-title={FILTER_CHART.title}
 		data-flow="in"
 		style={[
 			`--fch-u: min(1.15px, calc(100cqw / ${NATIVE}))`,
@@ -304,7 +305,7 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(DAY.from)} to ${hhmm(DAY.to)}:
 			testing = window.setTimeout(test, ms);
 		};
 
-		const chartLabel = svg.getAttribute('aria-label') ?? '';
+		const title = root.dataset.fchTitle ?? '';
 		const apply = (seconds: number) => {
 			const { min, max, step } = geo.limit;
 			limit = Math.min(max, Math.max(min, Math.round(seconds / step) * step));
@@ -312,11 +313,13 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(DAY.from)} to ${hhmm(DAY.to)}:
 			const overCount = geo.bars.filter((b) => b.open > limit).length;
 			svg.setAttribute(
 				'aria-label',
-				chartLabel.split(':')[0] +
-					': with the limit at ' +
+				title +
+					': the limit at ' +
 					openFor(limit) +
 					', ' +
-					(overCount ? overCount + ' opening' + (overCount > 1 ? 's' : '') + ' over it.' : 'no opening over it.')
+					(overCount
+						? overCount + (overCount > 1 ? ' openings' : ' opening') + ' over it, the latest raising the alarm.'
+						: 'no opening over it, so no alarm.')
 			);
 			root.classList.add('is-manual');
 			root.style.setProperty('--fch-limit-y', String(y));
@@ -355,6 +358,12 @@ const chartLabel = `${FILTER_CHART.title}, ${hhmm(DAY.from)} to ${hhmm(DAY.to)}:
 			dot?.setAttribute('cx', String(last.x));
 			dot?.setAttribute('cy', String(y));
 			if (time) time.textContent = clock(last.start + limit);
+			// Tell the switch's other drawings: Notify prints the same alarm, so it follows the limit.
+			root
+				.closest('[data-automate]')
+				?.dispatchEvent(
+					new CustomEvent('automate:limit', { detail: { limit: openFor(limit), firedAt: clock(last.start + limit) } })
+				);
 		};
 
 		// Where the pointer is, in the frame's units; the drag keeps the offset it grabbed at, so a tap

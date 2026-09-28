@@ -47,6 +47,13 @@ const headY = (k: number, s: number) => top + k * (HEAD + GAP) + (s < k ? OPEN :
 /** A curve's vertical reach; never exactly 0, which would collapse its scale. */
 const reach = (k: number, s: number) => r2(headY(k, s) - MID) || 0.01;
 const curveW = CURVE_X1 - CURVE_X0;
+/**
+ * Each curve runs on into its row as a straight reach up to the arrowhead, in the same path, so the
+ * line and its last stretch are one stroke with no joint. In the path's own units (it is scaled by
+ * the curve's width), the reach is its length over that width.
+ */
+const REACH = ROWS_X - 3 - CURVE_X1 - 1;
+const CURVE_D = 'M 0,0 C 0.5,0 0.5,1 1,1 L ' + r2(1 + REACH / curveW) + ',1';
 const curve = (k: number, s: number) =>
 	'translate(' + CURVE_X0 + 'px, ' + MID + 'px) scale(' + curveW + ', ' + reach(k, s) + ')';
 
@@ -113,7 +120,7 @@ const curveLen = (k: number, s: number) => {
 		len += Math.hypot(x - px, y - py);
 		[px, py] = [x, y];
 	}
-	return r2(len);
+	return r2(len + REACH);
 };
 const hidden = 'stroke-dashoffset: calc(' + DASH + ' * var(--u));';
 NOTIFY_FEED.forEach((_, k) => {
@@ -219,7 +226,7 @@ const TINT: Record<string, string[]> = {
 				NOTIFY_FEED.map((_, k) => (
 					<path
 						class={`nf__curve nf__curve--${k}`}
-						d="M 0,0 C 0.5,0 0.5,1 1,1"
+						d={CURVE_D}
 						transform={`translate(${CURVE_X0} ${MID}) scale(${curveW} ${reach(k, 0)})`}
 						data-states={JSON.stringify(NOTIFY_FEED.map((_, st) => curve(k, st)))}
 						style={k === 0 ? 'stroke: var(--nf-alarm)' : undefined}
@@ -230,7 +237,7 @@ const TINT: Record<string, string[]> = {
 				NOTIFY_FEED.map((_, k) => (
 					<path
 						class={`nf__signal nf__signal--${k}`}
-						d="M 0,0 C 0.5,0 0.5,1 1,1"
+						d={CURVE_D}
 						transform={`translate(${CURVE_X0} ${MID}) scale(${curveW} ${reach(k, 0)})`}
 						data-lengths={JSON.stringify(NOTIFY_FEED.map((_, st) => curveLen(k, st)))}
 					/>
@@ -518,11 +525,12 @@ const TINT: Record<string, string[]> = {
 		stroke: var(--nf-line);
 	}
 
-	// The signal: a short bright dash, parked before its path's start until it runs.
+	// The signal: a short bright dash a touch heavier than the line it runs on, parked before its
+	// path's start until it runs.
 	.nf__signal {
 		fill: none;
 		stroke: var(--nf-alarm);
-		stroke-width: 4;
+		stroke-width: 3;
 		stroke-linecap: round;
 		stroke-dasharray: calc(10 * var(--u)) 4000px;
 		stroke-dashoffset: calc(10 * var(--u));
@@ -532,7 +540,7 @@ const TINT: Record<string, string[]> = {
 	// Over the red trunk it shows as a lighter pulse. No transform, so it keeps the drawing's own units.
 	.nf__signal--trunk {
 		stroke: color-mix(in srgb, var(--nf-alarm) 30%, #fff);
-		stroke-width: 4;
+		stroke-width: 3;
 		stroke-dasharray: 10 1000;
 		stroke-dashoffset: 10;
 		vector-effect: none;
@@ -561,7 +569,7 @@ const TINT: Record<string, string[]> = {
 		background: transparent;
 	}
 
-	// The last reach of this row's arrow and its head: from where its curve ends into the row.
+	// This row's arrowhead, where its curve's reach ends. The line itself is the curve's own path.
 	.nf__stub {
 		position: absolute;
 		top: calc(#{u(var(--nf-head))} / 2 - #{u(1)});
@@ -569,7 +577,6 @@ const TINT: Record<string, string[]> = {
 		width: calc(#{u(var(--nf-rows-x))} - #{u(var(--nf-curve-x1))} - #{u(3)});
 		height: var(--nf-rail);
 		color: var(--nf-line);
-		background: currentColor;
 
 		&::after {
 			content: '';

@@ -54,6 +54,8 @@ const curveW = CURVE_X1 - CURVE_X0;
  */
 const REACH = ROWS_X - 3 - CURVE_X1 - 1;
 const CURVE_D = 'M 0,0 C 0.5,0 0.5,1 1,1 L ' + r2(1 + REACH / curveW) + ',1';
+/** The signal runs the bend only, and is gone before the straight reach, so it never sits on the head. */
+const BEND_D = 'M 0,0 C 0.5,0 0.5,1 1,1';
 const curve = (k: number, s: number) =>
 	'translate(' + CURVE_X0 + 'px, ' + MID + 'px) scale(' + curveW + ', ' + reach(k, s) + ')';
 
@@ -64,12 +66,12 @@ const uid = 'nf-' + Math.random().toString(36).slice(2, 8);
 let keyframes = '';
 NOTIFY_FEED.forEach((_, k) => {
 	let move = '0% { transform: ' + curve(k, n - 1) + '; } ';
-	let lit = '0% { stroke: ' + (k === n - 1 ? 'var(--nf-alarm)' : 'var(--nf-line)') + '; } ';
+	let lit = '0% { opacity: ' + (k === n - 1 ? 1 : 0) + '; } ';
 	for (let s = 0; s < n; s++) {
 		const [a, b] = held(s);
 		const end = s === n - 1 ? 100 : b;
 		move += a + '%, ' + end + '% { transform: ' + curve(k, s) + '; } ';
-		lit += a + '%, ' + end + '% { stroke: ' + (s === k ? 'var(--nf-alarm)' : 'var(--nf-line)') + '; } ';
+		lit += a + '%, ' + end + '% { opacity: ' + (s === k ? 1 : 0) + '; } ';
 	}
 	keyframes += '@keyframes ' + uid + '-move-' + k + ' { ' + move + '} ';
 	keyframes += '@keyframes ' + uid + '-lit-' + k + ' { ' + lit + '} ';
@@ -77,6 +79,14 @@ NOTIFY_FEED.forEach((_, k) => {
 		'@media (prefers-reduced-motion: no-preference) { [data-nf="' +
 		uid +
 		'"] .nf__curve--' +
+		k +
+		' { animation: ' +
+		uid +
+		'-move-' +
+		k +
+		' var(--nf-loop) var(--nf-ease) infinite; animation-delay: calc(-1 * var(--nf-lead)); animation-play-state: var(--flow-play, running); } [data-nf="' +
+		uid +
+		'"] .nf__lit--' +
 		k +
 		' { animation: ' +
 		uid +
@@ -120,7 +130,7 @@ const curveLen = (k: number, s: number) => {
 		len += Math.hypot(x - px, y - py);
 		[px, py] = [x, y];
 	}
-	return r2(len + REACH);
+	return r2(len);
 };
 const hidden = 'stroke-dashoffset: calc(' + DASH + ' * var(--u));';
 NOTIFY_FEED.forEach((_, k) => {
@@ -214,7 +224,31 @@ const TINT: Record<string, string[]> = {
 		</div>
 
 		<svg class="nf__lines" viewBox={`0 0 ${NATIVE} ${H}`} aria-hidden="true">
+			{
+				NOTIFY_FEED.map((_, k) => (
+					<path
+						class={`nf__curve nf__curve--${k}`}
+						d={CURVE_D}
+						transform={`translate(${CURVE_X0} ${MID}) scale(${curveW} ${reach(k, 0)})`}
+						data-states={JSON.stringify(NOTIFY_FEED.map((_, st) => curve(k, st)))}
+					/>
+				))
+			}
+			{
+				/* Over the grey curves: the trunk, then the open channel's curve in red, as its own layer, so
+			    the red is never under a grey and the greys, opaque, never darken where they merge. */
+			}
 			<line class="nf__trunk" x1={NODE_X + NODE / 2 + 4} y1={MID} x2={CURVE_X0} y2={MID}></line>
+			{
+				NOTIFY_FEED.map((_, k) => (
+					<path
+						class={`nf__lit nf__lit--${k}`}
+						d={CURVE_D}
+						transform={`translate(${CURVE_X0} ${MID}) scale(${curveW} ${reach(k, 0)})`}
+						style={k === 0 ? undefined : 'opacity: 0'}
+					/>
+				))
+			}
 			<line
 				class="nf__signal nf__signal--trunk"
 				x1={NODE_X + NODE / 2 + 4}
@@ -225,19 +259,8 @@ const TINT: Record<string, string[]> = {
 			{
 				NOTIFY_FEED.map((_, k) => (
 					<path
-						class={`nf__curve nf__curve--${k}`}
-						d={CURVE_D}
-						transform={`translate(${CURVE_X0} ${MID}) scale(${curveW} ${reach(k, 0)})`}
-						data-states={JSON.stringify(NOTIFY_FEED.map((_, st) => curve(k, st)))}
-						style={k === 0 ? 'stroke: var(--nf-alarm)' : undefined}
-					/>
-				))
-			}
-			{
-				NOTIFY_FEED.map((_, k) => (
-					<path
 						class={`nf__signal nf__signal--${k}`}
-						d={CURVE_D}
+						d={BEND_D}
 						transform={`translate(${CURVE_X0} ${MID}) scale(${curveW} ${reach(k, 0)})`}
 						data-lengths={JSON.stringify(NOTIFY_FEED.map((_, st) => curveLen(k, st)))}
 					/>
@@ -324,6 +347,7 @@ const TINT: Record<string, string[]> = {
 		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		const rows = [...root.querySelectorAll<HTMLElement>('.nf__row')];
 		const curves = [...root.querySelectorAll<SVGPathElement>('.nf__curve')];
+		const lits = [...root.querySelectorAll<SVGPathElement>('.nf__lit')];
 		const trunkSignal = root.querySelector<SVGElement>('.nf__signal--trunk');
 		const signals = [...root.querySelectorAll<SVGPathElement>('.nf__signal:not(.nf__signal--trunk)')];
 		let opening = 0;
@@ -340,11 +364,11 @@ const TINT: Record<string, string[]> = {
 					el.style.color = getComputedStyle(el).color;
 				});
 			});
-			curves.forEach((c) => {
+			[...curves, ...lits].forEach((c) => {
 				const m = new DOMMatrix(getComputedStyle(c).transform);
 				c.style.transform = `translate(${m.e}px, ${m.f}px) scale(${m.a}, ${m.d || 0.01})`;
-				c.style.stroke = getComputedStyle(c).stroke;
 			});
+			lits.forEach((l) => (l.style.opacity = getComputedStyle(l).opacity));
 		};
 
 		// The signal first, along the curve where it stands now; the row opens as it lands.
@@ -392,7 +416,8 @@ const TINT: Record<string, string[]> = {
 			});
 			curves.forEach((c, k) => {
 				c.style.transform = states[k][i];
-				c.style.stroke = k === i ? 'var(--nf-alarm)' : 'var(--nf-line)';
+				lits[k].style.transform = states[k][i];
+				lits[k].style.opacity = k === i ? '1' : '0';
 			});
 		};
 
@@ -436,7 +461,8 @@ const TINT: Record<string, string[]> = {
 		--nf-grey: var(--color-text-secondary, #5b616e);
 		--nf-ink: var(--color-text, #17181c);
 		--nf-alarm: var(--color-accent-red, #b23c33);
-		--nf-line: color-mix(in srgb, var(--color-text, #17181c) 22%, transparent);
+		// Opaque, so four curves over one another at the merge stay one grey rather than darkening.
+		--nf-line: color-mix(in srgb, var(--color-text, #17181c) 20%, #fff);
 		--nf-rail: max(1px, #{u(2)});
 		--nf-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
@@ -510,7 +536,8 @@ const TINT: Record<string, string[]> = {
 	}
 
 	.nf__trunk,
-	.nf__curve {
+	.nf__curve,
+	.nf__lit {
 		fill: none;
 		stroke-width: 2;
 		stroke-linecap: round;
@@ -523,6 +550,11 @@ const TINT: Record<string, string[]> = {
 
 	.nf__curve {
 		stroke: var(--nf-line);
+	}
+
+	// The open channel's curve, over the greys. Its opacity says which: 1 for the open one, else 0.
+	.nf__lit {
+		stroke: var(--nf-alarm);
 	}
 
 	// The signal: a short bright dash a touch heavier than the line it runs on, parked before its
@@ -852,6 +884,7 @@ const TINT: Record<string, string[]> = {
 		.nf__head,
 		.nf__stub,
 		.nf__curve,
+		.nf__lit,
 		.nf__signal {
 			animation: none !important;
 		}
@@ -876,10 +909,11 @@ const TINT: Record<string, string[]> = {
 			transition: color 0.2s ease;
 		}
 
-		.nf__curve {
+		.nf__curve,
+		.nf__lit {
 			transition:
 				transform 0.3s var(--nf-ease),
-				stroke 0.2s ease;
+				opacity 0.2s ease;
 		}
 
 		.nf__body {
@@ -929,7 +963,7 @@ const TINT: Record<string, string[]> = {
 
 	// Without motion a pick simply switches: no easing, no signal.
 	@media (prefers-reduced-motion: reduce) {
-		.nf.is-manual :is(.nf__row, .nf__head, .nf__stub, .nf__curve, .nf__inner) {
+		.nf.is-manual :is(.nf__row, .nf__head, .nf__stub, .nf__curve, .nf__lit, .nf__inner) {
 			transition: none;
 		}
 	}

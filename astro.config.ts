@@ -122,6 +122,7 @@ export default defineConfig({
         sidebar,
         customCss: [
             './src/styles/_starlight-overrides.scss',
+            './src/styles/_print.scss',
             // Ubuntu ships 300/400/500/700 only — there is no 600, so
             // `$font-weight-semibold` resolves up to 700. 400-italic covers `em`;
             // heavier italics are synthesised rather than shipped.

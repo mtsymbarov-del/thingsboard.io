@@ -219,7 +219,7 @@ Data-driven page at `/clients-feedback/`. Key dirs: `src/data/clients-feedback/`
 
 Data-driven page at `/partners/distributors/`. Import distributor data from `@data/partners` — it exports the derived selectors the page renders from (`OFFERED_COUNTRIES`, `REGION_OFFERED_COUNTRIES`, `getCoverage`). Distributor-scoped: hardware partners live in `@data/partners/hardware-partners` and are imported directly.
 
-A distributor either lists the countries it covers or sets `countries: 'region-wide'` to cover every country in its `regions`, expanded from `REGION_MEMBERSHIP` in `src/data/partners/regions.ts`. That table and the countries distributors name must stay in step, so adding a country to a distributor means classifying it there too. `distributors.ts` asserts this as it loads (via `coverage.ts`), so any import path — the barrel or the data file directly — fails the build until you do.
+A distributor either lists the countries it covers or sets `countries: 'region-wide'` to cover every country in its `regions`, expanded from `REGION_MEMBERSHIP` in `src/data/partners/regions.ts`; a declared region that none of its listed countries falls in counts as covered in full. That table and the countries distributors name must stay in step, so adding a country to a distributor means classifying it there too — and declaring every region the country falls under, because the finder only offers a region's own countries in its dropdown and a card only matches regions it declares. `distributors.ts` asserts both as it loads (via `coverage.ts`), so any import path — the barrel or the data file directly — fails the build until you do.
 
 ## Redirects
 
@@ -230,7 +230,7 @@ A distributor either lists the countries it covers or sets `countries: 'region-w
 | `SINGLE_REDIRECTS` | one-off `/docs/*` page rename | `{ oldPath: 'pe/user-guide/roadmap', target: '/docs/pe/releases/roadmap/' }` |
 | `CATCH_ALL_REDIRECTS` | `/docs/*` prefix rename (whole tree renamed 1:1) | `{ oldPrefix: 'pe/edge', entries: [] }` → `/docs/pe/edge/* → /docs/edge/pe/:splat` |
 | `DYNAMIC_REDIRECTS` | splat / `:placeholder` patterns that aren't a simple prefix rename | `/blog/category/:category/page/* → /blog/?category=:category` |
-| `NON_DOCS_REDIRECTS` | everything outside `/docs/*` (marketing, `/products/*`, `/industries/*`, external targets) | `/iot-use-cases/` → `/use-cases/` |
+| `NON_DOCS_REDIRECTS` | everything outside `/docs/*` (marketing, `/products/*`, `/industries/*`, external targets), plus `/docs/*` **file assets** — the other exports append a trailing slash, which a file URL must not have | `/iot-use-cases/` → `/use-cases/` |
 
 **Workflow to add a redirect:**
 

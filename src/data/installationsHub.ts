@@ -3,29 +3,19 @@ import { homeProducts } from './homeProducts';
 import { homeEcosystem } from './homeEcosystem';
 
 /**
- * The installations hub (`/installations/`), rebuilt 2026-09-27: one SECTION per product, in the
- * homepage's idiom — the product's mark on its squircle, its name and one line, the way in, and
- * the ways in — where the old page had a tab per product, each a hero with screenshots, a feature
- * list and a row of deployment logos. What the old page was FOR survives: every installation
- * option it linked, each to its own guide, and the pricing links. What it said about the products
- * does not; the product pages say it.
- *
- * NO PROFESSIONAL EDITION. This site sells two platforms, Cloud and On-premises, and the old
- * page's Community and Professional tabs fold into the one On-premises section: the free guide is
- * the way in, and the licence is a pricing link.
- *
- * The marks, colours, labels and descriptions come from the homepage's own entries, so a change
- * there follows here.
+ * Data for the installations hub (`/installations/`): one section per product with its sign-up or
+ * installation guide, install options and pricing links. Marks, colours, labels and descriptions come
+ * from the homepage entries, so changes there follow here.
  */
 export interface InstallLink {
 	label: string;
 	href: string;
 }
 
-/** One way to install, as the old page listed them: its logo, and the guide for it. */
+/** One way to install: its logo and the guide for it. */
 export interface InstallOption {
 	label: string;
-	/** What the label was qualified with in brackets on the old page, set in grey after it. */
+	/** Qualifier shown in grey after the label, e.g. "Windows". */
 	note?: string;
 	/** A `/src/assets/images/installation/…` wordmark, 180x36. */
 	logo: string;
@@ -40,12 +30,12 @@ export interface InstallOptionGroup {
 export interface InstallRegion {
 	id: CloudRegionId;
 	name: string;
-	/** Where the data stays, in the Cloud FAQ's own words. */
+	/** Where the data is stored. */
 	note: string;
 	signup: string;
 }
 
-/** A second column beside the way in: Cloud's Private Cloud, with the cloud-provider options under it. */
+/** Cloud's Private Cloud panel, with the cloud-provider options under it. */
 export interface InstallAside {
 	title: string;
 	text: string;
@@ -61,13 +51,13 @@ export interface InstallProduct {
 	description: string;
 	icon: string;
 	accent: string;
-	/** The platforms' squircle fill, with the mark knocked out white. The others keep their own mark on the light tile. */
+	/** Platforms only: tile fill (the mark is knocked out white) and button colour. */
 	badgeFill?: string;
-	/** The platform's glyph, on the button (the homepage's product cards carry it the same way). */
+	/** Icon on the primary button. */
 	cornerIcon?: string;
-	/** The way in. Cloud has none: its regions are the way in. */
+	/** Primary button. Cloud has none: its regions are the way in. */
 	primary?: InstallLink;
-	/** The quiet links beside it: the product page, pricing. */
+	/** Text links beside the button: pricing, product page. */
 	links: InstallLink[];
 	options?: InstallOptionGroup[];
 	regions?: InstallRegion[];
@@ -99,12 +89,7 @@ const REGION_NOTES: Record<CloudRegionId, string> = {
 	eu: 'Data stored in the European Union',
 };
 
-/**
- * THE REGIONS ARE THE WAY IN, listed on the page under "Try now" as the old page listed them — one
- * row per region, each the sign-up on that region's host. Cloud is two sites with an account on
- * only one, so the region is the one thing to decide, and it is decided here rather than behind a
- * dialog. No sign-in: a returning user has the header's.
- */
+/** One sign-up per Cloud region; returning users sign in from the header. */
 const regions: InstallRegion[] = CLOUD_REGIONS.map((r) => ({
 	id: r.id,
 	name: r.name,
@@ -112,11 +97,7 @@ const regions: InstallRegion[] = CLOUD_REGIONS.map((r) => ({
 	signup: `https://${r.host}/signup`,
 }));
 
-/**
- * The old page's "cloud" row of the self-hosted guides — AWS, Azure, GCP, DigitalOcean — sits
- * under Cloud's Private Cloud column now (asked 2026-09-27), beside the managed offering that runs
- * on those providers. The guides themselves are still the self-hosted installs on each provider.
- */
+/** Self-hosted install guides for each cloud provider, listed under Private Cloud. */
 const cloudProviders: InstallOptionGroup = {
 	title: 'In a cloud of your choice',
 	items: [
@@ -144,7 +125,6 @@ export const installProducts: InstallProduct[] = [
 		aside: {
 			title: 'Private Cloud',
 			text: 'A dedicated cluster we provision and operate for you, in the cloud and the region you choose.',
-			// A dedicated cluster is a conversation, so the contact link leads; the comparison follows.
 			links: [
 				{ label: 'Contact us', href: '/contact-us/?subject=ThingsBoard%20Private%20Cloud' },
 				{ label: cloud.action, href: cloud.href },
@@ -168,9 +148,7 @@ export const installProducts: InstallProduct[] = [
 			{ label: 'See plans', href: '/pricing/' },
 			{ label: onPremises.action, href: onPremises.href },
 		],
-		// The old page's server row for this product, its own guides; its cloud row is under Private
-		// Cloud above. "Cluster setup" goes to the guide's index, as it did: the cluster guides are
-		// several, and the index lists them.
+		// "Cluster setup" links to the guide index, which lists the cluster guides.
 		options: [
 			{
 				title: 'On your servers',
@@ -291,7 +269,6 @@ export const installProducts: InstallProduct[] = [
 		accent: gateway.accent,
 		primary: { label: 'Installation guide', href: '/docs/iot-gateway/installation/' },
 		links: [{ label: gateway.action, href: gateway.href }],
-		// Not on the old page; the guide's own options.
 		options: [
 			{
 				title: 'Install on',

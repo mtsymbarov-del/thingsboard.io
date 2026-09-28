@@ -6,28 +6,10 @@ import SmartImage from '@components/SmartImage.astro';
 import { externalLinkAttrs } from '@util/external-links';
 import { installProducts } from '@data/installationsHub';
 
-/**
- * The installations hub: every ThingsBoard product with something to install, or nothing to, one
- * SECTION each, in the homepage's idiom (rebuilt 2026-09-27; the copy and the reasoning are in
- * `@data/installationsHub`). A section is the product's mark on its squircle, its name and one
- * line, then the way in on the left and the ways in on the right: Cloud's two regions as sign-up
- * rows with a sign-in beside each, the others' installation guide with their options, each linking
- * to its own guide, and pricing where there is a price.
- *
- * Only the two platforms carry a colour, on their squircle and their button; the ecosystem
- * products keep their own mark on the light tile and a neutral button, as the homepage keeps them.
- */
-
-/** The name with its distinguishing word tinted, as the homepage's product cards set theirs. */
-const nameParts = (name: string, highlight?: string) => {
-	if (!highlight) return [{ text: name, tint: false }];
-	const at = name.indexOf(highlight);
-	if (at === -1) throw new Error(`installations: no "${highlight}" in "${name}" to tint.`);
-	return [
-		{ text: name.slice(0, at), tint: false },
-		{ text: highlight, tint: true },
-		{ text: name.slice(at + highlight.length), tint: false },
-	].filter((part) => part.text);
+/** Splits a product name around its highlighted word, e.g. "ThingsBoard " + "Cloud". */
+const splitName = (name: string, highlight?: string) => {
+	const at = highlight ? name.indexOf(highlight) : -1;
+	return at === -1 ? [name, '', ''] : [name.slice(0, at), highlight, name.slice(at + highlight!.length)];
 };
 ---
 
@@ -37,8 +19,8 @@ const nameParts = (name: string, highlight?: string) => {
 	title="Install ThingsBoard"
 	description="Get ThingsBoard running: sign up for ThingsBoard Cloud in your region, or install ThingsBoard On-premises, Edge, Trendz and the IoT Gateway from their guides."
 >
-	<section id="installations" class="install">
-		<div class="main-div">
+	<div class="install">
+		<div class="install__container install__intro">
 			<SectionHeader
 				title="Get ThingsBoard running"
 				subtitle="Pick where it runs. Cloud needs nothing installed; everything else has a guide for every way it installs."
@@ -46,89 +28,72 @@ const nameParts = (name: string, highlight?: string) => {
 				subtitleMeasure="copy"
 				level={1}
 			/>
+		</div>
 
-			{
-				installProducts.map((p) => (
-					<article
+		{
+			installProducts.map((p) => {
+				const [before, highlight, after] = splitName(p.name, p.nameHighlight);
+				const groups = p.aside?.options ?? p.options ?? [];
+				return (
+					<section
 						id={p.id}
-						class:list={[
-							'install__product',
-							p.badgeFill && 'install__product--platform',
-							p.regions && 'install__product--band',
-						]}
-						style={`--accent: ${p.accent}${p.badgeFill ? `; --badge-fill: ${p.badgeFill}` : ''}`}
+						class:list={['install__product', p.badgeFill && 'is-platform', p.regions && 'is-band']}
+						style={{ '--accent': p.accent, '--badge-fill': p.badgeFill }}
 					>
-						<div class="install__head">
-							<span class="install__mark" aria-hidden="true">
-								<SmartImage src={p.icon} alt="" class="install__icon" width="96" height="96" loading="lazy" />
-							</span>
-							<div>
-								<p class="install__label">{p.label}</p>
-								<h2 class="install__title">
-									{nameParts(p.name, p.nameHighlight).map((part) =>
-										part.tint ? <span class="install__title-accent">{part.text}</span> : part.text
-									)}
-								</h2>
-							</div>
-						</div>
-
-						<div class="install__grid">
-							<div class="install__copy">
-								<p class="install__text">{p.description}</p>
-
-								{p.regions && (
-									<div class="install__group install__group--primary">
-										<p class="install__group-title">Try now</p>
-										<ul class="install__regions">
-											{p.regions.map((region) => (
-												<li class="install__region" data-region={region.id}>
-													<a class="install__region-signup" href={region.signup} {...externalLinkAttrs(region.signup)}>
-														<span class="install__region-globe">
-															<Icon name="tabler:world" aria-hidden="true" />
-														</span>
-														<span class="install__region-name">
-															{region.name}
-															<small>{region.note}</small>
-														</span>
-														<span class="install__region-cta">
-															Sign up
-															<span class="sr-only"> for ThingsBoard Cloud in {region.name}</span>
-															<Icon name="tabler:chevron-right" aria-hidden="true" />
-														</span>
-													</a>
-												</li>
-											))}
-										</ul>
-									</div>
-								)}
-
-								<div class="install__actions">
-									{p.primary && (
-										<a class="install__button" href={p.primary.href}>
-											{p.cornerIcon && <Icon name={p.cornerIcon} aria-hidden="true" />}
-											{p.primary.label}
-											<span class="sr-only"> — {p.name}</span>
-										</a>
-									)}
-									{p.links.map((link) => (
-										<a class="install__link" href={link.href}>
-											{link.label}
-											<span class="sr-only"> — {p.name}</span>
-											<Icon name="tabler:chevron-right" aria-hidden="true" />
-										</a>
-									))}
+						<div class="install__container">
+							<header class="install__head">
+								<span class="install__mark" aria-hidden="true">
+									<SmartImage src={p.icon} alt="" class="install__icon" width="96" height="96" loading="lazy" />
+								</span>
+								<div>
+									<p class="install__label">{p.label}</p>
+									<h2 class="install__title">
+										{before}
+										{highlight && <span class="install__title-accent">{highlight}</span>}
+										{after}
+									</h2>
 								</div>
-							</div>
+							</header>
 
-							{p.aside && (
-								<div class="install__options install__aside">
-									<div class="install__aside-head">
-										<Icon name="tabler:cloud-lock" class="install__aside-glyph" aria-hidden="true" />
-										<h3 class="install__aside-title">{p.aside.title}</h3>
-									</div>
-									<p class="install__text">{p.aside.text}</p>
+							<div class="install__grid">
+								<div>
+									<p class="install__text">{p.description}</p>
+
+									{p.regions && (
+										<div class="install__regions">
+											<p class="install__group-title">Try now</p>
+											<ul>
+												{p.regions.map((region) => (
+													<li data-region={region.id}>
+														<a class="install__region" href={region.signup} {...externalLinkAttrs(region.signup)}>
+															<span class="install__region-globe">
+																<Icon name="tabler:world" aria-hidden="true" />
+															</span>
+															<span class="install__region-name">
+																{region.name}
+																<small>{region.note}</small>
+															</span>
+															<span class="install__region-cta">
+																Sign up
+																<span class="sr-only"> for ThingsBoard Cloud in {region.name}</span>
+																<Icon name="tabler:chevron-right" aria-hidden="true" />
+															</span>
+														</a>
+													</li>
+												))}
+											</ul>
+										</div>
+									)}
+
 									<div class="install__actions">
-										{p.aside.links.map((link) => (
+										{p.primary && (
+											<a class="install__button" href={p.primary.href}>
+												{p.cornerIcon && <Icon name={p.cornerIcon} aria-hidden="true" />}
+												{p.primary.label}
+												<span class="sr-only"> — {p.name}</span>
+											</a>
+										)}
+										{p.links.map((link) => (
 											<a class="install__link" href={link.href}>
 												{link.label}
 												<span class="sr-only"> — {p.name}</span>
@@ -136,92 +101,99 @@ const nameParts = (name: string, highlight?: string) => {
 											</a>
 										))}
 									</div>
-									{p.aside.options.map((group) => (
-										<div class="install__group">
-											<p class="install__group-title">{group.title}</p>
-											<ul class="install__chips">
-												{group.items.map((option) => (
-													<li>
-														<a class="install__chip" href={option.href}>
-															<SmartImage src={option.logo} alt="" width="90" height="18" loading="lazy" />
-															{option.label}
-															{option.note && <span class="install__chip-note">{option.note}</span>}
-														</a>
-													</li>
-												))}
-											</ul>
-										</div>
-									))}
 								</div>
-							)}
 
-							{p.options && (
-								<div class="install__options">
-									{p.options.map((group) => (
-										<div class="install__group">
-											<p class="install__group-title">{group.title}</p>
-											<ul class="install__chips">
-												{group.items.map((option) => (
-													<li>
-														<a class="install__chip" href={option.href}>
-															<SmartImage src={option.logo} alt="" width="90" height="18" loading="lazy" />
-															{option.label}
-															{option.note && <span class="install__chip-note">{option.note}</span>}
+								{groups.length > 0 && (
+									<div class="install__panel">
+										{p.aside && (
+											<div class="install__aside">
+												<h3 class="install__aside-title">
+													<Icon name="tabler:cloud-lock" aria-hidden="true" />
+													{p.aside.title}
+												</h3>
+												<p class="install__text">{p.aside.text}</p>
+												<div class="install__actions">
+													{p.aside.links.map((link) => (
+														<a class="install__link" href={link.href}>
+															{link.label}
+															<span class="sr-only"> — {p.aside!.title}</span>
+															<Icon name="tabler:chevron-right" aria-hidden="true" />
 														</a>
-													</li>
-												))}
-											</ul>
-										</div>
-									))}
-								</div>
-							)}
+													))}
+												</div>
+											</div>
+										)}
+										{groups.map((group) => (
+											<div class="install__group">
+												<p class="install__group-title">{group.title}</p>
+												<ul class="install__chips">
+													{group.items.map((option) => (
+														<li>
+															<a class="install__chip" href={option.href}>
+																<SmartImage src={option.logo} alt="" width="90" height="18" loading="lazy" />
+																<span>
+																	{option.label}
+																	{option.note && <span class="install__chip-note"> {option.note}</span>}
+																</span>
+															</a>
+														</li>
+													))}
+												</ul>
+											</div>
+										))}
+									</div>
+								)}
+							</div>
 						</div>
-					</article>
-				))
-			}
-		</div>
-	</section>
+					</section>
+				);
+			})
+		}
+	</div>
 </BaseLayout>
 
 <style is:global lang="scss">
-	// On the home nav (`HOME_NAV_ROUTES` in `components/starlight/Header.astro`): the larger logo, the
-	// GitHub stars, the Sign in region and "Try for free" opening the region dialog. The header only
-	// renders those; the bar's sizes and weights are the partial's.
+	// The homepage's header bar (larger logo, GitHub stars, region sign-in).
 	@use '../../styles/marketing-bar';
 </style>
 
 <style lang="scss">
 	@use '../../styles/variables' as *;
 
-	$mark: 72px;
-
-	// The homepage's ground and measure: a section on white, its content on the 960 the homepage's
-	// product grids sit on (`.main-div` at 1000 with 20 of padding).
 	.install {
-		padding: $spacing-12 0 $spacing-20;
-		background: var(--color-bg, #fff);
-		// The Cloud band below runs to the viewport's edges through negative margins; clipped here so
-		// a classic scrollbar's width never becomes sideways scroll.
-		overflow-x: clip;
-
-		// Centred by hand: the homepage's `landing` sheet, which centres every section's
-		// `.main-div`, is not loaded on this page.
-		.main-div {
-			max-width: 1000px;
-			margin-inline: auto;
-			padding-inline: $spacing-5;
-		}
+		padding-bottom: $spacing-20;
+		background: var(--color-bg);
 	}
 
-	// ── One product, one section ──────────────────────────────────────
-	// Sections, not cards: full-width rows on a hairline, the way the page's own content runs.
-	.install__product {
-		padding: $spacing-10 0;
-		border-top: 1px solid var(--sl-color-hairline-light, #{$color-border});
+	.install__container {
+		max-width: 1000px;
+		margin-inline: auto;
+		padding-inline: $spacing-5;
+	}
 
-		&:first-of-type {
-			border-top: 0;
-			padding-top: $spacing-4;
+	.install__intro {
+		padding-top: $spacing-12;
+	}
+
+	// ── Product section ───────────────────────────────────────────────
+	.install__product {
+		padding-block: $spacing-10;
+
+		& + & {
+			border-top: 1px solid var(--color-border);
+		}
+
+		// Cloud runs as a full-width tinted band.
+		&.is-band {
+			background: linear-gradient(
+				150deg,
+				color-mix(in srgb, var(--badge-fill) 22%, #fff),
+				color-mix(in srgb, var(--badge-fill) 6%, #fff)
+			);
+
+			+ .install__product {
+				border-top: 0;
+			}
 		}
 	}
 
@@ -232,24 +204,20 @@ const nameParts = (name: string, highlight?: string) => {
 		margin-bottom: $spacing-5;
 	}
 
-	// The homepage's squircle, to the number: 72, the 24% rounding the product cards carry, the
-	// light tile with the page's 155deg run and a trace of the product's accent at its tail, and
-	// the shadow alone lifting it. The platforms fill it with their colour and knock the mark out
-	// white, exactly as the homepage's two product cards do; the others keep their own mark.
 	.install__mark {
 		display: grid;
 		flex: none;
 		place-items: center;
-		width: $mark;
-		height: $mark;
+		width: 72px;
+		height: 72px;
 		border-radius: 24%;
-		background-color: var(--color-bg-surface, #fff);
-		background-image: linear-gradient(
-			155deg,
-			var(--color-bg-surface, #fff) 40%,
-			color-mix(in srgb, var(--accent) 8%, var(--color-bg-surface, #fff)) 100%
-		);
+		background: linear-gradient(155deg, #fff 40%, color-mix(in srgb, var(--accent) 8%, #fff));
 		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+
+		@include media-down(sm) {
+			width: 56px;
+			height: 56px;
+		}
 	}
 
 	.install__icon {
@@ -257,45 +225,35 @@ const nameParts = (name: string, highlight?: string) => {
 		height: auto;
 	}
 
-	.install__product--platform {
+	.is-platform {
 		.install__mark {
-			background-color: var(--badge-fill);
-			background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 62%);
+			background: var(--badge-fill) linear-gradient(150deg, rgba(255, 255, 255, 0.24), transparent 62%);
 		}
 
-		// Larger than the homepage card's 64% (78 first, then asked larger again): on a section the
-		// tile is read alone, not beside a grid of others, and the mark's own art carries its padding.
 		.install__icon {
 			width: 92%;
 			filter: brightness(0) invert(1);
 		}
 	}
 
-	// The card's label and title, at the section's size: the eyebrow over a 28px name, the
-	// distinguishing word in the platform's colour and plain everywhere else.
 	.install__label {
 		@include type-eyebrow;
 
 		margin: 0 0 $spacing-1;
-		color: var(--color-text-secondary, #{$color-text-secondary});
+		color: var(--color-text-secondary);
 	}
 
 	.install__title {
 		@include type-subsection;
 
 		margin: 0;
-		color: var(--color-text, #17181c);
+		color: var(--color-text);
 	}
 
 	.install__title-accent {
 		color: var(--badge-fill, inherit);
 	}
 
-	// The way in on the left, the ways in on the right; one column once the row is too narrow for
-	// both to keep a reading width.
-	// The way in takes the larger share (13 to 10, asked 2026-09-27 from five to six): 520 of the
-	// 920 the gap leaves, which holds a product's button and its two links on one row — 497 for
-	// On-premises, the widest set — and the panel of chips beside it wraps without complaint.
 	.install__grid {
 		display: grid;
 		grid-template-columns: minmax(0, 13fr) minmax(0, 10fr);
@@ -310,12 +268,12 @@ const nameParts = (name: string, highlight?: string) => {
 	.install__text {
 		@include type-body;
 
-		margin: 0;
 		max-width: 46ch;
-		color: var(--color-text, #17181c);
+		margin: 0;
+		color: var(--color-text);
 	}
 
-	// ── The way in ────────────────────────────────────────────────────
+	// ── Actions ───────────────────────────────────────────────────────
 	.install__actions {
 		display: flex;
 		flex-wrap: wrap;
@@ -324,9 +282,6 @@ const nameParts = (name: string, highlight?: string) => {
 		margin-top: $spacing-6;
 	}
 
-	// THE HOMEPAGE'S BUTTON, as the product cards draw theirs: the button label, 44 tall, the page's
-	// 6px corner. A platform's takes its colour; the others' is a neutral outline, so nothing but
-	// the two platforms carries a colour on this page.
 	.install__button {
 		@include type-button;
 
@@ -335,10 +290,9 @@ const nameParts = (name: string, highlight?: string) => {
 		gap: $spacing-2;
 		height: 44px;
 		padding: 0 $spacing-4;
-		border: 1px solid rgba(23, 24, 28, 0.18);
+		border: 1px solid var(--color-border-light);
 		border-radius: $radius-md;
-		background-color: transparent;
-		color: var(--color-text, #17181c);
+		color: var(--color-text);
 		text-decoration: none;
 
 		:global(svg) {
@@ -347,38 +301,36 @@ const nameParts = (name: string, highlight?: string) => {
 		}
 
 		&:hover {
-			background-color: rgba(23, 24, 28, 0.05);
+			background-color: var(--color-bg-light);
 		}
 
 		&:focus-visible {
-			outline: 2px solid var(--color-text, #17181c);
+			outline: 2px solid currentColor;
 			outline-offset: 3px;
 		}
+
+		.is-platform & {
+			border-color: var(--badge-fill);
+			background-color: var(--badge-fill);
+			color: #fff;
+
+			&:hover {
+				background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+			}
+
+			&:focus-visible {
+				outline-color: var(--badge-fill);
+			}
+		}
 	}
 
-	.install__product--platform .install__button {
-		border-color: var(--badge-fill);
-		background-color: var(--badge-fill);
-		color: #fff;
-
-		&:hover {
-			background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
-		}
-
-		&:focus-visible {
-			outline-color: var(--badge-fill);
-		}
-	}
-
-	// The quiet link beside it, the cards' own: medium, in the brand indigo the homepage points its
-	// links at, a chevron after.
 	.install__link {
 		@include type-link;
 
 		display: inline-flex;
 		align-items: center;
 		gap: $spacing-1;
-		color: $color-brand;
+		color: var(--color-brand);
 		text-decoration: none;
 
 		:global(svg) {
@@ -391,72 +343,43 @@ const nameParts = (name: string, highlight?: string) => {
 		}
 	}
 
-	// ── Cloud's regions ───────────────────────────────────────────────
-	// The two regions as rows, each a sign-up with a sign-in beside it: the region dialog's cards,
-	// set on the page — a globe in a hue of its own, the region's name over where its data stays,
-	// and the action at the row's end.
-	// "Try now" over the rows, in the option groups' own label — and the whole block on a panel in
-	// the platform's own tint, so it is the section's primary element: the one thing to do here.
-	// "Try now" in the platform's colour; the tint that was on this block alone is the whole
-	// section's now (below), so the block itself is bare and the white rows on it are the buttons.
-	.install__group--primary {
+	// ── Cloud regions ─────────────────────────────────────────────────
+	.install__regions {
+		max-width: 480px;
 		margin-top: $spacing-6;
 
 		.install__group-title {
 			color: var(--badge-fill);
 		}
-	}
 
-	// THE CLOUD SECTION IS A BAND (asked 2026-09-26, moved off the Try now block): the platform's
-	// tint run full-bleed, 22% at the top-left down to 6% at the bottom-right, the content staying on
-	// the measure — the homepage's band idiom, for the one section that is the way in with nothing
-	// to install. Its hairline goes, since the band's own edge is the boundary.
-	.install__product--band {
-		margin-inline: calc(50% - 50vw);
-		padding-inline: calc(50vw - 50%);
-		border-top: 0;
-		background: linear-gradient(
-			150deg,
-			color-mix(in srgb, var(--badge-fill) 22%, #fff),
-			color-mix(in srgb, var(--badge-fill) 6%, #fff)
-		);
-
-		&:first-of-type {
-			padding-top: $spacing-10;
+		ul {
+			display: grid;
+			gap: $spacing-3;
+			margin: 0;
+			padding: 0;
+			list-style: none;
 		}
 
-		+ .install__product {
-			border-top: 0;
+		[data-region='us'] {
+			--region-hue: #{$color-brand};
 		}
-	}
 
-	.install__regions {
-		display: grid;
-		gap: $spacing-3;
-		max-width: 480px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
+		[data-region='eu'] {
+			--region-hue: #0f9b8e;
+		}
 	}
 
 	.install__region {
 		display: flex;
 		align-items: center;
-	}
-
-	.install__region-signup {
-		display: flex;
-		flex: 1 1 auto;
-		align-items: center;
 		gap: $spacing-3;
-		min-width: 0;
 		padding: $spacing-3 $spacing-4;
 		border-radius: $radius-lg;
-		background: var(--color-bg-surface, #fff);
+		background: var(--color-bg-surface);
 		box-shadow:
 			0 1px 2px rgba(23, 24, 28, 0.06),
 			0 6px 18px rgba(23, 24, 28, 0.06);
-		color: var(--color-text, #17181c);
+		color: var(--color-text);
 		text-decoration: none;
 
 		&:hover {
@@ -487,19 +410,9 @@ const nameParts = (name: string, highlight?: string) => {
 		}
 	}
 
-	// The dialog's two hues, decoration as they were in the header's old menu; the names carry
-	// the meaning.
-	.install__region[data-region='us'] {
-		--region-hue: #{$color-brand};
-	}
-
-	.install__region[data-region='eu'] {
-		--region-hue: #0f9b8e;
-	}
-
 	.install__region-name {
 		display: flex;
-		flex: 1 1 auto;
+		flex: 1;
 		flex-direction: column;
 		min-width: 0;
 		font-weight: $font-weight-bold;
@@ -509,7 +422,7 @@ const nameParts = (name: string, highlight?: string) => {
 			@include type-small;
 
 			font-weight: $font-weight-normal;
-			color: var(--color-text-secondary, #{$color-text-secondary});
+			color: var(--color-text-secondary);
 		}
 	}
 
@@ -521,7 +434,6 @@ const nameParts = (name: string, highlight?: string) => {
 		align-items: center;
 		gap: $spacing-1;
 		color: var(--badge-fill);
-		white-space: nowrap;
 
 		:global(svg) {
 			width: 18px;
@@ -529,61 +441,46 @@ const nameParts = (name: string, highlight?: string) => {
 		}
 	}
 
-	// ── Private Cloud, beside Cloud's way in ──────────────────────────
-	// EVERY RIGHT COLUMN IS A PANEL on a subtle hairline — Private Cloud beside Cloud's way in, and
-	// the ways in beside every other product's — so the second column reads as its own thing
-	// rather than as more of the same column (asked for the aside first, then for the rest).
-	.install__options {
+	// ── Side panel: Private Cloud and install options ─────────────────
+	.install__panel {
+		display: grid;
+		gap: $spacing-5;
 		padding: $spacing-5;
-		border: 1px solid rgba(23, 24, 28, 0.1);
+		border: 1px solid var(--color-border);
 		border-radius: $radius-lg;
-	}
+		background: var(--color-bg-surface);
 
-	.install__aside-head {
-		display: flex;
-		align-items: center;
-		gap: $spacing-3;
-		margin-bottom: $spacing-3;
-	}
-
-	// The cloud with a lock, bare, in the platform's colour: a dedicated cluster, yours alone. No
-	// tile — the section's tile is the product's, and a second one read as a second product.
-	.install__aside-glyph {
-		flex: none;
-		width: 24px;
-		height: 24px;
-		color: var(--badge-fill);
-	}
-
-	// A step under the card size (asked smaller, 2026-09-27): the tile's own title weight, so the
-	// second offering sits under the product's name rather than beside it.
-	.install__aside-title {
-		@include type-tile;
-
-		margin: 0;
-		color: var(--color-text, #17181c);
+		@include media-down(sm) {
+			padding: $spacing-4;
+		}
 	}
 
 	.install__aside .install__actions {
 		margin-top: $spacing-3;
 	}
 
-	.install__aside .install__group {
-		margin-top: $spacing-5;
-	}
+	.install__aside-title {
+		@include type-tile;
 
-	// ── The ways in ───────────────────────────────────────────────────
-	// The old page's deployment cards as chips: the wordmark and the name, each a link to its guide,
-	// under the group's own heading.
-	.install__group + .install__group {
-		margin-top: $spacing-5;
+		display: flex;
+		align-items: center;
+		gap: $spacing-3;
+		margin: 0 0 $spacing-3;
+		color: var(--color-text);
+
+		:global(svg) {
+			flex: none;
+			width: 24px;
+			height: 24px;
+			color: var(--badge-fill);
+		}
 	}
 
 	.install__group-title {
 		@include type-eyebrow;
 
 		margin: 0 0 $spacing-3;
-		color: var(--color-text-secondary, #{$color-text-secondary});
+		color: var(--color-text-secondary);
 	}
 
 	.install__chips {
@@ -595,46 +492,35 @@ const nameParts = (name: string, highlight?: string) => {
 		list-style: none;
 	}
 
-	// Base size and 40px tall: the old page's cards were the ways in, and at small they read as tags.
-	// What the old label qualified in brackets — Docker (Linux or Mac OS) — follows the name in grey,
-	// so the row reads Docker, Docker, and the platform is the difference.
 	.install__chip {
 		@include type-body;
 
 		display: inline-flex;
 		align-items: center;
 		gap: $spacing-2;
-		height: 40px;
-		padding: 0 $spacing-4;
-		border: 1px solid rgba(23, 24, 28, 0.12);
+		min-height: 40px;
+		padding: $spacing-1 $spacing-4;
+		border: 1px solid var(--color-border-light);
 		border-radius: $radius-full;
-		background: var(--color-bg-surface, #fff);
-		color: var(--color-text, #17181c);
+		background: var(--color-bg-surface);
+		color: var(--color-text);
 		font-weight: $font-weight-medium;
 		text-decoration: none;
-		white-space: nowrap;
 
 		:global(img) {
+			flex: none;
 			width: auto;
 			height: 20px;
 		}
 
 		&:hover {
-			border-color: rgba(23, 24, 28, 0.3);
-			background: rgba(23, 24, 28, 0.03);
+			border-color: var(--color-text-secondary);
+			background: var(--color-bg-light);
 		}
 	}
 
 	.install__chip-note {
-		color: var(--color-text-secondary, #{$color-text-secondary});
+		color: var(--color-text-secondary);
 		font-weight: $font-weight-normal;
-	}
-
-	// Stacked, the head's mark comes down a step and the regions take the width.
-	@include media-down(sm) {
-		.install__mark {
-			width: 56px;
-			height: 56px;
-		}
 	}
 </style>

@@ -21,10 +21,10 @@ const REQUIRE_MEDIA_CONSENT = false;
 
 // Placeholder wording until the legal team supplies the final text.
 const NOTICE_TEXT = 'Playing this video loads it from YouTube, which sets cookies.';
-const LOCKED_NOTICE_TEXT = 'YouTube sets cookies, so this video needs External media consent.';
+const LOCKED_NOTICE_TEXT = 'Playing this video turns on External media for the whole site, and YouTube sets cookies.';
 
 const playLabel = `Play video: ${title}`;
-const lockedLabel = `Allow External media to play video: ${title}`;
+const lockedLabel = `Allow External media for the whole site and play video: ${title}`;
 const noticeId = `yt-notice-${videoId}-${Math.random().toString(36).slice(2, 8)}`;
 // The docs content column; the Trendz landing frame is narrower.
 const POSTER_SIZES = '(min-width: 50rem) 45rem, 100vw';
@@ -46,7 +46,6 @@ const image =
 	}));
 ---
 
-{/* `scripts/lint-youtube-facade.ts` finds posters by `data-yt-video`, `data-yt-play` and the print fallback's watch URL. */}
 <div
 	class="yt-video not-content print:hidden"
 	data-yt-video={videoId}
@@ -74,16 +73,35 @@ const image =
 			<path d="M27 21v26l20-13z"></path>
 		</svg>
 	</button>
+	{/* YouTube attribution (Developer Policies III.F): the brand mark, linking back to the video. A plain link requests
+	nothing until followed, sits outside the play button so it never starts the player, and leaves with the poster. */}
+	<a
+		class="yt-video__logo"
+		href={watchUrl}
+		target="_blank"
+		rel="noopener noreferrer"
+		aria-label={`Watch on YouTube: ${title}`}
+	>
+		<svg viewBox="0 0 28.57 20" aria-hidden="true" focusable="false">
+			<path
+				fill="#f00"
+				d="M27.97 3.12C27.64 1.89 26.68.93 25.45.6 23.22 0 14.29 0 14.29 0S5.35 0 3.12.6C1.89.93.93 1.89.6 3.12 0 5.35 0 10 0 10s0 4.65.6 6.88c.33 1.23 1.29 2.19 2.52 2.52C5.35 20 14.29 20 14.29 20s8.93 0 11.16-.6c1.23-.33 2.19-1.29 2.52-2.52.6-2.23.6-6.88.6-6.88s0-4.65-.6-6.88Z"
+			></path>
+			<path fill="#fff" d="M11.43 14.29 18.85 10l-7.42-4.29v8.58Z"></path>
+		</svg>
+	</a>
+	{/* The Cookie Policy link is in both states: each state is a whole sentence, and only one is shown. */}
 	<p id={noticeId} class="yt-video__notice">
 		<span data-yt-notice-play>
 			{NOTICE_TEXT} See our <a href="/cookie-policy/">Cookie Policy</a>.
 		</span>
 		{REQUIRE_MEDIA_CONSENT && (
 			<span data-yt-notice-locked hidden>
-				{LOCKED_NOTICE_TEXT}{' '}
+				{LOCKED_NOTICE_TEXT} Change it in{' '}
 				<button type="button" class="cookie-settings" data-cc="show-preferences">
 					Cookie settings
-				</button>
+				</button>{' '}
+				or see our <a href="/cookie-policy/">Cookie Policy</a>.
 			</span>
 		)}
 	</p>
@@ -243,6 +261,24 @@ const image =
 		outline: 3px solid #fff;
 		outline-offset: 2px;
 		box-shadow: 0 0 0 7px #000;
+	}
+
+	/* After the play button in the DOM, so it stacks above it and takes its own clicks. */
+	.yt-video__logo {
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+		display: flex;
+	}
+
+	.yt-video__logo svg {
+		width: 2rem;
+		height: auto;
+	}
+
+	.yt-video__logo:focus-visible {
+		outline: 2px solid #fff;
+		outline-offset: 2px;
 	}
 
 	/* Clicks fall through to the play button except on the notice's own links. */

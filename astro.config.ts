@@ -192,7 +192,7 @@ export default defineConfig({
 		}),
 	},
 	image: {
-		domains: ['avatars.githubusercontent.com'],
+		domains: ['avatars.githubusercontent.com', 'i.ytimg.com'],
 		service: process.env.SKIP_IMG ? passthroughImageService() : sharpImageService(),
 	},
 });
